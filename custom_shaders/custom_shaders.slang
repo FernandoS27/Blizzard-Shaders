@@ -31,3 +31,8 @@ import wc3_shaders;
 __include "ps_toon";
 __include "toon_hd_ps";
 __include "toon_hd_vs";
+
+// Gritty (dark/desaturated PBR) body + entry points.
+__include "ps_gritty";
+__include "gritty_hd_ps";
+__include "gritty_hd_vs";
