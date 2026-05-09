@@ -30,9 +30,11 @@ Usage:
 """
 
 import argparse
+import hashlib
 import os
 import struct
 import sys
+import zlib
 from pathlib import Path
 
 from shader_config import load_families
@@ -40,25 +42,33 @@ from shader_config import load_families
 REPO_ROOT = Path(__file__).resolve().parent
 DEFAULT_SLANG_OUT = REPO_ROOT / "slang_out"
 DXBC_TARGET_SUBDIR  = "d3d11"   # compile_all_slang writes .dxbc under this target.
+DXIL_TARGET_SUBDIR  = "d3d12"   # ... and .dxil under this one (DX12 / SM6).
 METAL_TARGET_SUBDIR = "metal"   # ... and .metallib under this one (macOS only).
 
 # Extra (non-shipped) backends: opengl/vulkan/webgpu. Wc3 itself never loads
-# these — the engine only ships DX and Metal — but `--build-extra` still
-# packages the slangc outputs into BLS containers so users can ship them
-# alongside the originals for ports / re-implementations. Each tuple is:
-#   (slang_target_subdir, file_ext, vs_outdir, ps_outdir).
+# these — the engine only ships DX (SM5) and Metal — but `--build-extra`
+# still packages the slangc outputs into BLS containers so users can ship
+# them alongside the originals for ports / re-implementations. These (and
+# the d3d12 bundle written automatically when DXIL output exists) use the
+# v1.14 outer container — the latest BLS format, with zlib compression,
+# content hashes, and a platform tag — so a future loader can identify the
+# backend without relying on directory name alone. Each tuple is:
+#   (slang_target_subdir, file_ext, vs_outdir, ps_outdir,
+#    platform_tag, flags).
 # The output subdirectories follow the convention ``<api><stage>`` to
-# parallel the shipped ``mtlfs/mtlvs`` naming for Metal.
+# parallel the shipped ``mtlfs/mtlvs`` naming for Metal. Platform tags
+# are local conventions (the v1.14 spec only standardises 05XD/06XD/11TM)
+# stored as little-endian FourCCs reading "GLSL" / "SPIR" / "WGSL".
 EXTRA_BACKENDS = {
-    "opengl": ("opengl", "glsl", "glslvs", "glslps"),
-    "vulkan": ("vulkan", "spv",  "spvvs",  "spvps"),
-    "webgpu": ("webgpu", "wgsl", "wgpuvs", "wgpups"),
+    "opengl": ("opengl", "glsl", "glslvs", "glslps", b'LSLG', 0),
+    "vulkan": ("vulkan", "spv",  "spvvs",  "spvps",  b'RIPS', 0),
+    "webgpu": ("webgpu", "wgsl", "wgpuvs", "wgpups", b'LSGW', 0),
 }
 
 
 PERM_INNER_HEADER_SIZE       = 0x50  # bytes before the DXBC blob in each DX perm
 METAL_PERM_INNER_HEADER_SIZE = 0x2C  # bytes before the MTLB blob in each Metal perm
-BLS_FILE_HEADER_SIZE         = 0x18  # bytes before the cum-size table
+BLS_FILE_HEADER_SIZE         = 0x18  # bytes before the cum-size table (v1.8 outer)
 
 BLS_MAGIC       = b'HSXG'
 BLS_MINOR       = 8
@@ -67,6 +77,22 @@ BLS_PRE_META    = 0x14
 BLS_DXBC_TAG    = 4             # value at DX perm inner header +0x4C
 BLS_METAL_STAGE = 1             # DX perms carry a real stage id; Metal perms
                                 # always use stage=1 (MTLB encodes the stage).
+
+# v1.14 outer-container constants (latest BLS format spec).
+BLS_V14_MINOR        = 14
+BLS_V14_MAJOR        = 1
+BLS_V14_HEADER_SIZE  = 0x28          # 40-byte header
+BLS_V14_PERM_ENTRY   = 24            # decompressed_size + 16-byte MD5 + cum_offset
+BLS_V14_DX_STAGE     = 3             # pixel/vertex DX stage id in §3.2 inner
+BLS_V14_DX_RES_INFO  = 48            # 6 × 8-byte resource binding slots (zeroed)
+BLS_V14_DX_PREFIX    = 8             # dxbc_size + dxbc_format_tag prefix
+BLS_V14_DX_INNER_HDR = 0x28          # §3.2 DX inner permutation header
+
+# Platform FourCCs. Spec defines DX5.0 / DX6.0 / MTL; the rest are local
+# conventions used by build_extra_v14_bls so a backend-aware loader can
+# tell SPIR-V / GLSL / WGSL bundles apart.
+PLATFORM_TAG_DX6  = b'06XD'   # FourCC "DX60" (D3D12 SM6 — DXIL inside DXBC)
+FLAGS_DX6         = 0x00010001
 
 # Shader-family configuration is shared with compile_all_slang.py through
 # wc3_shaders.json. FamilyConfig exposes stage, perm_count, bls_name, and the
@@ -828,31 +854,144 @@ def _has_blobs(slang_dir, suffix):
 
 
 # ============================================================
-# Extra-backend BLS rebuild — opengl / vulkan / webgpu
+# v1.14 BLS rebuild — d3d12 / opengl / vulkan / webgpu
 # ============================================================
-# Wc3 itself never loads these formats; they are emitted on request via
-# `--build-extra` so users porting the engine to a non-DX/non-Metal target
-# have a ready-made BLS bundle for each shader family. The wire format is
-# identical to Metal v1.8 (§3.5 in the BLS spec) — uncompressed v1.8 outer
-# header + cumulative offset table, 44-byte per-perm inner header, opaque
-# blob, single trailing 0x00 byte. The blob payload depends on the backend:
-# raw GLSL / WGSL source text or a SPIR-V binary module.
+# The engine itself ships only DX SM5 (`ps/`, `vs/`) and Metal (`mtlfs/`,
+# `mtlvs/`) bundles in the v1.8 outer container. Everything else we emit
+# — d3d12 SM6 (always, when DXIL output exists) plus opengl / vulkan /
+# webgpu (opt-in via --build_extra) — uses the **v1.14** outer format,
+# which is the latest BLS revision (zlib compression, MD5 content hashes,
+# blob-size table, platform FourCC, flags). For d3d12 we also use the
+# spec'd §3.2 DX inner per-perm layout so a real DX12-aware loader can
+# consume it; the other backends keep the §3.6-style 44-byte opaque-blob
+# inner header (the v1.14 spec doesn't define a non-DX/non-Metal inner
+# layout, so the simplest least-surprising choice is to reuse the shape
+# we already produce via `pack_blob_perm`).
 
-def build_extra_bls(slang_dir, ext, num_perms, nulls=None, verbose=False):
-    """Return the bytes of a rebuilt extra-backend BLS (opengl/vulkan/webgpu).
+
+def pack_v14_dx_perm(dxbc, stage=BLS_V14_DX_STAGE):
+    """Pack one perm in v1.14 §3.2 DX inner format.
+
+    Layout: 40-byte common header (stage + payload_size + header_size +
+    padding/fields) + 48-byte resource binding chunk + 8-byte DXBC prefix
+    + DXBC blob. The 6 × 8-byte resource binding slots are zero-filled
+    because we have no shipped DX12 templates to source descriptor counts
+    from — a real engine consuming this bundle would derive UAV/SRV/CBV/
+    sampler counts from the DXBC's RDEF chunk if present.
+    """
+    dxbc_size = len(dxbc)
+    payload_size = BLS_V14_DX_RES_INFO + BLS_V14_DX_PREFIX + dxbc_size
+    total = BLS_V14_DX_INNER_HDR + payload_size
+
+    buf = bytearray(total)
+    struct.pack_into('<I', buf, 0x00, stage)
+    struct.pack_into('<I', buf, 0x04, payload_size)
+    struct.pack_into('<I', buf, 0x08, BLS_V14_DX_INNER_HDR)
+    # 0x0C..0x18 padding (zero) per spec.
+    # 0x18..0x28 field_18..field_24 (zero — descriptor counts unknown).
+    # 0x28..0x58 resource binding info (zero — no template to source from).
+    struct.pack_into('<I', buf, 0x58, dxbc_size)
+    struct.pack_into('<I', buf, 0x5C, BLS_DXBC_TAG)
+    buf[0x60:0x60 + dxbc_size] = dxbc
+    return bytes(buf)
+
+
+def build_v14_outer(inner_perms, platform_tag, flags):
+    """Return the bytes of a v1.14 BLS file wrapping `inner_perms`.
+
+    `inner_perms[i] == b''` marks a null perm. The decompressed payload is
+    the concatenation of all live perms in order; we emit a single zlib
+    blob (num_blobs == 1) since these bundles aren't streamed by any
+    consumer we ship for. Per-perm content hashes are MD5 of the
+    decompressed bytes; null perms carry a 16-byte zero hash.
+    """
+    num_perms = len(inner_perms)
+
+    perm_entries = []
+    decompressed = bytearray()
+    cum = 0
+    for blob in inner_perms:
+        sz = len(blob)
+        h = hashlib.md5(blob).digest() if sz else b'\x00' * 16
+        cum += sz
+        perm_entries.append((sz, h, cum))
+        decompressed += blob
+
+    if decompressed:
+        # Single-blob compression keeps the layout minimal. Splitting at
+        # ~64 KB (as WoW does for streaming) would be a trivial extension
+        # if a future consumer needs it.
+        compressed_blobs = [zlib.compress(bytes(decompressed))]
+    else:
+        compressed_blobs = []
+
+    blob_cum, total_compressed = [], 0
+    for cb in compressed_blobs:
+        total_compressed += len(cb)
+        blob_cum.append(total_compressed)
+    num_blobs = len(compressed_blobs)
+
+    off_perms = BLS_V14_HEADER_SIZE                       # 0x28
+    perm_table_size = 4 + num_perms * BLS_V14_PERM_ENTRY  # 4-byte padding prefix
+    off_blobs = off_perms + perm_table_size
+    blob_table_size = 4 + num_blobs * 4
+    off_data = off_blobs + blob_table_size
+    file_size = off_data + total_compressed
+
+    out = bytearray(file_size)
+    out[0:4] = BLS_MAGIC
+    struct.pack_into('<HH', out, 4, BLS_V14_MINOR, BLS_V14_MAJOR)
+    out[8:12] = platform_tag
+    struct.pack_into('<I', out, 12, off_perms)
+    struct.pack_into('<I', out, 16, num_perms)
+    struct.pack_into('<I', out, 20, off_blobs)
+    struct.pack_into('<I', out, 24, num_blobs)
+    struct.pack_into('<I', out, 28, off_data)
+    struct.pack_into('<I', out, 32, flags)
+    # 0x24 padding stays zero.
+
+    struct.pack_into('<I', out, off_perms, 0)             # padding prefix
+    cursor = off_perms + 4
+    for sz, h, cum in perm_entries:
+        struct.pack_into('<I', out, cursor, sz)
+        out[cursor + 4:cursor + 20] = h
+        struct.pack_into('<I', out, cursor + 20, cum)
+        cursor += BLS_V14_PERM_ENTRY
+
+    struct.pack_into('<I', out, off_blobs, 0)             # padding prefix
+    cursor = off_blobs + 4
+    for c in blob_cum:
+        struct.pack_into('<I', out, cursor, c)
+        cursor += 4
+
+    cursor = off_data
+    for cb in compressed_blobs:
+        out[cursor:cursor + len(cb)] = cb
+        cursor += len(cb)
+
+    return bytes(out)
+
+
+def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
+                        *, dx_inner=False, nulls=None, verbose=False):
+    """Return the bytes of a rebuilt v1.14 BLS for an extra/d3d12 backend.
 
     `slang_dir` is the per-family slang_out subdirectory (e.g.
-    ``slang_out/opengl/hd_vs``); `ext` is the file extension that
-    compile_all_slang.py emits for that backend (``glsl``, ``spv``, or
+    ``slang_out/d3d12/hd_vs``); `ext` is the file extension that
+    compile_all_slang.py emits for that backend (``dxil``/``glsl``/``spv``/
     ``wgsl``). `nulls` is an optional list[bool] marking which perm slots
     should be left empty — typically derived from the DX template so the
-    extra bundles mirror the shipped null-perm pattern. When `nulls` is
-    None, any missing or zero-byte file is treated as a null perm.
+    bundles mirror the shipped null-perm pattern. When `nulls` is None,
+    any missing or zero-byte file is treated as a null perm.
+
+    `dx_inner=True` switches to the spec'd §3.2 DX v1.14 inner format
+    (96-byte header + DXBC). For everything else we use the §3.6-style
+    44-byte opaque-blob inner header from `pack_blob_perm`.
     """
     if nulls is None:
         nulls = [False] * num_perms
 
-    perm_blobs = []
+    inner_perms = []
     skipped_null = 0
 
     for i in range(num_perms):
@@ -860,35 +999,23 @@ def build_extra_bls(slang_dir, ext, num_perms, nulls=None, verbose=False):
         blob_path = os.path.join(slang_dir, f'perm_{i:03d}.{ext}')
         if nulls[i] or not os.path.isfile(blob_path) \
                 or os.path.getsize(blob_path) == 0:
-            perm_blobs.append(b'')
+            inner_perms.append(b'')
             skipped_null += 1
             continue
 
         with open(blob_path, 'rb') as fp:
             blob = fp.read()
-        perm_blobs.append(pack_blob_perm(blob))
+        if dx_inner:
+            inner_perms.append(pack_v14_dx_perm(blob))
+        else:
+            inner_perms.append(pack_blob_perm(blob))
 
-    cum, total = [], 0
-    for blob in perm_blobs:
-        total += len(blob)
-        cum.append(total)
-
-    off_data = BLS_FILE_HEADER_SIZE + num_perms * 4
-    file_buf = bytearray(off_data + total)
-    file_buf[0:4] = BLS_MAGIC
-    struct.pack_into('<HH', file_buf, 4, BLS_MINOR, BLS_MAJOR)
-    struct.pack_into('<4I', file_buf, 8, BLS_PRE_META, num_perms, off_data, 0)
-    struct.pack_into(f'<{num_perms}I', file_buf, BLS_FILE_HEADER_SIZE, *cum)
-
-    cursor = off_data
-    for blob in perm_blobs:
-        file_buf[cursor:cursor + len(blob)] = blob
-        cursor += len(blob)
+    file_buf = build_v14_outer(inner_perms, platform_tag, flags)
 
     if verbose:
-        print(f'  [.{ext}] {num_perms} perms ({skipped_null} null), '
+        print(f'  [.{ext} v1.14] {num_perms} perms ({skipped_null} null), '
               f'file size {len(file_buf):#x}')
-    return bytes(file_buf)
+    return file_buf
 
 
 def extra_dir_for(stage, vs_dir, ps_dir):
@@ -994,11 +1121,41 @@ def main():
             except Exception as e:
                 print(f'FAIL {fam} [metal]: {e}', file=sys.stderr)
 
+        # ---------- D3D12 / SM6 ('ps 6.0'/, 'vs 6.0'/) — only if dxils were emitted ----
+        # Bundle is v1.14 (latest BLS format) with the spec'd §3.2 DX inner
+        # layout. DXIL from slangc is a full DXBC container with a DXIL
+        # chunk inside, so the §3.2 inner — 96-byte header (zero-filled
+        # resource binding chunk, no DX12 templates available) + DXBC blob
+        # — drops in cleanly. The shipped engine doesn't load these —
+        # DX12/SM6 support requires a future or modded loader path — but
+        # mirroring the DX template's null-perm pattern keeps the bundle
+        # perm-aligned with the SM5 build.
+        d_slang_dir = os.path.join(args.slang_out, DXIL_TARGET_SUBDIR, fam)
+        if _has_blobs(d_slang_dir, '.dxil'):
+            d_out_subdir = "vs 6.0" if cfg.stage == "vs" else "ps 6.0"
+            d_out_dir    = os.path.join(args.output, d_out_subdir)
+            os.makedirs(d_out_dir, exist_ok=True)
+            d_out_path   = os.path.join(d_out_dir, cfg.bls_name)
+            try:
+                blob = build_extra_v14_bls(d_slang_dir, "dxil", num_perms,
+                                           PLATFORM_TAG_DX6, FLAGS_DX6,
+                                           dx_inner=True, nulls=dx_nulls,
+                                           verbose=args.verbose)
+                with open(d_out_path, 'wb') as fp:
+                    fp.write(blob)
+                print(f'wrote {d_out_path} ({len(blob):#x} bytes, {num_perms} perms)')
+            except Exception as e:
+                print(f'FAIL {fam} [d3d12]: {e}', file=sys.stderr)
+
         # ---------- Extra backends (opengl/vulkan/webgpu) — opt-in ---------
+        # Also v1.14 outer; inner per-perm format stays as the §3.6-style
+        # 44-byte opaque-blob header (the v1.14 spec doesn't define an
+        # inner layout for non-DX/Metal backends).
         if not args.build_extra:
             continue
 
-        for backend, (target_subdir, ext, vs_outdir, ps_outdir) in EXTRA_BACKENDS.items():
+        for backend, (target_subdir, ext, vs_outdir, ps_outdir, ptag, pflags) \
+                in EXTRA_BACKENDS.items():
             x_slang_dir = os.path.join(args.slang_out, target_subdir, fam)
             if not _has_blobs(x_slang_dir, '.' + ext):
                 # Slang didn't produce blobs for this backend — silently
@@ -1011,8 +1168,9 @@ def main():
             os.makedirs(x_out_dir, exist_ok=True)
             x_out_path   = os.path.join(x_out_dir, cfg.bls_name)
             try:
-                blob = build_extra_bls(x_slang_dir, ext, num_perms,
-                                       nulls=dx_nulls, verbose=args.verbose)
+                blob = build_extra_v14_bls(x_slang_dir, ext, num_perms,
+                                           ptag, pflags,
+                                           nulls=dx_nulls, verbose=args.verbose)
                 with open(x_out_path, 'wb') as fp:
                     fp.write(blob)
                 print(f'wrote {x_out_path} ({len(blob):#x} bytes, {num_perms} perms)')
