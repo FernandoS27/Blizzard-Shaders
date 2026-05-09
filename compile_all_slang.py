@@ -5,8 +5,8 @@ Runs independently of the current working directory — paths resolve
 relative to this script's location.
 
     --target {d3d11,d3d12,vulkan,opengl,metal,webgpu,all}  (default: d3d11)
-    --family {hd_vs,hd_ps,toon_hd_vs,toon_hd_ps,crystal_ps,
-              sd_on_hd_vs,sd_on_hd_ps,sd_highspec_vs,sd_classic_ps,
+    --family {hd_vs,hd_ps,toon_hd_vs,toon_hd_ps,gritty_hd_vs,gritty_hd_ps,
+              crystal_ps,sd_on_hd_vs,sd_on_hd_ps,sd_highspec_vs,sd_classic_ps,
               water_vs,water_ps,tonemap_ps,all}
     --slangc PATH   explicit slangc.exe override
 """
@@ -134,7 +134,20 @@ def invoke_slangc(entry: str, target: str, profile: str,
     if extra:
         args += extra
     args.append(str(shader_path))
-    subprocess.run(args, capture_output=True, text=True)
+
+    # Delete any stale output up front so a failed compile can't
+    # masquerade as success via a leftover .dxbc from a prior run.
+    if out_path.exists():
+        out_path.unlink()
+
+    proc = subprocess.run(args, capture_output=True, text=True)
+    if proc.returncode != 0:
+        # On failure we drop a sibling .err file with stderr so the
+        # caller (or a curious user) can inspect what went wrong; the
+        # sweep summary still surfaces the perm in fail_list.
+        err_path = out_path.with_suffix(out_path.suffix + ".err")
+        err_path.write_text(proc.stderr or proc.stdout or "(no slangc output)")
+        return False
     return out_path.exists() and out_path.stat().st_size > 0
 
 
@@ -144,6 +157,11 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
     print()
     print(f"========== [{target_key}] {family} ({count} perms, jobs={jobs}) ==========")
     out_dir = OUT_BASE / target_key / family
+    # Wipe the whole family dir up front so stale .dxbc / .err files
+    # from a previous run can never be mistaken for fresh output. This
+    # makes every sweep start from a clean slate.
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     result = SweepResult(family=family, count=count)
@@ -306,6 +324,20 @@ def map_toon_hd_ps(idx: int) -> PermSpec:
     # same 512 perms, same specialisation types, different entry point.
     spec = map_hd_ps(idx)
     return PermSpec(entry="toon_ps_main", types=spec.types, label=spec.label)
+
+
+def map_gritty_hd_vs(idx: int) -> PermSpec:
+    # Gritty-HD shares the HD vertex-format encoding 1:1 — same 144
+    # perms, same specialisation types, different entry point.
+    spec = map_hd_vs(idx)
+    return PermSpec(entry="gritty_vs_main", types=spec.types, label=spec.label)
+
+
+def map_gritty_hd_ps(idx: int) -> PermSpec:
+    # Gritty-HD shares the HD pixel-shader 9-bit feature encoding 1:1 —
+    # same 512 perms, same specialisation types, different entry point.
+    spec = map_hd_ps(idx)
+    return PermSpec(entry="gritty_ps_main", types=spec.types, label=spec.label)
 
 
 def map_crystal_ps(idx: int) -> PermSpec:
@@ -707,6 +739,8 @@ MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "hd_ps":          map_hd_ps,
     "toon_hd_vs":     map_toon_hd_vs,
     "toon_hd_ps":     map_toon_hd_ps,
+    "gritty_hd_vs":   map_gritty_hd_vs,
+    "gritty_hd_ps":   map_gritty_hd_ps,
     "crystal_ps":     map_crystal_ps,
     "sd_on_hd_vs":    map_sd_on_hd_vs,
     "sd_on_hd_ps":    map_sd_on_hd_ps,
