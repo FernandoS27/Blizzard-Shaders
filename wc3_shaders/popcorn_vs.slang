@@ -74,41 +74,38 @@ public PopcornVSOutput<TMode, HAS_RANDOM, HAS_VC, HAS_NT> popcorn_vs_main<
     if (HAS_VC)
         output.color = input.vertColor;
 
-    // Step 4: per-mode UV / auxiliary outputs.
-    //
-    // TEXCOORD0 (`output.uv`) and TEXCOORD1 (`output.slot1Out`) are
-    // always packed as float4 when active — the PS picks .xy / .xyzw
-    // / .x lanes per its mode (see popcorn_ps.slang). The unused
-    // lanes are written here as zeros so fxc doesn't warn.
+    // Step 4: per-mode UV / auxiliary outputs. Each mode writes the
+    // narrow-typed Conditional field (uv as float2 in basic/billboard,
+    // uvAtlas as float4 in atlas) so fxc emits the right OSGN width
+    // and packs adjacent fields the way the shipped engine does.
     if (TMode.hasUV)
     {
         if (TMode.isBillboard)
         {
-            output.uv       = float4(popcornQuadUV(input.vertexID), 0, 0);
+            output.uv       = popcornQuadUV(input.vertexID);
             output.axis0Out = input.modeSlot4;     // axis0 (.xyzw)
             output.axis1Out = input.modeSlot5;     // axis1 (.xyzw)
         }
         else if (TMode.isAtlas)
         {
             // .xy = current frame, .zw = next frame. The PS lerps
-            // between two t0 samples by `lifeOut.x` (the life-ratio
+            // between two t0 samples by `lifeOut` (the life-ratio
             // fractional part written below).
-            output.uv = float4(input.uv0, input.modeSlot4.xy);
+            output.uvAtlas = float4(input.uv0, input.modeSlot4.xy);
         }
         else
         {
-            // BasicUV — straight pass-through; .zw left as zeros.
-            output.uv = float4(input.uv0, 0, 0);
+            // BasicUV — straight pass-through.
+            output.uv = input.uv0;
         }
     }
 
-    // Step 5: per-particle random scalar pass-through (only meaningful
-    // when there's a UV stream — see PopcornVSOutput for the rationale).
-    // Emitted as a float4 with .yzw zeroed because Slang's Conditional
-    // doesn't lower to a scalar varying cleanly through fxc; the PS
-    // reads only .x.
+    // Step 5: per-particle random scalar pass-through. Only meaningful
+    // when there's a UV stream — see PopcornVSOutput for the rationale
+    // (the engine never binds ATTR6 without a UV stream, so the field
+    // is gated on `HAS_RANDOM && TMode.hasUV` to match shipped).
     if (HAS_RANDOM && TMode.hasUV)
-        output.randomOut = float4(input.random, 0, 0, 0);
+        output.randomOut = input.random;
 
     // Step 6: world-space normal + tangent. The popcorn world matrix
     // is assumed to be a similarity transform (no shear), so we skip
@@ -128,12 +125,14 @@ public PopcornVSOutput<TMode, HAS_RANDOM, HAS_VC, HAS_NT> popcorn_vs_main<
     // for soft-particles depth reprojection, fog, IBL, etc.).
     output.worldPos = transformByWorld(localPos, popcornVsCB2.world);
 
-    // Step 8: atlas blend factor (.x of TEXCOORD1; the PS reads only
-    // .x and ignores the upper lanes). Emitted at the end so the
-    // `frac` instruction lands after the worldPos transform — matches
-    // the original engine's instruction ordering.
+    // Step 8: atlas blend factor — single float at TEXCOORD1.x. fxc
+    // packs this into the same physical register as worldPos.yzw on
+    // the shipped engine, so emitting it as a scalar (rather than a
+    // wider float4) keeps register packing aligned. Emitted at the
+    // end so the `frac` instruction lands after the worldPos
+    // transform, matching the original engine's ordering.
     if (TMode.isAtlas)
-        output.lifeOut = float4(frac(input.modeSlot5.x), 0, 0, 0);
+        output.lifeOut = frac(input.modeSlot5.x);
 
     return output;
 }

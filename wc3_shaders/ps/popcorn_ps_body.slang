@@ -438,8 +438,13 @@ public PopcornColorOut popcornColorPassBody<
     // ---- Alpha LUT remap ----
     // The LUT input is the post-VC alpha; the result replaces alpha
     // and feeds every downstream consumer (LIT alpha source, SP
-    // fade, gbuffer write, fog).
-    if (HAS_ALPHA_LUT)
+    // fade, gbuffer write, fog). Gated on TMode.hasUV because the
+    // engine never binds ATTR6 (random scalar at TEXCOORD3) without
+    // a UV stream, so reading input.random.x in NoUV mode would
+    // emit a phantom TEXCOORD3 input the engine doesn't bind. The
+    // 192 NoUV+HAS_ALPHA_LUT permutations exist as combinatorial
+    // filler in the BLS table but the engine never invokes them.
+    if (HAS_ALPHA_LUT && TMode.hasUV)
     {
         albedo.w = t_popcornAlphaLut.Sample(
             s_popcornAlphaLut, float2(albedo.w, input.random.x)).x;

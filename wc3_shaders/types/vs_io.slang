@@ -257,30 +257,36 @@ public struct PopcornVSInput
 
 // PopcornFX VS → PS payload. The conditional fields mirror the live
 // per-perm slots so the wire signature only carries what the active
-// permutation actually populates.
+// permutation actually populates — narrow per-mode widths let fxc
+// pack adjacent fields into the same physical register the way the
+// shipped engine does.
 //
 // Slot map:
 //
 //   SV_Position    clipPos       — always
 //   COLOR0         color         — HAS_VC
-//   TEXCOORD0      uv (float4)   — TMode.hasUV (basic & billboard
-//                                  use only the .xy lanes; ATLAS
-//                                  populates the full .xyzw — the
-//                                  PS reads .xy / .xyzw as needed)
-//   TEXCOORD1      slot1Out      — BILLBOARD (carries axis0,  .xyzw) /
-//                                  ATLAS     (carries lifeOut, only
-//                                  .x is read by the PS)
-//   TEXCOORD2      axis1Out      — BILLBOARD only (.xyzw)
-//   TEXCOORD3      randomOut     — HAS_RANDOM (& hasUV)
-//   TEXCOORD4      normalWS      — HAS_NT
-//   TEXCOORD5      tangentWS     — HAS_NT
-//   TEXCOORD7      worldPos      — always
+//   TEXCOORD0      uv      (float2) — basic / billboard (.xy)
+//                  uvAtlas (float4) — atlas (.xy current frame,
+//                                            .zw next frame)
+//   TEXCOORD1      axis0Out (float4) — BILLBOARD raw axis vector
+//                  lifeOut  (float)  — ATLAS life-frac (.x only)
+//   TEXCOORD2      axis1Out — BILLBOARD only (.xyzw)
+//   TEXCOORD3      randomOut (float) — HAS_RANDOM && hasUV (the
+//                                      engine never binds ATTR6
+//                                      without a UV stream; gating
+//                                      on hasUV mirrors shipped)
+//   TEXCOORD4      normalWS  — HAS_NT
+//   TEXCOORD5      tangentWS — HAS_NT
+//   TEXCOORD7      worldPos  — always
 //
-// TEXCOORD0 / TEXCOORD1 are always declared as float4 when active —
-// the BILLBOARD axis vectors are the widest interpretation, so packing
-// every mode through them keeps the slot count at one Conditional
-// field per semantic (downstream HLSL emission rejects multiple
-// Conditional fields sharing a semantic).
+// Two Conditional fields can share a semantic when their gates are
+// statically mutually exclusive (uv vs uvAtlas on TEXCOORD0,
+// axis0Out vs lifeOut on TEXCOORD1).
+//
+// Requires slangc ≥ 2026.8 — earlier versions miscompile compound
+// bool gates inside Conditional fields, multi-Conditional with
+// different T types on the same struct, and Conditional<float, …>
+// scalar varyings. All three patterns appear in this struct.
 public struct PopcornVSOutput<
     TMode : IPopcornMode,
     let HAS_RANDOM : bool,
@@ -291,12 +297,15 @@ public struct PopcornVSOutput<
 
     public Conditional<float4, HAS_VC> color : COLOR0;
 
-    public Conditional<float4, TMode.hasUV>       uv       : TEXCOORD0;
+    public Conditional<float2, TMode.hasUV && !TMode.isAtlas> uv      : TEXCOORD0;
+    public Conditional<float4, TMode.isAtlas>                  uvAtlas : TEXCOORD0;
+
     public Conditional<float4, TMode.isBillboard> axis0Out : TEXCOORD1;
-    public Conditional<float4, TMode.isAtlas>     lifeOut  : TEXCOORD1;
+    public Conditional<float,  TMode.isAtlas>     lifeOut  : TEXCOORD1;
+
     public Conditional<float4, TMode.isBillboard> axis1Out : TEXCOORD2;
 
-    public Conditional<float4, HAS_RANDOM> randomOut : TEXCOORD3;
+    public Conditional<float, HAS_RANDOM && TMode.hasUV> randomOut : TEXCOORD3;
 
     public Conditional<float3, HAS_NT> normalWS  : TEXCOORD4;
     public Conditional<float4, HAS_NT> tangentWS : TEXCOORD5;

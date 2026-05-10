@@ -221,12 +221,10 @@ def _shex_declared_input_regs(shex_body):
     return used
 
 
-def _rewrite_sgn_body(body, keep_regs, remap=None, overrides=None):
+def _rewrite_sgn_body(body, keep_regs, remap=None, overrides=None,
+                       extra_entries=None):
     """Rewrite an ISGN/OSGN/PCSG body, keeping only entries whose register
-    index is in ``keep_regs`` (or any entry with a non-zero system-value
-    tag — SV_Position etc. must stay in the signature even when the
-    program body never consumes them, because D3D validates stage-to-stage
-    linkage against those entries). Optionally applies a ``remap`` of
+    index is in ``keep_regs``. Optionally applies a ``remap`` of
     old→new register numbers so the kept entries can be renumbered to
     be contiguous; the SHEX body must be renumbered with the same map.
     ``overrides`` is a ``{old_reg: (sys_val, comp_ty, mask_rw)}`` dict —
@@ -234,6 +232,11 @@ def _rewrite_sgn_body(body, keep_regs, remap=None, overrides=None):
     fields so the rebuilt signature matches shipped even when our
     compiled body reads a different component subset (mask_rw differs)
     or the template typed an entry differently.
+    ``extra_entries`` is an optional list of
+    ``(name_bytes, sem_idx, sys_val, comp_ty, reg, mask_rw)`` tuples to
+    append after the kept entries — used by callers to inject template
+    sys-val entries (e.g. SV_IsFrontFace) that the slang body never
+    declares but the engine still binds.
     Preserves entry order, dedupes names in the string table, and pads
     the output to a 4-byte boundary."""
     count, _hdr_dw = struct.unpack_from('<II', body, 0)
@@ -242,7 +245,12 @@ def _rewrite_sgn_body(body, keep_regs, remap=None, overrides=None):
         off = 8 + i * 24
         name_off, sem_idx, sys_val, comp_ty, reg, mask_rw = \
             struct.unpack_from('<IIIIII', body, off)
-        if reg not in keep_regs and sys_val == 0:
+        # `keep_regs` is the authoritative set the caller built from the
+        # template + body usage. Sys-val entries (SV_VertexID etc.) get
+        # no automatic rescue here — slangc unconditionally declares
+        # them on every input struct, so a template-less rescue would
+        # leak phantom entries the engine doesn't expect.
+        if reg not in keep_regs:
             continue
         original_reg = reg
         if remap is not None and reg in remap:
@@ -255,6 +263,9 @@ def _rewrite_sgn_body(body, keep_regs, remap=None, overrides=None):
         end = body.find(b'\x00', name_off)
         name = bytes(body[name_off:end])
         kept.append((name, sem_idx, sys_val, comp_ty, reg, mask_rw))
+
+    if extra_entries:
+        kept.extend(extra_entries)
 
     # fxc emits signature entries sorted by (final) register number so
     # the engine can index them by slot. slangc orders them by the
@@ -486,14 +497,21 @@ def strip_unused_input_signature(dxbc, template_dxbc=None):
     # Template-derived overrides: for each of my ISGN entries that has a
     # matching (semantic, semantic-index) in the template, replace the
     # tuple's reg, mask_rw (and comp_ty / sys_val) with the template's.
-    # Empty dict if no template is passed in.
+    # Empty dict if no template is passed in. `extra_isgn_entries`
+    # captures the inverse direction — template entries the slang body
+    # never declares (typically sys-val inputs like SV_IsFrontFace that
+    # the shader doesn't reference but the engine still binds) — and
+    # gets injected into the rebuilt ISGN downstream.
     template_overrides = {}
+    extra_isgn_entries = []
     if template_dxbc is not None:
         # Key by (name, sem_idx) so we can pull the template's metadata
         # regardless of the slangc-side numbering.
+        tmpl_entries = _parse_isgn_entries(template_dxbc)
         tmpl_map = {(n, si): (sv, ct, r, mr)
-                    for (n, si, sv, ct, r, mr) in _parse_isgn_entries(template_dxbc)}
+                    for (n, si, sv, ct, r, mr) in tmpl_entries}
         my_isgn = _parse_isgn_entries(dxbc)
+        my_isgn_keys = {(n, si) for (n, si, *_) in my_isgn}
         remap = {}
         keep_regs = set()
         for name, sem_idx, sys_val, comp_ty, reg, mask_rw in my_isgn:
@@ -502,12 +520,30 @@ def strip_unused_input_signature(dxbc, template_dxbc=None):
                 remap[reg] = t_reg
                 keep_regs.add(reg)
                 template_overrides[reg] = (t_sv, t_ct, t_mr)
-            elif sys_val != 0 or reg in used_in:
-                # Template-less sys-val entries (shouldn't occur with a
-                # correct template) and body-referenced registers are
-                # kept in-place to avoid renumbering holes.
+            elif reg in used_in:
+                # Body-referenced register that has no matching template
+                # entry — kept in-place to avoid renumbering holes. We
+                # deliberately do not rescue sys-val entries (e.g.
+                # SV_VertexID) when the template lacks them: slangc
+                # unconditionally declares system inputs even in perms
+                # whose body never reads them, and the engine binds the
+                # layout from the template — so an extra sys-val ISGN
+                # entry would drift from shipped (e.g. popcorn
+                # non-billboard perms gaining a phantom SV_VertexID).
                 remap[reg] = reg
                 keep_regs.add(reg)
+        # Inject template entries the slang body never declared. Only
+        # sys-val entries qualify — every per-vertex/per-pixel ATTR/
+        # TEXCOORD slot in the template corresponds to an input the
+        # slang struct also declares, so a non-sys-val template entry
+        # absent from my_isgn would mean the slang code is missing
+        # something and dropping it silently would mask a real bug.
+        for n, si, sv, ct, r, mr in tmpl_entries:
+            if (n, si) in my_isgn_keys:
+                continue
+            if sv == 0:
+                continue
+            extra_isgn_entries.append((n, si, sv, ct, r, mr))
     else:
         # Legacy fallback: keep only what the body actually uses, then
         # pack contiguous from 0.
@@ -531,7 +567,8 @@ def strip_unused_input_signature(dxbc, template_dxbc=None):
         raw = dxbc[off:off + 8 + size]
         if fc == b'ISGN':
             new_body = _rewrite_sgn_body(raw[8:], keep_regs, remap=remap,
-                                         overrides=template_overrides)
+                                         overrides=template_overrides,
+                                         extra_entries=extra_isgn_entries)
             if len(new_body) != size or new_body != raw[8:]:
                 raw = fc + struct.pack('<I', len(new_body)) + new_body
                 changed = True
