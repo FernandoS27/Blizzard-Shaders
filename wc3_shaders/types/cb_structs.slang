@@ -116,34 +116,34 @@ public struct DebugVisCB
     public float3 overrideOrm;    public float  _p2;
 };
 
-public ConstantBuffer<PSPerDraw>      psCB2 : register(b2);
-public ConstantBuffer<DebugVisCB>     psCB3 : register(b3);
-public ConstantBuffer<ShadowCascades> vsCB1 : register(b1);
-public ConstantBuffer<VSPerDraw>      vsCB2 : register(b2);
-public ConstantBuffer<BonePalette>    vsCB3 : register(b3);
+public [[vk::binding(2, 0)]] ConstantBuffer<PSPerDraw>      psCB2 : register(b2);
+public [[vk::binding(3, 0)]] ConstantBuffer<DebugVisCB>     psCB3 : register(b3);
+public [[vk::binding(1, 0)]] ConstantBuffer<ShadowCascades> vsCB1 : register(b1);
+public [[vk::binding(2, 0)]] ConstantBuffer<VSPerDraw>      vsCB2 : register(b2);
+public [[vk::binding(3, 0)]] ConstantBuffer<BonePalette>    vsCB3 : register(b3);
 
 // HD material textures. Slot ordering matches the engine-side bindings:
 //   t0 albedo, t1 normal (XY + AA mask in W), t2 ORM (occ/rough/metal/mask),
 //   t3 emissive, t4 team color mask.
 //   t13/t14 are the two IBL cubemap arrays we blend between during
 //   environment transitions; t15 is the split-sum BRDF LUT.
-public Texture2D<float4>         t_albedo    : register(t0);
-public Texture2D<float4>         t_normal    : register(t1);
-public Texture2D<float4>         t_orm       : register(t2);
-public Texture2D<float4>         t_emissive  : register(t3);
-public Texture2D<float4>         t_teamColor : register(t4);
-public TextureCubeArray<float4>  t_iblFrom   : register(t13);
-public TextureCubeArray<float4>  t_iblTo     : register(t14);
-public Texture2D<float4>         t_brdfLut   : register(t15);
+public [[vk::binding(0, 1)]] Texture2D<float4>         t_albedo    : register(t0);
+public [[vk::binding(1, 1)]] Texture2D<float4>         t_normal    : register(t1);
+public [[vk::binding(2, 1)]] Texture2D<float4>         t_orm       : register(t2);
+public [[vk::binding(3, 1)]] Texture2D<float4>         t_emissive  : register(t3);
+public [[vk::binding(4, 1)]] Texture2D<float4>         t_teamColor : register(t4);
+public [[vk::binding(13, 1)]] TextureCubeArray<float4>  t_iblFrom   : register(t13);
+public [[vk::binding(14, 1)]] TextureCubeArray<float4>  t_iblTo     : register(t14);
+public [[vk::binding(15, 1)]] Texture2D<float4>         t_brdfLut   : register(t15);
 
-public SamplerState s_albedo    : register(s0);
-public SamplerState s_normal    : register(s1);
-public SamplerState s_orm       : register(s2);
-public SamplerState s_emissive  : register(s3);
-public SamplerState s_teamColor : register(s4);
-public SamplerState s_iblFrom   : register(s13);
-public SamplerState s_iblTo     : register(s14);
-public SamplerState s_brdfLut   : register(s15);
+public [[vk::binding(0, 2)]] SamplerState s_albedo    : register(s0);
+public [[vk::binding(1, 2)]] SamplerState s_normal    : register(s1);
+public [[vk::binding(2, 2)]] SamplerState s_orm       : register(s2);
+public [[vk::binding(3, 2)]] SamplerState s_emissive  : register(s3);
+public [[vk::binding(4, 2)]] SamplerState s_teamColor : register(s4);
+public [[vk::binding(13, 2)]] SamplerState s_iblFrom   : register(s13);
+public [[vk::binding(14, 2)]] SamplerState s_iblTo     : register(s14);
+public [[vk::binding(15, 2)]] SamplerState s_brdfLut   : register(s15);
 
 // Per-draw constants for the SD-on-HD pixel shader (b2).
 // The layout mirrors the original SD engine CB, so most fields are
@@ -197,18 +197,18 @@ public struct ShadowCascadeCount
     public float numCascades;  public float3 _pad;
 };
 
-public ConstantBuffer<SDPSPerDraw>        sdPsCB2 : register(b2);
-public ConstantBuffer<ShadowCascadeCount> sdPsCB1 : register(b1);
+public [[vk::binding(2, 0)]] ConstantBuffer<SDPSPerDraw>        sdPsCB2 : register(b2);
+public [[vk::binding(1, 0)]] ConstantBuffer<ShadowCascadeCount> sdPsCB1 : register(b1);
 
 // Shadow cascades at t10-12 / s10-12 are shared between the HD IBL path
 // and the SD-on-HD pipeline — both bind the same comparison-sampled
 // 2D shadow maps here and run the PCF helper in sd_ps_shadow.
-public Texture2D<float4>      sd_t_shadow0 : register(t10);
-public Texture2D<float4>      sd_t_shadow1 : register(t11);
-public Texture2D<float4>      sd_t_shadow2 : register(t12);
-public SamplerComparisonState sd_s_shadow0 : register(s10);
-public SamplerComparisonState sd_s_shadow1 : register(s11);
-public SamplerComparisonState sd_s_shadow2 : register(s12);
+public [[vk::binding(10, 1)]] Texture2D<float4>      sd_t_shadow0 : register(t10);
+public [[vk::binding(11, 1)]] Texture2D<float4>      sd_t_shadow1 : register(t11);
+public [[vk::binding(12, 1)]] Texture2D<float4>      sd_t_shadow2 : register(t12);
+public [[vk::binding(10, 2)]] SamplerComparisonState sd_s_shadow0 : register(s10);
+public [[vk::binding(11, 2)]] SamplerComparisonState sd_s_shadow1 : register(s11);
+public [[vk::binding(12, 2)]] SamplerComparisonState sd_s_shadow2 : register(s12);
 
 // Per-draw constants for the SD highspec vertex shader (b0): transforms,
 // tint, two texcoord matrices, and the light list — per-vertex lighting
@@ -236,8 +236,8 @@ public struct SDClassicPSPerDraw
     public float4 fogColor;
 };
 
-public ConstantBuffer<SDHighspecVSPerDraw>  sdHighspecVsCB0 : register(b0);
-public ConstantBuffer<SDClassicPSPerDraw>   sdClassicPsCB0  : register(b0);
+public [[vk::binding(0, 0)]] ConstantBuffer<SDHighspecVSPerDraw>  sdHighspecVsCB0 : register(b0);
+public [[vk::binding(0, 0)]] ConstantBuffer<SDClassicPSPerDraw>   sdClassicPsCB0  : register(b0);
 
 // Per-draw constants for the water pixel shader (b2). Shares most of
 // its layout with `PSPerDraw` — fog, invView rotation, IBL probe params,
@@ -284,7 +284,7 @@ public struct WaterPSPerDraw
     public ShaderLight lights[8];                         // cb2[21..]
 };
 
-public ConstantBuffer<WaterPSPerDraw> waterPsCB2 : register(b2);
+public [[vk::binding(2, 0)]] ConstantBuffer<WaterPSPerDraw> waterPsCB2 : register(b2);
 
 // Water PS texture bindings. The water draw reuses HD slot numbers but
 // binds different resources there — the aliases below make the intent
@@ -298,15 +298,15 @@ public ConstantBuffer<WaterPSPerDraw> waterPsCB2 : register(b2);
 //
 //   s4 = scene-color sampler (note: paired with t0, not s0)
 //   s1/s2/s3 match their texture counterparts
-public Texture2D<float4> t_waterScene  : register(t0);
-public Texture2D<float4> t_waterDepth  : register(t1);
-public Texture2D<float4> t_waterNormal : register(t2);
-public Texture2D<float4> t_waterProbe  : register(t3);
+public [[vk::binding(0, 1)]] Texture2D<float4> t_waterScene  : register(t0);
+public [[vk::binding(1, 1)]] Texture2D<float4> t_waterDepth  : register(t1);
+public [[vk::binding(2, 1)]] Texture2D<float4> t_waterNormal : register(t2);
+public [[vk::binding(3, 1)]] Texture2D<float4> t_waterProbe  : register(t3);
 
-public SamplerState s_waterScene  : register(s4);
-public SamplerState s_waterDepth  : register(s1);
-public SamplerState s_waterNormal : register(s2);
-public SamplerState s_waterProbe  : register(s3);
+public [[vk::binding(4, 2)]] SamplerState s_waterScene  : register(s4);
+public [[vk::binding(1, 2)]] SamplerState s_waterDepth  : register(s1);
+public [[vk::binding(2, 2)]] SamplerState s_waterNormal : register(s2);
+public [[vk::binding(3, 2)]] SamplerState s_waterProbe  : register(s3);
 
 // Per-draw constants for the foliage vertex shader (b2). 16 float4
 // slots — superset of the terrain VS layout with two extra float4s for
@@ -348,7 +348,7 @@ public struct FoliageVSPerDraw
     public float4   texMtx0Row1;     // cb2[15]
 };
 
-public ConstantBuffer<FoliageVSPerDraw> foliageVsCB2 : register(b2);
+public [[vk::binding(2, 0)]] ConstantBuffer<FoliageVSPerDraw> foliageVsCB2 : register(b2);
 
 // Wind-area parameters (b3, only bound when WIND_ANIMATION is active).
 //   .xy = world-space origin of the wind area (anchor for the gradient
@@ -360,13 +360,13 @@ public struct FoliageWindCB
     public float2 windSize;
 };
 
-public ConstantBuffer<FoliageWindCB> foliageVsCB3 : register(b3);
+public [[vk::binding(3, 0)]] ConstantBuffer<FoliageWindCB> foliageVsCB3 : register(b3);
 
 // Foliage VS wind-direction texture (only bound on WIND_ANIMATION
 // perms). Single-channel scalar field sampled at three nearby texels
 // to recover a 2D gradient.
-public Texture2D<float4> t_foliageWind : register(t0);
-public SamplerState      s_foliageWind : register(s0);
+public [[vk::binding(0, 1)]] Texture2D<float4> t_foliageWind : register(t0);
+public [[vk::binding(0, 2)]] SamplerState      s_foliageWind : register(s0);
 
 // Foliage pixel-shader textures. Slot ordering matches the engine
 // bindings recovered from the BLS perms:
@@ -374,17 +374,17 @@ public SamplerState      s_foliageWind : register(s0);
 //   (yz = roughness/metallic), t3 emissive, t4 lightmap / AO (.w lane).
 // Cascaded shadow + IBL probe + BRDF LUT bindings are reused from the
 // shared HD aliases (sd_t_shadow*, t_iblFrom/To, t_brdfLut).
-public Texture2D<float4> t_foliageAlbedo   : register(t0);
-public Texture2D<float4> t_foliageNormal   : register(t1);
-public Texture2D<float4> t_foliageMask     : register(t2);
-public Texture2D<float4> t_foliageEmissive : register(t3);
-public Texture2D<float4> t_foliageLightmap : register(t4);
+public [[vk::binding(0, 1)]] Texture2D<float4> t_foliageAlbedo   : register(t0);
+public [[vk::binding(1, 1)]] Texture2D<float4> t_foliageNormal   : register(t1);
+public [[vk::binding(2, 1)]] Texture2D<float4> t_foliageMask     : register(t2);
+public [[vk::binding(3, 1)]] Texture2D<float4> t_foliageEmissive : register(t3);
+public [[vk::binding(4, 1)]] Texture2D<float4> t_foliageLightmap : register(t4);
 
-public SamplerState s_foliageAlbedo   : register(s0);
-public SamplerState s_foliageNormal   : register(s1);
-public SamplerState s_foliageMask     : register(s2);
-public SamplerState s_foliageEmissive : register(s3);
-public SamplerState s_foliageLightmap : register(s4);
+public [[vk::binding(0, 2)]] SamplerState s_foliageAlbedo   : register(s0);
+public [[vk::binding(1, 2)]] SamplerState s_foliageNormal   : register(s1);
+public [[vk::binding(2, 2)]] SamplerState s_foliageMask     : register(s2);
+public [[vk::binding(3, 2)]] SamplerState s_foliageEmissive : register(s3);
+public [[vk::binding(4, 2)]] SamplerState s_foliageLightmap : register(s4);
 
 // Per-draw constants for the terrain vertex shader (b2). The terrain
 // pipeline uses a layout distinct from the HD `VSPerDraw`:
@@ -420,7 +420,7 @@ public struct TerrainVSPerDraw
     public float4   tintColor;       // cb2[13]
 };
 
-public ConstantBuffer<TerrainVSPerDraw> terrainVsCB2 : register(b2);
+public [[vk::binding(2, 0)]] ConstantBuffer<TerrainVSPerDraw> terrainVsCB2 : register(b2);
 
 // Terrain pixel-shader splat textures. Slot ordering matches the
 // engine bindings: t0 splat color array, t1 splat normal+gloss array
@@ -428,15 +428,15 @@ public ConstantBuffer<TerrainVSPerDraw> terrainVsCB2 : register(b2);
 // global lightmap / AO (.w = AO factor). The terrain PS shares t10..t15
 // (cascade shadows + IBL probes + BRDF LUT) with the HD pipeline via
 // the existing aliases declared above.
-public Texture2DArray<float4> t_splatColor  : register(t0);
-public Texture2DArray<float4> t_splatNormal : register(t1);
-public Texture2DArray<float4> t_splatMask   : register(t2);
-public Texture2D<float4>      t_lightmap    : register(t3);
+public [[vk::binding(0, 1)]] Texture2DArray<float4> t_splatColor  : register(t0);
+public [[vk::binding(1, 1)]] Texture2DArray<float4> t_splatNormal : register(t1);
+public [[vk::binding(2, 1)]] Texture2DArray<float4> t_splatMask   : register(t2);
+public [[vk::binding(3, 1)]] Texture2D<float4>      t_lightmap    : register(t3);
 
-public SamplerState s_splatColor  : register(s0);
-public SamplerState s_splatNormal : register(s1);
-public SamplerState s_splatMask   : register(s2);
-public SamplerState s_lightmap    : register(s3);
+public [[vk::binding(0, 2)]] SamplerState s_splatColor  : register(s0);
+public [[vk::binding(1, 2)]] SamplerState s_splatNormal : register(s1);
+public [[vk::binding(2, 2)]] SamplerState s_splatMask   : register(s2);
+public [[vk::binding(3, 2)]] SamplerState s_lightmap    : register(s3);
 
 // Per-draw constants for the PopcornFX vertex shader (b2). Aliases
 // the same buffer as `vsCB2` (the engine binds them at the same
@@ -462,7 +462,7 @@ public struct PopcornVSPerDraw
     public float2   _padHeight;       // cb2[12].zw (HD's clipHeight / underWater)
 };
 
-public ConstantBuffer<PopcornVSPerDraw> popcornVsCB2 : register(b2);
+public [[vk::binding(2, 0)]] ConstantBuffer<PopcornVSPerDraw> popcornVsCB2 : register(b2);
 
 // Per-draw constants for the PopcornFX pixel shader (b2). Aliases
 // the same register slot as the HD `psCB2` (and `waterPsCB2`) — the
@@ -530,7 +530,7 @@ public struct PopcornPSPerDraw
     public ShaderLight lights[8];                           // cb2[21..52]
 };
 
-public ConstantBuffer<PopcornPSPerDraw> popcornPsCB2 : register(b2);
+public [[vk::binding(2, 0)]] ConstantBuffer<PopcornPSPerDraw> popcornPsCB2 : register(b2);
 
 // Popcorn pixel-shader textures. Slot ordering matches the engine
 // bindings recovered from the BLS perms:
@@ -549,23 +549,23 @@ public ConstantBuffer<PopcornPSPerDraw> popcornPsCB2 : register(b2);
 // declared above (e.g. t13/t14/t15 are also used by the HD IBL path);
 // slangc only emits the bindings the active entry actually
 // references, so the duplicate declarations are harmless.
-public Texture2D<float4>        t_popcornDiffuse  : register(t0);
-public Texture2D<float4>        t_popcornAlphaLut : register(t1);
-public Texture2D<float4>        t_popcornNormal   : register(t2);
-public Texture2D<float4>        t_popcornSmoothMet: register(t3);
-public Texture2D<float4>        t_popcornDepth    : register(t4);
-public TextureCubeArray<float4> t_popcornCubeFrom : register(t13);
-public TextureCubeArray<float4> t_popcornCubeTo   : register(t14);
-public Texture2D<float4>        t_popcornBrdfLut  : register(t15);
+public [[vk::binding(0, 1)]] Texture2D<float4>        t_popcornDiffuse  : register(t0);
+public [[vk::binding(1, 1)]] Texture2D<float4>        t_popcornAlphaLut : register(t1);
+public [[vk::binding(2, 1)]] Texture2D<float4>        t_popcornNormal   : register(t2);
+public [[vk::binding(3, 1)]] Texture2D<float4>        t_popcornSmoothMet: register(t3);
+public [[vk::binding(4, 1)]] Texture2D<float4>        t_popcornDepth    : register(t4);
+public [[vk::binding(13, 1)]] TextureCubeArray<float4> t_popcornCubeFrom : register(t13);
+public [[vk::binding(14, 1)]] TextureCubeArray<float4> t_popcornCubeTo   : register(t14);
+public [[vk::binding(15, 1)]] Texture2D<float4>        t_popcornBrdfLut  : register(t15);
 
-public SamplerState s_popcornDiffuse  : register(s0);
-public SamplerState s_popcornAlphaLut : register(s1);
-public SamplerState s_popcornNormal   : register(s2);
-public SamplerState s_popcornSmoothMet: register(s3);
-public SamplerState s_popcornDepth    : register(s4);
-public SamplerState s_popcornCubeFrom : register(s13);
-public SamplerState s_popcornCubeTo   : register(s14);
-public SamplerState s_popcornBrdfLut  : register(s15);
+public [[vk::binding(0, 2)]] SamplerState s_popcornDiffuse  : register(s0);
+public [[vk::binding(1, 2)]] SamplerState s_popcornAlphaLut : register(s1);
+public [[vk::binding(2, 2)]] SamplerState s_popcornNormal   : register(s2);
+public [[vk::binding(3, 2)]] SamplerState s_popcornSmoothMet: register(s3);
+public [[vk::binding(4, 2)]] SamplerState s_popcornDepth    : register(s4);
+public [[vk::binding(13, 2)]] SamplerState s_popcornCubeFrom : register(s13);
+public [[vk::binding(14, 2)]] SamplerState s_popcornCubeTo   : register(s14);
+public [[vk::binding(15, 2)]] SamplerState s_popcornBrdfLut  : register(s15);
 
 // Per-draw constants for the tonemap pixel shader (b1). The engine
 // only uploads a single 16-byte slot — the linear exposure multiplier
@@ -578,7 +578,7 @@ public struct TonemapPSPerDraw
     public float3 _p0;
 };
 
-public ConstantBuffer<TonemapPSPerDraw> tonemapPsCB1 : register(b1);
+public [[vk::binding(1, 0)]] ConstantBuffer<TonemapPSPerDraw> tonemapPsCB1 : register(b1);
 
 // Tonemap PS texture bindings. Aliases the same D3D slots the HD mesh
 // PS uses (t0 / s0) — the tonemap pass runs on its own pipeline object
@@ -586,15 +586,15 @@ public ConstantBuffer<TonemapPSPerDraw> tonemapPsCB1 : register(b1);
 // these declarations coexist with the HD material bindings above.
 //   t0 = linear-HDR scene target produced by the preceding lighting pass
 //   s0 = linear-clamp sampler paired with the scene target
-public Texture2D<float4> t_sceneHdr : register(t0);
-public SamplerState      s_sceneHdr : register(s0);
+public [[vk::binding(0, 1)]] Texture2D<float4> t_sceneHdr : register(t0);
+public [[vk::binding(0, 2)]] SamplerState      s_sceneHdr : register(s0);
 
 // Sprite PS texture bindings. Aliases the same D3D slots the HD mesh
 // PS uses (t0 / s0) — sprite draws bind their own source texture here
 // and slangc only emits the binding for the active entry point, so the
 // declaration coexists with the HD material bindings above.
-public Texture2D<float4> t_sprite : register(t0);
-public SamplerState      s_sprite : register(s0);
+public [[vk::binding(0, 1)]] Texture2D<float4> t_sprite : register(t0);
+public [[vk::binding(0, 2)]] SamplerState      s_sprite : register(s0);
 
 // Distortion PS texture bindings. The full-screen distortion pass
 // samples a previous-frame scene texture (t0) at four offset UVs
@@ -602,8 +602,8 @@ public SamplerState      s_sprite : register(s0);
 // per-channel chromatic blend. Both bindings reuse the engine's
 // shared t0/t1 slot numbers; slangc only emits whichever entry-
 // point references them, so they coexist with the HD aliases above.
-public Texture2D<float4> t_distortionScene : register(t0);
-public Texture2D<float4> t_distortionMap   : register(t1);
+public [[vk::binding(0, 1)]] Texture2D<float4> t_distortionScene : register(t0);
+public [[vk::binding(1, 1)]] Texture2D<float4> t_distortionMap   : register(t1);
 
-public SamplerState s_distortionScene : register(s0);
-public SamplerState s_distortionMap   : register(s1);
+public [[vk::binding(0, 2)]] SamplerState s_distortionScene : register(s0);
+public [[vk::binding(1, 2)]] SamplerState s_distortionMap   : register(s1);
