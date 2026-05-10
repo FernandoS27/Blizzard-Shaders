@@ -143,17 +143,28 @@ def fix_dxbc_signatures(dxbc):
     if dxbc[:4] != b'DXBC':
         return dxbc
     out = bytearray(dxbc)
+
+    # SGN chunk variants: SM5 SGN (24-byte entries: name_off,sem_idx,...) and
+    # SM6 SG1 (32-byte entries with a leading stream field, so name_off is at
+    # +4 and sem_idx at +8). DXIL containers carry ISG1/OSG1; DXBC carries
+    # ISGN/OSGN/PCSG.
+    SGN_VARIANTS = {
+        b'ISGN': (24, 0, 4),  b'OSGN': (24, 0, 4),  b'PCSG': (24, 0, 4),
+        b'ISG1': (32, 4, 8),  b'OSG1': (32, 4, 8),  b'PSG1': (32, 4, 8),
+    }
+
     for fourcc, off, _size in list(dxbc_chunks(dxbc)):
-        if fourcc not in (b'ISGN', b'OSGN', b'PCSG'):
+        if fourcc not in SGN_VARIANTS:
             continue
+        entry_size, name_off_field, sem_idx_field = SGN_VARIANTS[fourcc]
         body_start = off + 8
         count, = struct.unpack_from('<I', out, body_start)
         for i in range(count):
-            e_off = body_start + 8 + i * 24
-            sem_idx, = struct.unpack_from('<I', out, e_off + 4)
+            e_off = body_start + 8 + i * entry_size
+            sem_idx, = struct.unpack_from('<I', out, e_off + sem_idx_field)
             if sem_idx and sem_idx % 10 == 0:
-                struct.pack_into('<I', out, e_off + 4, sem_idx // 10)
-            name_off, = struct.unpack_from('<I', out, e_off)
+                struct.pack_into('<I', out, e_off + sem_idx_field, sem_idx // 10)
+            name_off, = struct.unpack_from('<I', out, e_off + name_off_field)
             s = body_start + name_off
             end = out.find(b'\x00', s)
             if end == -1:
@@ -317,6 +328,107 @@ def _parse_isgn_entries(dxbc):
                         sys_val, comp_ty, reg, mask_rw))
         return out
     return []
+
+
+def strip_dxil_unused_input_signature(dxil, template_dxbc):
+    """Trim a DXIL container's ISG1 to match the shipped template's ISGN.
+
+    Same motivation as strip_unused_input_signature for SM5: slangc's
+    HLSL emit declares the full input struct even when the specialised
+    entry point reads only a subset, so the rebuilt shader's input
+    signature has more entries than the engine's input layout. D3D12
+    fails PSO creation when the layout doesn't match the signature.
+
+    For SM5 the SHEX program body was renumbered; for SM6 the DXIL
+    bytecode references inputs by their declared register, so we keep
+    register numbers untouched and just drop ISG1 entries the template
+    doesn't have. The container is rebuilt with packed chunk offsets
+    and the FXC-style hash is recomputed by the caller.
+    """
+    if dxil[:4] != b'DXBC' or template_dxbc is None:
+        return dxil
+
+    chunks = list(dxbc_chunks(dxil))
+    isg1_idx = next((i for i, (fc, *_) in enumerate(chunks) if fc == b'ISG1'),
+                    None)
+    if isg1_idx is None:
+        return dxil
+
+    tmpl_keys = {(n, si) for (n, si, *_) in _parse_isgn_entries(template_dxbc)}
+    if not tmpl_keys:
+        return dxil
+
+    _, off, size = chunks[isg1_idx]
+    body = dxil[off + 8:off + 8 + size]
+    cnt, body_off = struct.unpack_from('<II', body, 0)
+
+    kept = []
+    str_table_set = set()
+    for i in range(cnt):
+        eo = body_off + i * 32
+        # ISG1 entry: stream, name_off, sem_idx, sys_val, comp_ty, reg,
+        # mask|rw_mask|stream2|min_precision (8 bytes packed at +24).
+        stream, name_off, sem_idx, sys_val, comp_ty, reg = \
+            struct.unpack_from('<IIIIII', body, eo)
+        tail = body[eo + 24:eo + 32]
+        end = body.index(b'\x00', name_off)
+        name = bytes(body[name_off:end])
+        if (name.upper(), sem_idx) in tmpl_keys or sys_val != 0:
+            kept.append((stream, name, sem_idx, sys_val, comp_ty, reg, tail))
+            str_table_set.add(name)
+
+    if len(kept) == cnt:
+        return dxil  # nothing to trim
+
+    # Rebuild the ISG1 body (header = count + offset_to_entries = 8).
+    new_count = len(kept)
+    entries_end = 8 + new_count * 32
+    str_table = bytearray()
+    str_offs = {}
+    for stream, name, *_ in kept:
+        if name in str_offs:
+            continue
+        str_offs[name] = entries_end + len(str_table)
+        str_table += name + b'\x00'
+    new_body = bytearray()
+    new_body += struct.pack('<II', new_count, 8)
+    for stream, name, sem_idx, sys_val, comp_ty, reg, tail in kept:
+        new_body += struct.pack('<IIIIII',
+                                stream, str_offs[name], sem_idx,
+                                sys_val, comp_ty, reg)
+        new_body += tail
+    new_body += str_table
+    while len(new_body) % 4:
+        new_body.append(0xAB)
+
+    # Rebuild the container with the new ISG1, all other chunks intact.
+    rebuilt_chunks = []
+    for j, (_, off2, size2) in enumerate(chunks):
+        if j == isg1_idx:
+            rebuilt_chunks.append(b'ISG1' + struct.pack('<I', len(new_body))
+                                  + bytes(new_body))
+        else:
+            rebuilt_chunks.append(dxil[off2:off2 + 8 + size2])
+
+    chunk_count = len(rebuilt_chunks)
+    header_size = 32 + chunk_count * 4
+    body_buf = bytearray()
+    new_offs = []
+    for c in rebuilt_chunks:
+        new_offs.append(header_size + len(body_buf))
+        body_buf += c
+    total = header_size + len(body_buf)
+
+    out = bytearray(total)
+    out[0:4]   = b'DXBC'
+    out[4:20]  = b'\x00' * 16  # caller recomputes
+    out[20:24] = struct.pack('<I', 1)
+    out[24:28] = struct.pack('<I', total)
+    out[28:32] = struct.pack('<I', chunk_count)
+    for i, off in enumerate(new_offs):
+        struct.pack_into('<I', out, 32 + i * 4, off)
+    out[header_size:] = body_buf
+    return bytes(out)
 
 
 def strip_unused_input_signature(dxbc, template_dxbc=None):
@@ -973,7 +1085,8 @@ def build_v14_outer(inner_perms, platform_tag, flags):
 
 
 def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
-                        *, dx_inner=False, nulls=None, verbose=False):
+                        *, dx_inner=False, nulls=None, template_dxbcs=None,
+                        verbose=False):
     """Return the bytes of a rebuilt v1.14 BLS for an extra/d3d12 backend.
 
     `slang_dir` is the per-family slang_out subdirectory (e.g.
@@ -1006,7 +1119,24 @@ def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
         with open(blob_path, 'rb') as fp:
             blob = fp.read()
         if dx_inner:
-            inner_perms.append(pack_v14_dx_perm(blob))
+            # Slangc's HLSL emit shifts every numeric semantic suffix one
+            # decimal place (ATTR3 → ATTR30, etc.) and declares the full
+            # input struct even when the specialised entry point reads
+            # only a subset. The v1.8 DX path runs fix_dxbc_signatures +
+            # strip_unused_input_signature against the shipped template,
+            # then recomputes the FXC-style hash at bytes 4..20. The
+            # §3.2 DX v1.14 path ships the same DXBC-shaped container
+            # with DXIL inside, so all three steps apply here too:
+            # D3D12 verifies the hash, validates the input signature
+            # against the layout, and rejects the bytecode with
+            # E_INVALIDARG if either is stale.
+            blob = fix_dxbc_signatures(blob)
+            if template_dxbcs is not None and template_dxbcs[i] is not None:
+                blob = strip_dxil_unused_input_signature(blob,
+                                                         template_dxbcs[i])
+            blob = bytearray(blob)
+            blob[4:20] = dxbc_hash(bytes(blob[20:]))
+            inner_perms.append(pack_v14_dx_perm(bytes(blob)))
         else:
             inner_perms.append(pack_blob_perm(blob))
 
@@ -1098,11 +1228,13 @@ def main():
         # Read the DX template once for its null pattern (cheap; same
         # template was just consumed by build_bls). Used by both the
         # Metal and extra-backend passes.
+        tmpl = None
         if os.path.isfile(template):
             try:
                 tmpl = read_template(template)
                 dx_nulls = [mc is None for mc in tmpl['middle_chunks']]
             except Exception:
+                tmpl = None
                 dx_nulls = None
 
         # ---------- Metal (mtlfs/, mtlvs/) — only if metallibs were emitted ----
@@ -1140,6 +1272,8 @@ def main():
                 blob = build_extra_v14_bls(d_slang_dir, "dxil", num_perms,
                                            PLATFORM_TAG_DX6, FLAGS_DX6,
                                            dx_inner=True, nulls=dx_nulls,
+                                           template_dxbcs=(tmpl['dxbcs']
+                                               if tmpl is not None else None),
                                            verbose=args.verbose)
                 with open(d_out_path, 'wb') as fp:
                     fp.write(blob)
