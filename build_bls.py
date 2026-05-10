@@ -1084,6 +1084,112 @@ def build_v14_outer(inner_perms, platform_tag, flags):
     return bytes(out)
 
 
+_SPIRV_MAGIC               = 0x07230203
+_SPIRV_OP_ENTRY_POINT      = 15
+_SPIRV_OP_DECORATE         = 71
+_SPIRV_OP_VARIABLE         = 59
+_SPIRV_DECORATION_LOCATION = 30
+_SPIRV_STORAGE_CLASS_OUTPUT = 3
+
+
+def _spv_skip_literal_string(words, start, end):
+    """Advance past a null-terminated literal string starting at word `start`.
+
+    SPIR-V packs literal strings as little-endian bytes inside u32 words,
+    null-padded to a word boundary; the string always contains at least
+    one terminating NUL byte (even when len%4==0 — an extra all-zero word
+    is appended). Returns the index of the first word AFTER the string.
+    """
+    i = start
+    while i < end:
+        w = words[i]
+        i += 1
+        if (w & 0xFF) == 0 or ((w >> 8) & 0xFF) == 0 \
+                or ((w >> 16) & 0xFF) == 0 or ((w >> 24) & 0xFF) == 0:
+            break
+    return i
+
+
+def fix_spirv_output_locations(spv_bytes):
+    """Renumber colliding Output-variable Location decorations in a SPIR-V blob.
+
+    Workaround for a slangc bug where `Conditional<float4, true>` fields
+    in a PSOutput struct (used by hd_ps, sd_on_hd_ps, terrain_ps, etc.)
+    drop their Location decoration in the SPIR-V emit — every SV_TargetN
+    output ends up at Location 0, violating
+    VUID-StandaloneSpirv-OpEntryPoint-08722. The fix walks the
+    OpEntryPoint interface list, picks out Output-class variables with
+    Location decorations, and if any two share a location, renumbers
+    them sequentially from 0 in interface-list order (which matches
+    SV_Target0/1/2/... in slang's emit).
+
+    Inputs (semantic-indexed via slangc's HLSL-mapping) are left alone —
+    the bug is output-specific.
+    """
+    if len(spv_bytes) < 20:
+        return spv_bytes
+    word_count = len(spv_bytes) // 4
+    words = list(struct.unpack(f'<{word_count}I', spv_bytes[:word_count * 4]))
+    if words[0] != _SPIRV_MAGIC:
+        return spv_bytes
+
+    output_vars = set()        # variable IDs with storage class Output
+    locations   = {}           # variable_id -> word index of the Location literal
+    interface   = []           # variable IDs from the (first) OpEntryPoint
+
+    pos = 5  # skip 5-word header
+    while pos < word_count:
+        head = words[pos]
+        opcode = head & 0xFFFF
+        wc     = (head >> 16) & 0xFFFF
+        if wc == 0:
+            break
+
+        if opcode == _SPIRV_OP_ENTRY_POINT and not interface:
+            # [op] [exec_model] [entry_id] [name...] [iface_ids...]
+            after_name = _spv_skip_literal_string(words, pos + 3, pos + wc)
+            interface = list(words[after_name:pos + wc])
+
+        elif opcode == _SPIRV_OP_VARIABLE and wc >= 4:
+            # [op] [result_type] [result_id] [storage_class] [init?]
+            if words[pos + 3] == _SPIRV_STORAGE_CLASS_OUTPUT:
+                output_vars.add(words[pos + 2])
+
+        elif opcode == _SPIRV_OP_DECORATE and wc >= 4 \
+                and words[pos + 2] == _SPIRV_DECORATION_LOCATION:
+            # [op] [target_id] [Location] [value]
+            locations[words[pos + 1]] = pos + 3
+
+        pos += wc
+
+    # Pick out Output variables that have a Location decoration, in
+    # interface-list order. Builtins (gl_Position et al) have no
+    # Location decoration so they're skipped naturally.
+    ordered_outputs = [v for v in interface
+                       if v in output_vars and v in locations]
+    if len(ordered_outputs) < 2:
+        return spv_bytes
+
+    seen = set()
+    has_collision = False
+    for v in ordered_outputs:
+        loc_value = words[locations[v]]
+        if loc_value in seen:
+            has_collision = True
+            break
+        seen.add(loc_value)
+
+    if not has_collision:
+        return spv_bytes
+
+    # Renumber sequentially. Order matches slang's source-declaration
+    # order which corresponds to SV_Target0 / SV_Target1 / SV_Target2.
+    for new_loc, v in enumerate(ordered_outputs):
+        words[locations[v]] = new_loc
+
+    return struct.pack(f'<{word_count}I', *words) + spv_bytes[word_count * 4:]
+
+
 def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
                         *, dx_inner=False, nulls=None, template_dxbcs=None,
                         verbose=False):
@@ -1118,6 +1224,11 @@ def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
 
         with open(blob_path, 'rb') as fp:
             blob = fp.read()
+        # SPIR-V perms (ext == 'spv') run through a fix-up pass that
+        # patches a slangc emit bug — see fix_spirv_output_locations.
+        # No-op on already-correct shaders.
+        if ext == 'spv':
+            blob = fix_spirv_output_locations(blob)
         if dx_inner:
             # Slangc's HLSL emit shifts every numeric semantic suffix one
             # decimal place (ATTR3 → ATTR30, etc.) and declares the full

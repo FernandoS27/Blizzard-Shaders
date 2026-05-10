@@ -33,6 +33,14 @@ public struct PSInput
 //   color    = final lit + fog + color-matrixed RGBA
 //   specular = view-space depth (x) for screen-space resolve effects
 //   normal   = packed world-space normal (xyz) + pre-fog alpha (w)
+//
+// SPIR-V note: slangc's emit for Conditional<float4, true> drops the
+// Output Location decoration, so every SV_TargetN ends up at Location 0
+// in the .spv. build_bls.py post-processes each .spv to renumber
+// colliding Output locations by OpEntryPoint interface order — so the
+// HLSL semantic shape here is preserved while still producing valid
+// SPIR-V. No [[vk::location]] annotations help: slangc honors them on
+// non-Conditional fields but loses them through the Conditional wrapper.
 public struct PSOutput<let IS_MRT : bool, let HAS_COLOR : bool>
 {
     public Conditional<float4, HAS_COLOR> color    : SV_Target0;
