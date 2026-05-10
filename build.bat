@@ -1,10 +1,13 @@
 @echo off
 setlocal
 
-rem One-shot pipeline: compile every Slang permutation to DXBC, then
-rem repack the results into the Warcraft III v1.8 BLS bundles under
-rem bls_out/. Forwards any extra args to compile_all_slang.py so callers
-rem can narrow the sweep, e.g. `build.bat --family hd_ps --target d3d11`.
+rem One-shot pipeline: compile every Slang permutation, then repack into
+rem two BLS trees:
+rem   bls_out_1_8\  — Wc3-loadable v1.8 (D3D11 SM5 + Metal, template-faithful)
+rem   bls_out_1_14\ — latest v1.14 (every backend slangc produced output for,
+rem                   WoW-style shaders\<stage>\<api>\ layout)
+rem Forwards any extra args to compile_all_slang.py so callers can narrow
+rem the sweep, e.g. `build.bat --family hd_ps --target d3d11`.
 
 pushd "%~dp0"
 

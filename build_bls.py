@@ -1,31 +1,43 @@
 """
-Rebuild War3 BLS (v1.8) files from Slang-compiled shader blobs.
+Rebuild War3 BLS files from Slang-compiled shader blobs.
 
-This is the inverse of extract_bls.py. For each shader family we:
+This is the inverse of extract_bls.py. Per shader family we:
   1. Open the shipped BLS as a template (DX only — to reuse each perm's
-     44-byte "middle chunk" of resource/binding metadata). For Metal the
-     template is optional and only consulted for the null-perm pattern.
+     44-byte "middle chunk" of resource/binding metadata for the v1.8
+     output). For Metal the template is optional and only consulted for
+     the null-perm pattern.
   2. Load the Slang-compiled blob for every perm index.
-  3. For DX: optionally strip RDEF/STAT chunks (not present in shipped
-     binaries) and recompute the DXBC hash so the blob matches the shipped
-     chunk layout exactly.
-  4. Repack into the BLS wire format and write out the file.
+  3. For DX: fix slangc-emitted ISGN semantics, align the input signature
+     to the shipped one, optionally strip RDEF/STAT chunks, and recompute
+     the DXBC hash so the rebuilt blob matches the shipped chunk layout.
+  4. Pack each backend twice — once into the v1.8 outer container that
+     Wc3 itself loads (D3D11 + Metal only) and once into the v1.14 outer
+     container (latest BLS spec — zlib-compressed, MD5-hashed, platform-
+     tagged) covering every backend slangc produced output for.
 
-The shader-family -> Slang-output mapping lives in ``wc3_shaders.json`` at
-the repo root (loaded via ``shader_config.load_families``); the same
-config feeds compile_all_slang.py so both scripts stay in sync. Shipped
-BLS files live under war3.w3mod/shaders/{ps,vs,mtlfs,mtlvs}/*.bls. Slang
-outputs live under:
-  <repo>/slang_out/d3d11/<family>/perm_NNN.dxbc      (DX, any platform)
-  <repo>/slang_out/metal/<family>/perm_NNN.metallib  (Metal, macOS only)
+Output layout (controlled by ``--output PATH``):
 
-DX BLS files are always rebuilt; Metal BLS files are rebuilt only when
-compile_all_slang.py produced .metallib output for that family (i.e. you
-were running on macOS with Apple's Metal compiler available).
+  PATH_1_8/                   — what the shipped Wc3 engine loads
+    {ps,vs}/*.bls               D3D11 SM5, v1.8, template-faithful
+    {mtlfs,mtlvs}/*.bls         Metal,    v1.8, template-faithful
+
+  PATH_1_14/shaders/<stage>/<api>/*.bls   — WoW-style v1.14 layout
+    <stage>  ∈ {pixel, vertex}
+    <api>    ∈ {dx_5_0, dx_6_0, mtl_1_1, glsl_4_5, spv_<X_Y>, wgsl_1_0}
+
+The shader-family → Slang-output mapping lives in ``wc3_shaders.json``
+(loaded via ``shader_config.load_families``); the same config feeds
+compile_all_slang.py so both scripts stay in sync. Shipped BLS templates
+live under war3.w3mod/shaders/{ps,vs,mtlfs,mtlvs}/*.bls. Slang outputs:
+  <repo>/slang_out/{d3d11,d3d12,metal,opengl,vulkan,webgpu}/<family>/perm_NNN.<ext>
+
+D3D11 + Metal v1.8 bundles are always rebuilt (when their templates and
+slang outputs exist). v1.14 bundles are written for whichever backends
+slangc produced blobs for — partial sweeps don't error.
 
 Usage:
   build_bls.py --templates war3.w3mod/shaders \\
-               --output    out/shaders \\
+               --output    bls_out \\
                [--slang-out slang_out] [--strip] [--family hd_ps]
 """
 
@@ -44,27 +56,6 @@ DEFAULT_SLANG_OUT = REPO_ROOT / "slang_out"
 DXBC_TARGET_SUBDIR  = "d3d11"   # compile_all_slang writes .dxbc under this target.
 DXIL_TARGET_SUBDIR  = "d3d12"   # ... and .dxil under this one (DX12 / SM6).
 METAL_TARGET_SUBDIR = "metal"   # ... and .metallib under this one (macOS only).
-
-# Extra (non-shipped) backends: opengl/vulkan/webgpu. Wc3 itself never loads
-# these — the engine only ships DX (SM5) and Metal — but `--build-extra`
-# still packages the slangc outputs into BLS containers so users can ship
-# them alongside the originals for ports / re-implementations. These (and
-# the d3d12 bundle written automatically when DXIL output exists) use the
-# v1.14 outer container — the latest BLS format, with zlib compression,
-# content hashes, and a platform tag — so a future loader can identify the
-# backend without relying on directory name alone. Each tuple is:
-#   (slang_target_subdir, file_ext, vs_outdir, ps_outdir,
-#    platform_tag, flags).
-# The output subdirectories follow the convention ``<api><stage>`` to
-# parallel the shipped ``mtlfs/mtlvs`` naming for Metal. Platform tags
-# are local conventions (the v1.14 spec only standardises 05XD/06XD/11TM)
-# stored as little-endian FourCCs reading "GLSL" / "SPIR" / "WGSL".
-EXTRA_BACKENDS = {
-    "opengl": ("opengl", "glsl", "glslvs", "glslps", b'LSLG', 0),
-    "vulkan": ("vulkan", "spv",  "spvvs",  "spvps",  b'RIPS', 0),
-    "webgpu": ("webgpu", "wgsl", "wgpuvs", "wgpups", b'LSGW', 0),
-}
-
 
 PERM_INNER_HEADER_SIZE       = 0x50  # bytes before the DXBC blob in each DX perm
 METAL_PERM_INNER_HEADER_SIZE = 0x2C  # bytes before the MTLB blob in each Metal perm
@@ -88,11 +79,37 @@ BLS_V14_DX_RES_INFO  = 48            # 6 × 8-byte resource binding slots (zeroe
 BLS_V14_DX_PREFIX    = 8             # dxbc_size + dxbc_format_tag prefix
 BLS_V14_DX_INNER_HDR = 0x28          # §3.2 DX inner permutation header
 
-# Platform FourCCs. Spec defines DX5.0 / DX6.0 / MTL; the rest are local
-# conventions used by build_extra_v14_bls so a backend-aware loader can
-# tell SPIR-V / GLSL / WGSL bundles apart.
-PLATFORM_TAG_DX6  = b'06XD'   # FourCC "DX60" (D3D12 SM6 — DXIL inside DXBC)
-FLAGS_DX6         = 0x00010001
+# Platform FourCCs (stored little-endian — bytes b'05XD' read as "DX50").
+# Spec defines DX5.0 / DX6.0 / MTL; SPV/GL/WGSL are local conventions used
+# by `build_extra_v14_bls` so a backend-aware loader can identify the
+# bundle without relying on directory name alone.
+PLATFORM_TAG_DX5  = b'05XD'   # "DX50" — D3D11 SM5 DXBC
+PLATFORM_TAG_DX6  = b'06XD'   # "DX60" — D3D12 SM6 (DXIL inside DXBC)
+PLATFORM_TAG_MTL  = b'11TM'   # "MT11" — Metal Library Binary
+PLATFORM_TAG_GL   = b'LSLG'   # "GLSL" — OpenGL source
+PLATFORM_TAG_SPV  = b'RIPS'   # "SPIR" — Vulkan SPIR-V binary
+PLATFORM_TAG_WGPU = b'LSGW'   # "WGSL" — WebGPU source
+
+# v1.14 platform flag values. DX5/DX6/MTL are spec'd; the others use 0.
+FLAGS_DX5    = 0x00000001
+FLAGS_DX6    = 0x00010001
+FLAGS_MTL    = 0x00030001
+FLAGS_EXTRA  = 0
+
+# v1.14 stage subdirectory under bls_out_1_14/shaders/. Matches the WoW
+# CASC layout (shaders/pixel/dx_5_0/, shaders/vertex/dx_6_0/, ...).
+V14_STAGE_DIR = {'vs': 'vertex', 'ps': 'pixel'}
+
+# v1.14 API subdir for each non-DX/Metal slangc backend. Each tuple:
+#   (slang_target_subdir, file_ext, api_subdir, platform_tag, flags)
+# `api_subdir == None` means the version is detected at runtime from the
+# first emitted blob (used by SPIR-V — `spv_1_3`/`spv_1_4` etc. depending
+# on what slangc produced for the active glsl_450 profile).
+V14_EXTRAS = {
+    "opengl": ("opengl", "glsl", "glsl_4_5", PLATFORM_TAG_GL,   FLAGS_EXTRA),
+    "vulkan": ("vulkan", "spv",  None,       PLATFORM_TAG_SPV,  FLAGS_EXTRA),
+    "webgpu": ("webgpu", "wgsl", "wgsl_1_0", PLATFORM_TAG_WGPU, FLAGS_EXTRA),
+}
 
 # Shader-family configuration is shared with compile_all_slang.py through
 # wc3_shaders.json. FamilyConfig exposes stage, perm_count, bls_name, and the
@@ -758,20 +775,26 @@ def pack_perm(middle_chunk, stage, dxbc):
     return bytes(buf)
 
 
-def build_bls(template_path, slang_dir, num_perms, strip=False, verbose=False):
-    """Return the bytes of a rebuilt BLS for one shader family."""
+def prepare_dx_perms(template_path, slang_dir, num_perms, strip=False):
+    """Read template + slangc DXBC blobs and produce per-perm finalised DXBC.
+
+    Returns ``(template_dict, dxbcs)`` where ``dxbcs[i]`` is the processed
+    DXBC bytes ready to pack (signature-fixed, ISGN aligned to the
+    template, optionally chunk-stripped, hash recomputed) — or ``b''``
+    when the template marks this perm as null. The same ``dxbcs`` list is
+    consumed by both the v1.8 (template-faithful) and v1.14 (zero-filled
+    resource binding) packers below; the per-perm DXBC processing is
+    identical between formats so doing it once avoids re-parsing.
+    """
     tmpl = read_template(template_path)
     if tmpl['num_perms'] != num_perms:
         raise ValueError(
             f'{template_path}: template has {tmpl["num_perms"]} perms, expected {num_perms}')
 
-    perm_blobs = []
-    skipped_null = 0
-
+    dxbcs = []
     for i in range(num_perms):
         if tmpl['middle_chunks'][i] is None:
-            perm_blobs.append(b'')          # null slot — contributes 0 bytes
-            skipped_null += 1
+            dxbcs.append(b'')
             continue
 
         # Filename format must match compile_all_slang.py's `f"perm_{i:03d}.{ext}"`
@@ -789,17 +812,32 @@ def build_bls(template_path, slang_dir, num_perms, strip=False, verbose=False):
             dxbc[4:20] = dxbc_hash(bytes(dxbc[20:]))
             dxbc = bytes(dxbc)
 
+        dxbcs.append(dxbc)
+    return tmpl, dxbcs
+
+
+def assemble_dx_v18_bls(tmpl, dxbcs, num_perms, verbose=False, label=None):
+    """Pack pre-processed DXBC perms into the shipped v1.8 outer format.
+
+    Reuses each perm's 44-byte resource binding chunk from the template
+    so the rebuilt file matches what Wc3 itself loads byte-for-byte
+    (modulo the program body).
+    """
+    perm_blobs = []
+    skipped_null = 0
+    for i, dxbc in enumerate(dxbcs):
+        if not dxbc:
+            perm_blobs.append(b'')
+            skipped_null += 1
+            continue
         perm_blobs.append(pack_perm(tmpl['middle_chunks'][i], tmpl['stages'][i], dxbc))
 
-    # Cumulative size table (end offsets, relative to off_data)
-    cum = []
-    total = 0
+    cum, total = [], 0
     for blob in perm_blobs:
         total += len(blob)
         cum.append(total)
 
     off_data = BLS_FILE_HEADER_SIZE + num_perms * 4
-
     file_buf = bytearray(off_data + total)
     file_buf[0:4]   = BLS_MAGIC
     struct.pack_into('<HH', file_buf, 4, BLS_MINOR, BLS_MAJOR)
@@ -812,10 +850,15 @@ def build_bls(template_path, slang_dir, num_perms, strip=False, verbose=False):
         cursor += len(blob)
 
     if verbose:
-        print(f'  {os.path.basename(template_path)}: '
-              f'{num_perms} perms ({skipped_null} null), file size {len(file_buf):#x}')
-
+        print(f'  {label or "<dx>"}: {num_perms} perms ({skipped_null} null), '
+              f'file size {len(file_buf):#x}')
     return bytes(file_buf)
+
+
+def assemble_dx_v14_bls(dxbcs, platform_tag, flags):
+    """Pack pre-processed DXBC perms into v1.14 outer with §3.2 inner."""
+    inner_perms = [pack_v14_dx_perm(d) if d else b'' for d in dxbcs]
+    return build_v14_outer(inner_perms, platform_tag, flags)
 
 
 # ============================================================
@@ -896,33 +939,45 @@ def pack_blob_perm(blob):
     return bytes(buf)
 
 
-def build_metal_bls(template_path, slang_dir, num_perms, verbose=False):
-    """Return the bytes of a rebuilt Metal BLS for one shader family.
+def prepare_metal_perms(template_path, slang_dir, num_perms):
+    """Load metallibs for one family, mirroring the shipped null-perm pattern.
 
-    `template_path` is only read to mirror the shipped null-perm pattern.
-    If it is missing, every present .metallib becomes a live perm and any
-    missing .metallib is treated as a null perm.
+    Returns a list of length `num_perms`; each entry is the metallib bytes
+    for that perm or `b''` for null. `template_path` is optional — when
+    missing every present .metallib becomes a live perm and every missing
+    one becomes null.
+
+    Shared front-half for the v1.8 (template-faithful Metal §3.5 inner)
+    and v1.14 (44-byte opaque-blob inner) Metal packers below.
     """
     if template_path and os.path.isfile(template_path):
         nulls = read_metal_template_nulls(template_path, num_perms)
     else:
         nulls = [False] * num_perms
 
-    perm_blobs = []
-    skipped_null = 0
-
+    metallibs = []
     for i in range(num_perms):
-        # Filename format must match compile_all_slang.py — see build_bls().
+        # Filename format must match compile_all_slang.py — see prepare_dx_perms().
         metallib_path = os.path.join(slang_dir, f'perm_{i:03d}.metallib')
         if nulls[i] or not os.path.isfile(metallib_path) \
                 or os.path.getsize(metallib_path) == 0:
+            metallibs.append(b'')
+            continue
+        with open(metallib_path, 'rb') as fp:
+            metallibs.append(fp.read())
+    return metallibs
+
+
+def assemble_metal_v18_bls(metallibs, num_perms, verbose=False, label=None):
+    """Pack metallibs into a v1.8 Metal BLS (matches what Wc3 ships)."""
+    perm_blobs = []
+    skipped_null = 0
+    for blob in metallibs:
+        if not blob:
             perm_blobs.append(b'')
             skipped_null += 1
-            continue
-
-        with open(metallib_path, 'rb') as fp:
-            metallib = fp.read()
-        perm_blobs.append(pack_blob_perm(metallib))
+        else:
+            perm_blobs.append(pack_blob_perm(blob))
 
     cum, total = [], 0
     for blob in perm_blobs:
@@ -942,10 +997,21 @@ def build_metal_bls(template_path, slang_dir, num_perms, verbose=False):
         cursor += len(blob)
 
     if verbose:
-        label = os.path.basename(template_path) if template_path else '<no template>'
-        print(f'  {label}: {num_perms} perms ({skipped_null} null), '
+        print(f'  {label or "<metal>"}: {num_perms} perms ({skipped_null} null), '
               f'file size {len(file_buf):#x}')
     return bytes(file_buf)
+
+
+def assemble_metal_v14_bls(metallibs, platform_tag, flags):
+    """Pack metallibs into v1.14 outer with §3.6-style 44-byte opaque-blob inner.
+
+    The v1.14 spec's §3.3 Metal inner format is for compute shaders with a
+    17-byte thread-group trailer; Wc3's Metal vs/ps shaders have no such
+    trailer, so the simplest cross-format choice is to reuse the same
+    `pack_blob_perm` shape used by opengl/vulkan/webgpu.
+    """
+    inner_perms = [pack_blob_perm(m) if m else b'' for m in metallibs]
+    return build_v14_outer(inner_perms, platform_tag, flags)
 
 
 def has_metallibs(slang_dir):
@@ -963,6 +1029,38 @@ def _has_blobs(slang_dir, suffix):
             if os.path.isfile(p) and os.path.getsize(p) > 0:
                 return True
     return False
+
+
+def detect_spv_dir(vulkan_root):
+    """Return the v1.14 SPIR-V API subdir name (e.g. ``spv_1_3``) by reading
+    the version word from the first non-empty .spv file under
+    ``vulkan_root``. Falls back to ``spv`` if no SPIR-V output exists yet.
+
+    Done once at startup since slangc emits a single SPIR-V version for
+    all perms in a given run (it tracks the active glsl_450 / target
+    profile, not anything per-shader).
+    """
+    if not os.path.isdir(vulkan_root):
+        return 'spv'
+    for fam in sorted(os.listdir(vulkan_root)):
+        d = os.path.join(vulkan_root, fam)
+        if not os.path.isdir(d):
+            continue
+        for fname in sorted(os.listdir(d)):
+            if not fname.endswith('.spv'):
+                continue
+            p = os.path.join(d, fname)
+            if os.path.getsize(p) < 8:
+                continue
+            with open(p, 'rb') as fp:
+                hdr = fp.read(8)
+            magic, ver = struct.unpack('<II', hdr)
+            if magic != 0x07230203:
+                continue
+            major = (ver >> 16) & 0xFF
+            minor = (ver >> 8) & 0xFF
+            return f'spv_{major}_{minor}'
+    return 'spv'
 
 
 # ============================================================
@@ -1259,14 +1357,17 @@ def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
     return file_buf
 
 
-def extra_dir_for(stage, vs_dir, ps_dir):
-    """Pick the ``glslvs/glslps``-style output subdirectory for a given stage."""
-    return vs_dir if stage == 'vs' else ps_dir
-
-
 # ============================================================
 # CLI
 # ============================================================
+
+def _write_bundle(out_path, blob, num_perms):
+    """Helper: ensure parent dir exists, write blob, log."""
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, 'wb') as fp:
+        fp.write(blob)
+    print(f'wrote {out_path} ({len(blob):#x} bytes, {num_perms} perms)')
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
@@ -1275,31 +1376,48 @@ def main():
                     help=f'top-level slang_out directory written by '
                          f'compile_all_slang.py (default: {DEFAULT_SLANG_OUT}). '
                          f'DXBC blobs are read from <slang-out>/{DXBC_TARGET_SUBDIR}/<family>/; '
-                         f'.metallib blobs (optional) from <slang-out>/{METAL_TARGET_SUBDIR}/<family>/.')
+                         f'.metallib blobs (optional) from <slang-out>/{METAL_TARGET_SUBDIR}/<family>/; '
+                         f'.dxil from <slang-out>/{DXIL_TARGET_SUBDIR}/<family>/; '
+                         f'extras from <slang-out>/{{opengl,vulkan,webgpu}}/<family>/.')
     ap.add_argument('--templates', required=True,
                     help='directory containing ps/*.bls, vs/*.bls (required) and '
                          'mtlfs/*.bls, mtlvs/*.bls (used when rebuilding Metal BLS)')
-    ap.add_argument('--output', required=True, help='output directory for rebuilt BLS')
+    ap.add_argument('--output', required=True,
+                    help='output directory base. Two trees are written:\n'
+                         '  <output>_1_8/{ps,vs,mtlfs,mtlvs}/*.bls — the\n'
+                         '    template-faithful v1.8 bundles Wc3 itself loads\n'
+                         '    (D3D11 SM5 + Metal only).\n'
+                         '  <output>_1_14/shaders/{vertex,pixel}/<api>/*.bls\n'
+                         '    — v1.14 (latest BLS format, zlib-compressed,\n'
+                         '    MD5-hashed) for every backend slangc produced\n'
+                         '    output for. <api> is one of dx_5_0 / dx_6_0 /\n'
+                         '    mtl_1_1 / glsl_4_5 / spv_<X_Y> / wgsl_1_0,\n'
+                         '    matching the WoW CASC layout.')
     ap.add_argument('--family', action='append', choices=list(FAMILIES),
                     help='limit to specific family (default: all)')
     ap.add_argument('--strip', action='store_true',
                     help='strip RDEF/STAT chunks from DXBC (match shipped chunk layout) '
                          'and recompute the DXBC hash')
-    ap.add_argument('--build_extra', '--build-extra', action='store_true',
-                    help='also build BLS bundles for the non-shipped backends '
-                         '(opengl -> glslvs/glslps, vulkan -> spvvs/spvps, '
-                         'webgpu -> wgpuvs/wgpups). Reads per-family blobs from '
-                         '<slang-out>/{opengl,vulkan,webgpu}/<family>/. The DX '
-                         'template (when present) supplies the null-perm pattern '
-                         'so the extra bundles line up with the shipped layout.')
     ap.add_argument('--verbose', '-v', action='store_true')
     args = ap.parse_args()
 
     family_names = args.family or list(FAMILIES)
-    os.makedirs(args.output, exist_ok=True)
+
+    out_18 = args.output + '_1_8'
+    out_14 = args.output + '_1_14'
 
     dxbc_root  = os.path.join(args.slang_out, DXBC_TARGET_SUBDIR)
     metal_root = os.path.join(args.slang_out, METAL_TARGET_SUBDIR)
+    dxil_root  = os.path.join(args.slang_out, DXIL_TARGET_SUBDIR)
+
+    # SPIR-V version is a property of the slangc run (same for every perm
+    # / family), so detect it once up-front and reuse for every family's
+    # vulkan output dir.
+    spv_api_dir = detect_spv_dir(os.path.join(args.slang_out, 'vulkan'))
+
+    def v14_out(stage, api_subdir, bls_name):
+        return os.path.join(out_14, 'shaders', V14_STAGE_DIR[stage],
+                            api_subdir, bls_name)
 
     for fam in family_names:
         cfg = FAMILIES[fam]
@@ -1309,14 +1427,19 @@ def main():
         # the rebuilt file is still written under the family's own name.
         template_name = cfg.effective_template
 
-        # ---------- DX (ps/, vs/) ----------
-        template = os.path.join(args.templates, cfg.dx_dir, template_name)
+        # ---------- DX (D3D11 SM5) ----------
+        template  = os.path.join(args.templates, cfg.dx_dir, template_name)
         slang_dir = os.path.join(dxbc_root, fam)
 
-        # Track the DX template's null-perm pattern so the extra-backend
-        # passes below can mirror it. Falls back to "all live" when the
-        # DX template is missing.
+        # Track the DX template's null-perm pattern so the d3d12 + extras
+        # passes below can mirror it; also keep `tmpl` around so the d3d12
+        # path can re-use the per-perm shipped DXBCs as ISG1 trim sources
+        # (slangc's DXIL has the same over-declared input signature as its
+        # SM5 output and the engine rejects mismatched layouts). Falls
+        # back to None / "all live" when the DX template is missing.
         dx_nulls = None
+        dxbcs    = None
+        tmpl     = None
 
         if not os.path.isfile(template):
             print(f'SKIP {fam}: template missing ({template})', file=sys.stderr)
@@ -1324,83 +1447,75 @@ def main():
             print(f'SKIP {fam}: slang dir missing ({slang_dir}). '
                   f'Run compile_all_slang.py --target d3d11 first.', file=sys.stderr)
         else:
-            out_dir = os.path.join(args.output, cfg.dx_dir)
-            os.makedirs(out_dir, exist_ok=True)
-            out_path = os.path.join(out_dir, cfg.bls_name)
             try:
-                blob = build_bls(template, slang_dir, num_perms,
-                                 strip=args.strip, verbose=args.verbose)
-                with open(out_path, 'wb') as fp:
-                    fp.write(blob)
-                print(f'wrote {out_path} ({len(blob):#x} bytes, {num_perms} perms)')
-            except Exception as e:
-                print(f'FAIL {fam}: {e}', file=sys.stderr)
-
-        # Read the DX template once for its null pattern (cheap; same
-        # template was just consumed by build_bls). Used by both the
-        # Metal and extra-backend passes.
-        tmpl = None
-        if os.path.isfile(template):
-            try:
-                tmpl = read_template(template)
+                tmpl, dxbcs = prepare_dx_perms(template, slang_dir, num_perms,
+                                               strip=args.strip)
                 dx_nulls = [mc is None for mc in tmpl['middle_chunks']]
-            except Exception:
-                tmpl = None
-                dx_nulls = None
 
-        # ---------- Metal (mtlfs/, mtlvs/) — only if metallibs were emitted ----
+                # v1.8 — template-faithful, what Wc3 ships and loads.
+                v18_blob = assemble_dx_v18_bls(tmpl, dxbcs, num_perms,
+                                               verbose=args.verbose,
+                                               label=os.path.basename(template))
+                _write_bundle(os.path.join(out_18, cfg.dx_dir, cfg.bls_name),
+                              v18_blob, num_perms)
+
+                # v1.14 — same DXBC body, repackaged with the §3.2 DX
+                # inner format (zero-filled resource binding chunk).
+                v14_blob = assemble_dx_v14_bls(dxbcs, PLATFORM_TAG_DX5, FLAGS_DX5)
+                _write_bundle(v14_out(cfg.stage, 'dx_5_0', cfg.bls_name),
+                              v14_blob, num_perms)
+            except Exception as e:
+                print(f'FAIL {fam} [d3d11]: {e}', file=sys.stderr)
+
+        # ---------- Metal — only if metallibs were emitted ----------
         m_slang_dir = os.path.join(metal_root, fam)
         if has_metallibs(m_slang_dir):
             m_template = os.path.join(args.templates, cfg.metal_dir, template_name)
-            m_out_dir  = os.path.join(args.output, cfg.metal_dir)
-            os.makedirs(m_out_dir, exist_ok=True)
-            m_out_path = os.path.join(m_out_dir, cfg.bls_name)
             try:
-                blob = build_metal_bls(m_template, m_slang_dir, num_perms,
-                                       verbose=args.verbose)
-                with open(m_out_path, 'wb') as fp:
-                    fp.write(blob)
-                print(f'wrote {m_out_path} ({len(blob):#x} bytes, {num_perms} perms)')
+                metallibs = prepare_metal_perms(m_template, m_slang_dir, num_perms)
+
+                # v1.8 — what Wc3 ships and loads.
+                v18_blob = assemble_metal_v18_bls(
+                    metallibs, num_perms, verbose=args.verbose,
+                    label=os.path.basename(m_template) if os.path.isfile(m_template)
+                          else '<no template>')
+                _write_bundle(os.path.join(out_18, cfg.metal_dir, cfg.bls_name),
+                              v18_blob, num_perms)
+
+                # v1.14 — same metallibs, repackaged with the §3.6-style
+                # 44-byte opaque-blob inner inside the v1.14 outer.
+                v14_blob = assemble_metal_v14_bls(metallibs,
+                                                   PLATFORM_TAG_MTL, FLAGS_MTL)
+                _write_bundle(v14_out(cfg.stage, 'mtl_1_1', cfg.bls_name),
+                              v14_blob, num_perms)
             except Exception as e:
                 print(f'FAIL {fam} [metal]: {e}', file=sys.stderr)
 
-        # ---------- D3D12 / SM6 ('ps 6.0'/, 'vs 6.0'/) — only if dxils were emitted ----
-        # Bundle is v1.14 (latest BLS format) with the spec'd §3.2 DX inner
-        # layout. DXIL from slangc is a full DXBC container with a DXIL
-        # chunk inside, so the §3.2 inner — 96-byte header (zero-filled
-        # resource binding chunk, no DX12 templates available) + DXBC blob
-        # — drops in cleanly. The shipped engine doesn't load these —
-        # DX12/SM6 support requires a future or modded loader path — but
-        # mirroring the DX template's null-perm pattern keeps the bundle
-        # perm-aligned with the SM5 build.
-        d_slang_dir = os.path.join(args.slang_out, DXIL_TARGET_SUBDIR, fam)
+        # ---------- D3D12 SM6 — only if dxils were emitted ----------
+        # No shipped DX12 template, so the §3.2 DX inner format's 48-byte
+        # resource binding chunk is zero-filled. Mirrors the DX template's
+        # null-perm pattern when one is available.
+        d_slang_dir = os.path.join(dxil_root, fam)
         if _has_blobs(d_slang_dir, '.dxil'):
-            d_out_subdir = "vs 6.0" if cfg.stage == "vs" else "ps 6.0"
-            d_out_dir    = os.path.join(args.output, d_out_subdir)
-            os.makedirs(d_out_dir, exist_ok=True)
-            d_out_path   = os.path.join(d_out_dir, cfg.bls_name)
             try:
-                blob = build_extra_v14_bls(d_slang_dir, "dxil", num_perms,
+                blob = build_extra_v14_bls(d_slang_dir, 'dxil', num_perms,
                                            PLATFORM_TAG_DX6, FLAGS_DX6,
                                            dx_inner=True, nulls=dx_nulls,
                                            template_dxbcs=(tmpl['dxbcs']
                                                if tmpl is not None else None),
                                            verbose=args.verbose)
-                with open(d_out_path, 'wb') as fp:
-                    fp.write(blob)
-                print(f'wrote {d_out_path} ({len(blob):#x} bytes, {num_perms} perms)')
+                _write_bundle(v14_out(cfg.stage, 'dx_6_0', cfg.bls_name),
+                              blob, num_perms)
             except Exception as e:
                 print(f'FAIL {fam} [d3d12]: {e}', file=sys.stderr)
 
-        # ---------- Extra backends (opengl/vulkan/webgpu) — opt-in ---------
-        # Also v1.14 outer; inner per-perm format stays as the §3.6-style
-        # 44-byte opaque-blob header (the v1.14 spec doesn't define an
-        # inner layout for non-DX/Metal backends).
-        if not args.build_extra:
-            continue
-
-        for backend, (target_subdir, ext, vs_outdir, ps_outdir, ptag, pflags) \
-                in EXTRA_BACKENDS.items():
+        # ---------- opengl / vulkan / webgpu — only if blobs were emitted ----
+        # All v1.14 outer; inner is the §3.6-style 44-byte opaque-blob
+        # header (the v1.14 spec doesn't define an inner layout for these
+        # backends, so the same shape used for Metal v1.14 is the simplest
+        # least-surprising choice).
+        for backend, (target_subdir, ext, api_subdir, ptag, pflags) \
+                in V14_EXTRAS.items():
             x_slang_dir = os.path.join(args.slang_out, target_subdir, fam)
             if not _has_blobs(x_slang_dir, '.' + ext):
                 # Slang didn't produce blobs for this backend — silently
@@ -1408,17 +1523,16 @@ def main():
                 # build whatever did succeed.
                 continue
 
-            x_out_subdir = extra_dir_for(cfg.stage, vs_outdir, ps_outdir)
-            x_out_dir    = os.path.join(args.output, x_out_subdir)
-            os.makedirs(x_out_dir, exist_ok=True)
-            x_out_path   = os.path.join(x_out_dir, cfg.bls_name)
+            # `None` means the API version was deferred to runtime — the
+            # only such backend is vulkan, where slangc's emitted SPIR-V
+            # version varies with the toolchain.
+            api = api_subdir if api_subdir is not None else spv_api_dir
             try:
                 blob = build_extra_v14_bls(x_slang_dir, ext, num_perms,
                                            ptag, pflags,
                                            nulls=dx_nulls, verbose=args.verbose)
-                with open(x_out_path, 'wb') as fp:
-                    fp.write(blob)
-                print(f'wrote {x_out_path} ({len(blob):#x} bytes, {num_perms} perms)')
+                _write_bundle(v14_out(cfg.stage, api, cfg.bls_name),
+                              blob, num_perms)
             except Exception as e:
                 print(f'FAIL {fam} [{backend}]: {e}', file=sys.stderr)
 
