@@ -1456,6 +1456,77 @@ def main():
         return os.path.join(out_14, 'shaders', V14_STAGE_DIR[stage],
                             api_subdir, bls_name)
 
+    # Incremental: per-family skip when every existing output is newer
+    # than every input that could change it. Inputs counted: the slang
+    # output dirs the family reads, the DX template it copies metadata
+    # from, this script, shader_config.py, and the family JSON files.
+    # Returns True if the entire family is up-to-date.
+    repo_root = os.path.dirname(os.path.abspath(__file__))
+    script_inputs = [
+        __file__,
+        os.path.join(repo_root, 'shader_config.py'),
+        os.path.join(repo_root, 'wc3_shaders.json'),
+        os.path.join(repo_root, 'custom_shaders.json'),
+    ]
+    def _mtime_max(paths):
+        newest = 0.0
+        for p in paths:
+            try:
+                if os.path.isdir(p):
+                    for dpath, _, files in os.walk(p):
+                        for f in files:
+                            newest = max(newest, os.stat(
+                                os.path.join(dpath, f)).st_mtime)
+                else:
+                    newest = max(newest, os.stat(p).st_mtime)
+            except OSError:
+                pass
+        return newest
+
+    def _family_is_fresh(fam, cfg, template, slang_dirs):
+        inputs = list(script_inputs)
+        if os.path.isfile(template):
+            inputs.append(template)
+        inputs.extend(slang_dirs)
+        src_mt = _mtime_max(inputs)
+
+        # Per-backend (slang_out subdir, output BLS path) pairs. A
+        # missing slang_out subdir means we never produced bytecode for
+        # that backend (e.g. mtlvs/mtlfs on Windows, opengl/webgpu on
+        # default runs), so the BLS for it is *not* expected to exist
+        # and we skip the freshness check for it. A missing slang_out
+        # subdir + a present BLS is also fine — it means the BLS was
+        # built earlier with broader slangc coverage; we leave it as-is.
+        checks = [
+            (os.path.join(dxbc_root, fam),
+             os.path.join(out_18, cfg.dx_dir, cfg.bls_name)),
+            (os.path.join(dxbc_root, fam),
+             v14_out(cfg.stage, 'dx_5_0', cfg.bls_name)),
+            (os.path.join(dxil_root, fam),
+             v14_out(cfg.stage, 'dx_6_0', cfg.bls_name)),
+        ]
+        if getattr(cfg, 'metal_dir', None):
+            checks.append(
+                (os.path.join(metal_root, fam),
+                 os.path.join(out_18, cfg.metal_dir, cfg.bls_name)))
+            checks.append(
+                (os.path.join(metal_root, fam),
+                 v14_out(cfg.stage, 'mtl_1_1', cfg.bls_name)))
+        if spv_api_dir is not None:
+            checks.append(
+                (os.path.join(args.slang_out, 'vulkan', fam),
+                 v14_out(cfg.stage, spv_api_dir, cfg.bls_name)))
+
+        for slang_subdir, op in checks:
+            if not os.path.isdir(slang_subdir):
+                continue  # backend not compiled — nothing to check
+            try:
+                if os.stat(op).st_mtime <= src_mt:
+                    return False
+            except OSError:
+                return False  # backend compiled but BLS missing → must build
+        return True
+
     for fam in family_names:
         cfg = FAMILIES[fam]
         num_perms = cfg.perm_count
@@ -1467,6 +1538,19 @@ def main():
         # ---------- DX (D3D11 SM5) ----------
         template  = os.path.join(args.templates, cfg.dx_dir, template_name)
         slang_dir = os.path.join(dxbc_root, fam)
+
+        family_slang_dirs = [
+            slang_dir,
+            os.path.join(dxil_root, fam),
+            os.path.join(metal_root, fam),
+            os.path.join(args.slang_out, 'vulkan', fam),
+            os.path.join(args.slang_out, 'opengl', fam),
+            os.path.join(args.slang_out, 'webgpu', fam),
+        ]
+        if _family_is_fresh(fam, cfg, template, family_slang_dirs):
+            if args.verbose:
+                print(f'SKIP {fam}: outputs up-to-date')
+            continue
 
         # Track the DX template's null-perm pattern so the d3d12 + extras
         # passes below can mirror it; also keep `tmpl` around so the d3d12
