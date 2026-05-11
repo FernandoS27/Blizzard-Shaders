@@ -28,7 +28,48 @@ REPO_ROOT = Path(__file__).resolve().parent
 SHADER = REPO_ROOT / "wc3_shaders" / "wc3_shaders.slang"
 CUSTOM_SHADER = REPO_ROOT / "custom_shaders" / "custom_shaders.slang"
 WC3_INCLUDE_DIR = REPO_ROOT / "wc3_shaders"
+CUSTOM_SHADER_DIR = REPO_ROOT / "custom_shaders"
 OUT_BASE = REPO_ROOT / "slang_out"
+
+_source_mtime_cache: Optional[float] = None
+
+
+def shader_source_mtime(slangc_exe: str) -> float:
+    """Newest mtime across every input that can change a slang output.
+
+    Returned mtime gates the incremental skip in run_sweep: if a perm's
+    output file exists and is newer than this number, slangc would emit
+    byte-identical bytecode (modulo nondeterminism in slangc itself) so
+    we skip the invocation. Inputs that count:
+      • every .slang under wc3_shaders/ and custom_shaders/ (slang's
+        preprocessor and module import semantics mean any one of them
+        can affect any entry point)
+      • the slangc binary itself (different versions produce different
+        bytecode — see the popcorn_vs 2026.1 vs 2026.8 saga)
+      • this script + shader_config.py + wc3_shaders.json (the perm
+        mapping or per-perm defines table can change)
+    """
+    global _source_mtime_cache
+    if _source_mtime_cache is not None:
+        return _source_mtime_cache
+    candidates: List[Path] = [
+        Path(slangc_exe),
+        Path(__file__),
+        REPO_ROOT / "shader_config.py",
+        REPO_ROOT / "wc3_shaders.json",
+        REPO_ROOT / "custom_shaders.json",
+    ]
+    for root in (WC3_INCLUDE_DIR, CUSTOM_SHADER_DIR):
+        if root.exists():
+            candidates.extend(root.rglob("*.slang"))
+    newest = 0.0
+    for p in candidates:
+        try:
+            newest = max(newest, p.stat().st_mtime)
+        except OSError:
+            pass
+    _source_mtime_cache = newest
+    return newest
 
 # Family metadata — stage, entry point, perm_count, which source module
 # hosts the entry point — comes from wc3_shaders.json via shader_config. The
@@ -168,12 +209,13 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
     print()
     print(f"========== [{target_key}] {family} ({count} perms, jobs={jobs}) ==========")
     out_dir = OUT_BASE / target_key / family
-    # Wipe the whole family dir up front so stale .dxbc / .err files
-    # from a previous run can never be mistaken for fresh output. This
-    # makes every sweep start from a clean slate.
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Incremental: only the perms whose output is older than any input
+    # (slang sources, slangc binary, script/json) are re-compiled. The
+    # rest are kept as-is so a no-op rebuild does no slangc work. The
+    # source_mtime is captured up front; per-perm we still wipe stale
+    # .err files from a failed previous run.
+    src_mtime = shader_source_mtime(slangc_override or resolve_slangc())
 
     result = SweepResult(family=family, count=count)
     ext = cfg["ext"]
@@ -221,10 +263,22 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
 
     def compile_one(item):
         i, spec, out_path = item
+        # Skip when the previous output is newer than every input that
+        # could change its contents. `>=` rather than `>` because a
+        # source edited within the same filesystem-mtime tick as the
+        # output should re-compile to be safe (catches "edit-then-build
+        # twice in a second" loops).
+        if out_path.exists() and out_path.stat().st_mtime > src_mtime:
+            # Drop any stale .err from a previous failed run so the
+            # next failure isn't masked by an old error message.
+            err_path = out_path.with_suffix(out_path.suffix + ".err")
+            if err_path.exists():
+                err_path.unlink()
+            return i, spec, True, True  # ok=True, skipped=True
         ok = invoke_slangc(spec.entry, target, profile, spec.types, out_path,
                            shader_path, custom_extra, include_dirs,
                            slangc_override, spec.defines)
-        return i, spec, ok
+        return i, spec, ok, False
 
     # Each slangc invocation is a long-running subprocess, so a thread
     # pool parallelises well — the GIL is released while we wait on the
@@ -236,7 +290,10 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
         with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
             outcomes = list(pool.map(compile_one, perm_specs))
 
-    for i, spec, ok in outcomes:
+    skipped = 0
+    for i, spec, ok, was_skipped in outcomes:
+        if was_skipped:
+            skipped += 1
         if ok:
             result.ok += 1
         else:
@@ -247,7 +304,8 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
     result.fail_list.sort()
 
     print()
-    print(f"Compile: {result.ok} OK / {result.fail} fail")
+    print(f"Compile: {result.ok} OK / {result.fail} fail "
+          f"({skipped} up-to-date)")
     if result.fail_list:
         print("--- First 5 compile failures ---")
         for entry in result.fail_list[:5]:
