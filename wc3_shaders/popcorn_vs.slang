@@ -7,14 +7,25 @@
 // Specialisation space (recovered from the original BLS bundle —
 // 72 perms = 4 effective rendering modes × 8 inner-bit combinations,
 // with 8 dead-axis duplicates from the engine compiling redundant
-// uv_variant mirrors):
+// uv_variant mirrors). The build script translates each perm into
+// `-D POPCORN_*` defines that gate the VS input / output struct
+// declarations *and* the matching reads in this entry body:
 //
-//   TMode         — IPopcornMode (NoUV, BasicUV, Billboard, Atlas).
-//   HAS_RANDOM    — particle has a per-vertex random scalar (ATTR6).
-//   HAS_VC        — particle has a per-vertex RGBA color (ATTR2).
-//   HAS_NT        — particle has a per-vertex normal + tangent
-//                   (ATTR1 + ATTR7) — required when the matching PS
-//                   runs the lit BRDF path.
+//   POPCORN_HAS_UV          — primary UV stream is bound (ATTR3).
+//   POPCORN_BILLBOARD       — billboard mode: SV_VertexID-driven quad
+//                             UV + axis vectors on ATTR4/ATTR5.
+//   POPCORN_ATLAS           — atlas mode: ATTR3=current-frame UV,
+//                             ATTR4.xy=next-frame UV, ATTR5.x=life.
+//   POPCORN_HAS_BB_OR_ATLAS — billboard or atlas (slot4/slot5 are
+//                             bound). Used to gate ATTR4/ATTR5 in
+//                             PopcornVSInput.
+//   POPCORN_HAS_RANDOM_UV   — HAS_RANDOM && HAS_UV. The shipped engine
+//                             never binds ATTR6 without a UV stream,
+//                             so the build collapses the conjunction.
+//   POPCORN_HAS_VC          — per-vertex RGBA on ATTR2.
+//   POPCORN_HAS_NT          — per-vertex normal + tangent (ATTR1 +
+//                             ATTR7). Required for the lit BRDF PS
+//                             paths.
 //
 // The VS body is a small linear stack: pivot-blend the per-vertex
 // position toward the particle origin, scale uniformly, transform to
@@ -52,14 +63,9 @@ public float2 popcornQuadUV(uint vertexID)
 }
 
 [shader("vertex")]
-public PopcornVSOutput<TMode, HAS_RANDOM, HAS_VC, HAS_NT> popcorn_vs_main<
-    TMode : IPopcornMode,
-    let HAS_RANDOM : bool,
-    let HAS_VC     : bool,
-    let HAS_NT     : bool
->(PopcornVSInput input)
+public PopcornVSOutput popcorn_vs_main(PopcornVSInput input)
 {
-    PopcornVSOutput<TMode, HAS_RANDOM, HAS_VC, HAS_NT> output;
+    PopcornVSOutput output;
 
     // Step 1: pivot-blend + uniform scale gives us the local-space
     // position that everything downstream operates on.
@@ -71,55 +77,47 @@ public PopcornVSOutput<TMode, HAS_RANDOM, HAS_VC, HAS_NT> popcorn_vs_main<
     output.position = transformClipPos(localPos, popcornVsCB2.worldViewProj);
 
     // Step 3: vertex color — straight pass-through, no remap.
-    if (HAS_VC)
-        output.color = input.vertColor;
+#if POPCORN_HAS_VC
+    output.color = input.vertColor;
+#endif
 
     // Step 4: per-mode UV / auxiliary outputs. Each mode writes the
-    // narrow-typed Conditional field (uv as float2 in basic/billboard,
+    // narrow-typed output field (uv as float2 in basic/billboard,
     // uvAtlas as float4 in atlas) so fxc emits the right OSGN width
     // and packs adjacent fields the way the shipped engine does.
-    if (TMode.hasUV)
-    {
-        if (TMode.isBillboard)
-        {
-            output.uv       = popcornQuadUV(input.vertexID);
-            output.axis0Out = input.modeSlot4;     // axis0 (.xyzw)
-            output.axis1Out = input.modeSlot5;     // axis1 (.xyzw)
-        }
-        else if (TMode.isAtlas)
-        {
-            // .xy = current frame, .zw = next frame. The PS lerps
-            // between two t0 samples by `lifeOut` (the life-ratio
-            // fractional part written below).
-            output.uvAtlas = float4(input.uv0, input.modeSlot4.xy);
-        }
-        else
-        {
-            // BasicUV — straight pass-through.
-            output.uv = input.uv0;
-        }
-    }
+#if POPCORN_HAS_UV
+#  if POPCORN_BILLBOARD
+    output.uv       = popcornQuadUV(input.vertexID);
+    output.axis0Out = input.modeSlot4;          // axis0 (.xyzw)
+    output.axis1Out = input.modeSlot5;          // axis1 (.xyzw)
+#  elif POPCORN_ATLAS
+    // .xy = current frame, .zw = next frame. The PS lerps between two
+    // t0 samples by `lifeOut` (the life-ratio fractional part below).
+    output.uvAtlas = float4(input.uv0, input.modeSlot4.xy);
+#  else
+    // BasicUV — straight pass-through.
+    output.uv = input.uv0;
+#  endif
+#endif
 
     // Step 5: per-particle random scalar pass-through. Only meaningful
     // when there's a UV stream — see PopcornVSOutput for the rationale
-    // (the engine never binds ATTR6 without a UV stream, so the field
-    // is gated on `HAS_RANDOM && TMode.hasUV` to match shipped).
-    if (HAS_RANDOM && TMode.hasUV)
-        output.randomOut = input.random;
+    // (the engine never binds ATTR6 without a UV stream, so the
+    // RANDOM && UV conjunction collapses into one define).
+#if POPCORN_HAS_RANDOM_UV
+    output.randomOut = input.random;
+#endif
 
     // Step 6: world-space normal + tangent. The popcorn world matrix
     // is assumed to be a similarity transform (no shear), so we skip
     // the renormalize step the HD pipeline runs. tangent.w carries the
-    // bitangent handedness sign passed straight through. Local temps
-    // because `tangentWS` is `Conditional<float4, HAS_NT>` and only
-    // accepts whole-value assignment.
-    if (HAS_NT)
-    {
-        float3 worldNormal  = transformNormalRaw(input.normal,       popcornVsCB2.world);
-        float3 worldTangent = transformNormalRaw(input.tangent.xyz,  popcornVsCB2.world);
-        output.normalWS  = worldNormal;
-        output.tangentWS = float4(worldTangent, input.tangent.w);
-    }
+    // bitangent handedness sign passed straight through.
+#if POPCORN_HAS_NT
+    float3 worldNormal  = transformNormalRaw(input.normal,       popcornVsCB2.world);
+    float3 worldTangent = transformNormalRaw(input.tangent.xyz,  popcornVsCB2.world);
+    output.normalWS  = worldNormal;
+    output.tangentWS = float4(worldTangent, input.tangent.w);
+#endif
 
     // Step 7: world-space position, always emitted (the PS uses it
     // for soft-particles depth reprojection, fog, IBL, etc.).
@@ -131,8 +129,9 @@ public PopcornVSOutput<TMode, HAS_RANDOM, HAS_VC, HAS_NT> popcorn_vs_main<
     // wider float4) keeps register packing aligned. Emitted at the
     // end so the `frac` instruction lands after the worldPos
     // transform, matching the original engine's ordering.
-    if (TMode.isAtlas)
-        output.lifeOut = frac(input.modeSlot5.x);
+#if POPCORN_ATLAS
+    output.lifeOut = frac(input.modeSlot5.x);
+#endif
 
     return output;
 }

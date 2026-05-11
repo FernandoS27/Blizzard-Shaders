@@ -89,20 +89,15 @@ public PopcornUV popcornResolveUV<TMode : IPopcornMode>(PopcornPSInput input)
     PopcornUV uv;
     uv.sampleUV  = float2(0, 0);
     uv.sampleUV2 = float2(0, 0);
-    if (TMode.isBillboard)
-    {
-        uv.sampleUV = popcornBillboardUV(input.uv.xy, input.slot1, input.uvAxis);
-    }
-    else if (TMode.isAtlas)
-    {
-        uv.sampleUV  = input.uv.xy;
-        uv.sampleUV2 = input.uv.zw;
-    }
-    else if (TMode.hasUV)
-    {
-        // Basic UV mode: straight pass-through of TEXCOORD0.xy.
-        uv.sampleUV = input.uv.xy;
-    }
+#if POPCORN_BILLBOARD
+    uv.sampleUV = popcornBillboardUV(input.uv.xy, input.slot1, input.uvAxis);
+#elif POPCORN_ATLAS
+    uv.sampleUV  = input.uv.xy;
+    uv.sampleUV2 = input.uv.zw;
+#elif POPCORN_HAS_UV
+    // Basic UV mode: straight pass-through of TEXCOORD0.xy.
+    uv.sampleUV = input.uv.xy;
+#endif
     return uv;
 }
 
@@ -313,6 +308,11 @@ PopcornLightContrib popcornEvalLight(
 // reconstruction, specular-AA roughness, IBL block, analytic-light
 // loop. Returns the linear-RGB lit colour (the entry pairs it with
 // the pre-LIT alpha to form the final output).
+//
+// Only emitted when `POPCORN_HAS_NT` is set (i.e. the PS perm has the
+// HAS_LIT bit and the engine pairs it with a VS perm that wrote
+// normalWS/tangentWS). All call sites are wrapped in the same `#if`.
+#if POPCORN_HAS_NT
 public float3 popcornLitBody(PopcornPSInput input, PopcornUV uv,
                              bool isFrontFace, float3 albedoRGB)
 {
@@ -388,6 +388,7 @@ public float3 popcornLitBody(PopcornPSInput input, PopcornUV uv,
     // term so per-light contributions land at the right magnitude.
     return PI * lightAccum;
 }
+#endif // POPCORN_HAS_NT
 
 // ============================================================
 // Color pass body
@@ -414,47 +415,48 @@ public PopcornColorOut popcornColorPassBody<
     PopcornUV uv = popcornResolveUV<TMode>(input);
 
     float4 albedo;
-    if (TMode.isAtlas)
+#if POPCORN_ATLAS
+    // Atlas: lerp between current and next frame by the life-
+    // ratio fractional part the VS stored at slot1.x.
     {
-        // Atlas: lerp between current and next frame by the life-
-        // ratio fractional part the VS stored at slot1.x.
         float4 a = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV);
         float4 b = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV2);
         albedo = lerp(a, b, input.slot1.x);
     }
-    else if (TMode.hasUV)
-    {
-        albedo = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV);
-    }
-    else
-    {
-        albedo = float4(1, 1, 1, 1);
-    }
+#elif POPCORN_HAS_UV
+    albedo = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV);
+#else
+    albedo = float4(1, 1, 1, 1);
+#endif
 
     // ---- Vertex colour modulation ----
+#if POPCORN_HAS_VC
     if (HAS_VC)
         albedo *= input.vertColor;
+#endif
 
     // ---- Alpha LUT remap ----
     // The LUT input is the post-VC alpha; the result replaces alpha
     // and feeds every downstream consumer (LIT alpha source, SP
-    // fade, gbuffer write, fog). Gated on TMode.hasUV because the
-    // engine never binds ATTR6 (random scalar at TEXCOORD3) without
-    // a UV stream, so reading input.random.x in NoUV mode would
-    // emit a phantom TEXCOORD3 input the engine doesn't bind. The
-    // 192 NoUV+HAS_ALPHA_LUT permutations exist as combinatorial
-    // filler in the BLS table but the engine never invokes them.
+    // fade, gbuffer write, fog). Only the perms where the engine
+    // actually binds ATTR6 (HAS_RANDOM && hasUV on the VS side) carry
+    // the random slot; this PS-side `#if` matches that so phantom
+    // TEXCOORD3 inputs don't leak into d3d12's PSO validation.
+#if POPCORN_HAS_RANDOM_UV
     if (HAS_ALPHA_LUT && TMode.hasUV)
     {
         albedo.w = t_popcornAlphaLut.Sample(
             s_popcornAlphaLut, float2(albedo.w, input.random.x)).x;
     }
+#endif
 
     // ---- Lighting ----
     float3 colorRGB;
+#if POPCORN_HAS_NT
     if (HAS_LIT)
         colorRGB = popcornLitBody(input, uv, isFrontFace, albedo.xyz);
     else
+#endif
         colorRGB = albedo.xyz;
 
     float colorAlpha = albedo.w;
@@ -517,16 +519,15 @@ public float4 popcornMotionPassBody<
     // Motion source. Atlas mode lerps two t0 samples; basic /
     // billboard just sample the resolved UV. Only .xy is used.
     float2 motSrc;
-    if (TMode.isAtlas)
+#if POPCORN_ATLAS
     {
         float2 a = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV ).xy;
         float2 b = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV2).xy;
         motSrc = lerp(a, b, input.slot1.x);
     }
-    else
-    {
-        motSrc = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV).xy;
-    }
+#else
+    motSrc = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV).xy;
+#endif
 
     // Unpack [0, 1] → ~[−1, +1], scale by sqrt(1000 / depth) so
     // screen-space magnitude stays roughly stable as particles
@@ -539,11 +540,13 @@ public float4 popcornMotionPassBody<
     // and forwards vc.w into the output alpha. Without VC the
     // alpha is the constant 1.
     float motionAlpha = 1.0;
+#if POPCORN_HAS_VC
     if (HAS_VC)
     {
         motion      *= input.vertColor.xy;
         motionAlpha  = input.vertColor.w;
     }
+#endif
 
     if (HAS_SP) motion *= softFade;
 

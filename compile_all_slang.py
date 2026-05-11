@@ -20,7 +20,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from shader_config import load_families
 
@@ -104,6 +104,11 @@ class PermSpec:
     entry: str
     types: List[str]
     label: str
+    # Per-perm preprocessor defines (e.g. ["POPCORN_HAS_VC=1"]). Used by
+    # families that gate VS input / output struct fields with `#if`
+    # rather than `Conditional<>` because slangc miscompiles compound
+    # bool gates in the latter (see PopcornVSInput in vs_io.slang).
+    defines: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -119,10 +124,15 @@ def invoke_slangc(entry: str, target: str, profile: str,
                   specialize: List[str], out_path: Path,
                   shader_path: Path,
                   extra: Optional[List[str]] = None,
-                  include_dirs: Optional[List[Path]] = None) -> bool:
-    args = [resolve_slangc(), "-entry", entry]
+                  include_dirs: Optional[List[Path]] = None,
+                  slangc_override: Optional[str] = None,
+                  defines: Optional[List[str]] = None) -> bool:
+    slangc_exe = slangc_override if slangc_override else resolve_slangc()
+    args = [slangc_exe, "-entry", entry]
     for t in specialize:
         args += ["-specialize", t]
+    for d in defines or []:
+        args += ["-D", d]
     for inc in include_dirs or []:
         args += ["-I", str(inc)]
     args += [
@@ -152,7 +162,8 @@ def invoke_slangc(entry: str, target: str, profile: str,
 
 
 def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
-              stage: str, target_key: str, jobs: int = 1) -> SweepResult:
+              stage: str, target_key: str, jobs: int = 1,
+              slangc_override: Optional[str] = None) -> SweepResult:
     cfg = TARGETS[target_key]
     print()
     print(f"========== [{target_key}] {family} ({count} perms, jobs={jobs}) ==========")
@@ -211,7 +222,8 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
     def compile_one(item):
         i, spec, out_path = item
         ok = invoke_slangc(spec.entry, target, profile, spec.types, out_path,
-                           shader_path, custom_extra, include_dirs)
+                           shader_path, custom_extra, include_dirs,
+                           slangc_override, spec.defines)
         return i, spec, ok
 
     # Each slangc invocation is a long-running subprocess, so a thread
@@ -613,29 +625,64 @@ def map_popcorn_vs(idx: int) -> PermSpec:
     #     variant 0 = no UV (collapses any mode to PopcornNoUV)
     #     variant 1/2 = UV stream bound (the engine compiles two
     #                   redundant variants per mode — they map to the
-    #                   same Slang specialisation here).
+    #                   same set of POPCORN_* defines here).
+    #
+    # popcorn_vs uses preprocessor defines (POPCORN_HAS_*) to gate
+    # which fields are declared on PopcornVSInput / PopcornVSOutput,
+    # rather than slang `Conditional<>` (which slangc miscompiles on
+    # entry-point IO with compound bool gates — see vs_io.slang). The
+    # entry has no slang generics, so `types` is empty.
     inner    = idx & 7
     outer    = idx // 8
     mode_idx = outer // 3
     uv_var   = outer %  3
 
-    if uv_var == 0:
-        mode = "PopcornNoUV"
-    elif mode_idx == 0:
-        mode = "PopcornBasicUV"
-    elif mode_idx == 1:
-        mode = "PopcornBillboard"
-    else:
-        mode = "PopcornAtlas"
+    has_rand = bool(inner & 1)
+    has_vc   = bool(inner & 2)
+    has_nt   = bool(inner & 4)
 
-    has_rand = "true" if (inner & 1) else "false"
-    has_vc   = "true" if (inner & 2) else "false"
-    has_nt   = "true" if (inner & 4) else "false"
+    if uv_var == 0:
+        mode_label = "NoUV"
+        has_uv      = False
+        is_billboard = False
+        is_atlas     = False
+    elif mode_idx == 0:
+        mode_label = "BasicUV"
+        has_uv      = True
+        is_billboard = False
+        is_atlas     = False
+    elif mode_idx == 1:
+        mode_label = "Billboard"
+        has_uv      = True
+        is_billboard = True
+        is_atlas     = False
+    else:
+        mode_label = "Atlas"
+        has_uv      = True
+        is_billboard = False
+        is_atlas     = True
+
+    defines: List[str] = []
+    if has_uv:
+        defines.append("POPCORN_HAS_UV=1")
+    if is_billboard:
+        defines.append("POPCORN_BILLBOARD=1")
+    if is_atlas:
+        defines.append("POPCORN_ATLAS=1")
+    if is_billboard or is_atlas:
+        defines.append("POPCORN_HAS_BB_OR_ATLAS=1")
+    if has_rand and has_uv:
+        defines.append("POPCORN_HAS_RANDOM_UV=1")
+    if has_vc:
+        defines.append("POPCORN_HAS_VC=1")
+    if has_nt:
+        defines.append("POPCORN_HAS_NT=1")
 
     return PermSpec(
         entry="popcorn_vs_main",
-        types=[mode, has_rand, has_vc, has_nt],
-        label=f"{mode}+R={has_rand}+VC={has_vc}+NT={has_nt}",
+        types=[],
+        label=f"{mode_label}+R={int(has_rand)}+VC={int(has_vc)}+NT={int(has_nt)}",
+        defines=defines,
     )
 
 
@@ -695,11 +742,35 @@ def map_popcorn_ps(idx: int) -> PermSpec:
     has_vc   = "true" if (inner & 0x20) else "false"
     has_lit  = "true" if (inner & 0x40) else "false"
 
+    # PopcornPSInput is gated by the same POPCORN_HAS_* defines that
+    # gate PopcornVSOutput so d3d12 PSO validation (PS ISG1 ⊆ VS OSG1)
+    # accepts the link. The engine is expected to pair PS perms with VS
+    # perms that have matching gating:
+    #   HAS_LIT (PS)        ↔ HAS_NT (VS)
+    #   HAS_ALPHA_LUT (PS)  ↔ HAS_RANDOM (VS)   when there's a UV stream
+    #   HAS_VC, UV, mode    ↔ same on both sides
+    defines: List[str] = []
+    if uv_var != 0:
+        defines.append("POPCORN_HAS_UV=1")
+        if mode_idx == 1:
+            defines.append("POPCORN_BILLBOARD=1")
+            defines.append("POPCORN_HAS_BB_OR_ATLAS=1")
+        elif mode_idx == 2:
+            defines.append("POPCORN_ATLAS=1")
+            defines.append("POPCORN_HAS_BB_OR_ATLAS=1")
+    if inner & 0x20:
+        defines.append("POPCORN_HAS_VC=1")
+    if inner & 0x40:
+        defines.append("POPCORN_HAS_NT=1")
+    if (inner & 0x10) and uv_var != 0:
+        defines.append("POPCORN_HAS_RANDOM_UV=1")
+
     return PermSpec(
         entry="popcorn_ps_main",
         types=[mode, fog, is_motion, has_gbuf, has_sp, has_alut, has_vc, has_lit],
         label=(f"{mode}+M={is_motion}+{fog}+G={has_gbuf}+SP={has_sp}"
                f"+ALUT={has_alut}+VC={has_vc}+LIT={has_lit}"),
+        defines=defines,
     )
 
 
@@ -798,6 +869,13 @@ def main() -> int:
                              "unless this flag overrides it.")
     parser.add_argument("--slangc", help="Path to slangc executable "
                                          "(overrides PATH / VULKAN_SDK lookup).")
+    parser.add_argument("--slangc-for", action="append", default=[],
+                        metavar="FAMILY=PATH",
+                        help="Per-family slangc override. Repeatable. "
+                             "Example: --slangc-for popcorn_vs=C:/slang/slangc.exe. "
+                             "Workaround for families that need a newer compiler "
+                             "(slangc 2026.1 miscompiles compound bool gates in "
+                             "Conditional fields used by popcorn_vs).")
     parser.add_argument("--jobs", "-j", type=int, default=os.cpu_count() or 1,
                         help="Number of parallel slangc processes to run "
                              "(default: %(default)s = os.cpu_count()). "
@@ -845,12 +923,31 @@ def main() -> int:
     if args.family and "all" not in args.family:
         selected_families = set(args.family)
 
+    # Parse `--slangc-for FAMILY=PATH` repeatables into a {family: path} map.
+    # Used to override the default slangc on a per-family basis (e.g. when
+    # the default slangc miscompiles a specific family — see the flag help).
+    family_slangc: Dict[str, str] = {}
+    for entry in args.slangc_for:
+        if "=" not in entry:
+            raise SystemExit(
+                f"--slangc-for expects FAMILY=PATH (got '{entry}')")
+        fam, _, path = entry.partition("=")
+        if fam not in FAMILIES:
+            raise SystemExit(
+                f"--slangc-for: unknown family '{fam}' "
+                f"(known: {', '.join(FAMILIES)})")
+        if not Path(path).is_file():
+            raise SystemExit(
+                f"--slangc-for {fam}: slangc not found at '{path}'")
+        family_slangc[fam] = path
+
     all_results: List[tuple] = []  # (target_key, SweepResult)
     for target_key in active_targets:
         for name, count, mapper, stage in SWEEPS:
             if selected_families is not None and name not in selected_families:
                 continue
-            result = run_sweep(name, count, mapper, stage, target_key, args.jobs)
+            result = run_sweep(name, count, mapper, stage, target_key,
+                               args.jobs, family_slangc.get(name))
             all_results.append((target_key, result))
 
     print()

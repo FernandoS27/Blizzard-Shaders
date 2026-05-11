@@ -160,27 +160,31 @@ public struct SpritePSInput
 };
 
 // PopcornFX pixel shader input. Mirrors the live members of
-// `PopcornVSOutput` slot-for-slot (the VS side gates each slot with
-// `Conditional<>`, so unwritten slots arrive here with undefined
-// contents — the entry guards every read with the matching policy
-// flag).
+// `PopcornVSOutput` slot-for-slot — each optional slot is `#if`-gated
+// by the same `POPCORN_HAS_*` define that gates the matching VS output
+// field, so d3d12 PSO validation (which requires PS ISG1 ⊆ VS OSG1)
+// accepts the link. The entry body in popcorn_ps_body.slang guards
+// every read of an optional slot with the same `#if`.
 //
 // Slot map:
 //
 //   SV_Position   svPosition
-//   COLOR0        vertColor      — read when HAS_VC
-//   TEXCOORD0     uv             — read when TMode.hasUV; basic and
-//                                  billboard use only .xy, atlas
-//                                  reads .xyzw
-//   TEXCOORD1     slot1          — billboard: per-particle UV
-//                                  scale/bias (.xyzw); atlas: life-
-//                                  ratio fractional part in .x
-//   TEXCOORD2     uvAxis         — billboard: per-cell two-triangle
-//                                  scales (.xyzw)
-//   TEXCOORD3     random         — read when HAS_ALPHA_REMAP_LUT
-//                                  (.x is the per-particle random)
-//   TEXCOORD4     normalWS       — read when HAS_LIT
-//   TEXCOORD5     tangentWS      — read when HAS_LIT (.w = handedness)
+//   COLOR0        vertColor      — POPCORN_HAS_VC
+//   TEXCOORD0     uv             — POPCORN_HAS_UV (basic / billboard
+//                                  use only .xy; atlas widens to
+//                                  .xyzw and packs the next-frame UV
+//                                  in .zw — see PopcornVSOutput)
+//   TEXCOORD1     slot1          — POPCORN_HAS_BB_OR_ATLAS
+//                                  (billboard: per-particle UV
+//                                   scale/bias .xyzw; atlas: life-
+//                                   ratio fractional part in .x)
+//   TEXCOORD2     uvAxis         — POPCORN_BILLBOARD (per-cell two-
+//                                  triangle scales .xyzw)
+//   TEXCOORD3     random         — POPCORN_HAS_RANDOM_UV (.x is the
+//                                  per-particle random; read only by
+//                                  the HAS_ALPHA_LUT path)
+//   TEXCOORD4     normalWS       — POPCORN_HAS_NT
+//   TEXCOORD5     tangentWS      — POPCORN_HAS_NT (.w = handedness)
 //   TEXCOORD7     worldPos
 //
 // The popcorn pipeline carries `worldPos.xyz` only — the .w fog-depth
@@ -189,13 +193,29 @@ public struct SpritePSInput
 public struct PopcornPSInput
 {
     public float4 svPosition : SV_Position;
+#if POPCORN_HAS_VC
     public float4 vertColor  : COLOR0;
+#endif
+#if POPCORN_HAS_UV
+#  if POPCORN_ATLAS
     public float4 uv         : TEXCOORD0;
+#  else
+    public float2 uv         : TEXCOORD0;
+#  endif
+#endif
+#if POPCORN_HAS_BB_OR_ATLAS
     public float4 slot1      : TEXCOORD1;
+#endif
+#if POPCORN_BILLBOARD
     public float4 uvAxis     : TEXCOORD2;
+#endif
+#if POPCORN_HAS_RANDOM_UV
     public float4 random     : TEXCOORD3;
+#endif
+#if POPCORN_HAS_NT
     public float3 normalWS   : TEXCOORD4;
     public float4 tangentWS  : TEXCOORD5;
+#endif
     public float3 worldPos   : TEXCOORD7;
 };
 

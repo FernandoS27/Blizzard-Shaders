@@ -216,107 +216,148 @@ public struct WaterVSOutput
     public float4 upAxisWS    : TEXCOORD4;
 };
 
-// PopcornFX vertex stream. Mirrors the convention used by `VSInput<TVF>`:
-// every possible attribute is declared up-front (so the input-element
-// layout the engine binds stays fixed across perms), and the entry
-// shader gates per-feature processing on the policy types — the dead
-// loads compile out cleanly under specialization.
+// PopcornFX vertex stream.
+//
+// Per-perm `-D POPCORN_HAS_*` defines from compile_all_slang.py gate
+// which optional attributes are declared. Slangc lowers each compiled
+// permutation to a DXIL whose input signature only carries the fields
+// the engine actually binds for that perm, so d3d12 PSO creation no
+// longer rejects popcorn_vs (which previously declared all ten ATTRs
+// regardless of permutation). The defines also gate the matching reads
+// in `popcorn_vs.slang` — without the `#if` guard there, the body
+// would reference fields that don't exist on the current perm.
+//
+// We use the preprocessor here rather than `Conditional<T, gate>` on
+// the input struct because slangc 2026.1 (VulkanSDK 1.4.341.1 build)
+// miscompiles compound-bool Conditional gates into raw HLSL
+// `Conditional_0<float, false>`, and the 2026.8 build stack-overflows
+// when an entry-point parameter is a struct containing Conditional
+// fields (only when the file is compiled through the `wc3_shaders`
+// module — standalone repros pass).
 //
 // Slot map (recovered from the original BLS input signatures):
 //
 //   ATTR0  pivot-blended position
-//   ATTR1  object-space normal              (live when HAS_NT)
-//   ATTR2  per-vertex RGBA color            (live when HAS_VC)
-//   ATTR3  primary UV                       (live when TMode.hasUV;
+//   ATTR1  object-space normal              (POPCORN_HAS_NT)
+//   ATTR2  per-vertex RGBA color            (POPCORN_HAS_VC)
+//   ATTR3  primary UV                       (POPCORN_HAS_UV;
 //                                            BILLBOARD declares it but
 //                                            ignores it — the engine
 //                                            still binds the stream)
 //   ATTR4  BILLBOARD: axis0 (.xyzw) /
-//          ATLAS:     uv1   (.xy)
+//          ATLAS:     uv1   (.xy)            (POPCORN_HAS_BB_OR_ATLAS)
 //   ATTR5  BILLBOARD: axis1 (.xyzw) /
-//          ATLAS:     lifeRatio (.x)
-//   ATTR6  per-particle random scalar       (live when HAS_RANDOM
-//                                            and TMode.hasUV — the
-//                                            engine never binds it
-//                                            without a UV stream to
-//                                            attach random to)
-//   ATTR7  object-space tangent + handedness in .w  (live when HAS_NT)
+//          ATLAS:     lifeRatio (.x)         (POPCORN_HAS_BB_OR_ATLAS)
+//   ATTR6  per-particle random scalar       (POPCORN_HAS_RANDOM_UV —
+//                                            the engine never binds
+//                                            random without a UV
+//                                            stream, so the build
+//                                            collapses RANDOM && UV
+//                                            into a single define)
+//   ATTR7  object-space tangent + handedness in .w  (POPCORN_HAS_NT)
 //   ATTR8  particle pivot (.xyz) + per-vertex blend weight (.w)
 //   SV_VertexID                              (read only by BILLBOARD)
 //
 // ATTR4/ATTR5 are declared as float4 to cover the BILLBOARD axis
 // vectors; the ATLAS path uses the .xy / .x lanes of the same slot.
-// The two interpretations are unwrapped by `popcornUv1FromSlot4` and
-// `popcornLifeFromSlot5` in popcorn_vs.slang to keep the entry body
-// readable.
+// `[[vk::location(N)]]` pins the SPIR-V input Location to N regardless
+// of which fields are present in the current perm — without it slang
+// assigns SPIR-V locations from struct member order, so dropping a
+// field via `#if` would shift every later field's location and break
+// the engine's CornFx vertex layout (which binds at Locations 0/2/3/8
+// to match the shipped engine, not 0/1/2/3). On HLSL targets slang
+// concatenates the location number into the semantic index — e.g. an
+// `ATTR1` field with `[[vk::location(1)]]` is emitted as `ATTR10` —
+// and `fix_dxbc_signatures` in build_bls.py divides every sem_idx that
+// is a multiple of 10 by 10 to undo that shift in the BLS-packed DXBC
+// and DXIL.
 public struct PopcornVSInput
 {
     public [[vk::location(0)]] float3 position    : ATTR0;
+#if POPCORN_HAS_NT
     public [[vk::location(1)]] float3 normal      : ATTR1;
+#endif
+#if POPCORN_HAS_VC
     public [[vk::location(2)]] float4 vertColor   : ATTR2;
+#endif
+#if POPCORN_HAS_UV
     public [[vk::location(3)]] float2 uv0         : ATTR3;
+#endif
+#if POPCORN_HAS_BB_OR_ATLAS
     public [[vk::location(4)]] float4 modeSlot4   : ATTR4;
     public [[vk::location(5)]] float4 modeSlot5   : ATTR5;
+#endif
+#if POPCORN_HAS_RANDOM_UV
     public [[vk::location(6)]] float  random      : ATTR6;
+#endif
+#if POPCORN_HAS_NT
     public [[vk::location(7)]] float4 tangent     : ATTR7;
+#endif
     public [[vk::location(8)]] float4 pivot       : ATTR8;
     public uint   vertexID    : SV_VertexID;
 };
 
-// PopcornFX VS → PS payload. The conditional fields mirror the live
-// per-perm slots so the wire signature only carries what the active
-// permutation actually populates — narrow per-mode widths let fxc
-// pack adjacent fields into the same physical register the way the
-// shipped engine does.
+// PopcornFX VS → PS payload. Per-perm `-D POPCORN_HAS_*` defines gate
+// which optional fields are declared so the wire signature only carries
+// what the active permutation actually populates — narrow per-mode
+// widths let fxc pack adjacent fields into the same physical register
+// the way the shipped engine does.
 //
 // Slot map:
 //
 //   SV_Position    clipPos       — always
-//   COLOR0         color         — HAS_VC
-//   TEXCOORD0      uv      (float2) — basic / billboard (.xy)
-//                  uvAtlas (float4) — atlas (.xy current frame,
-//                                            .zw next frame)
-//   TEXCOORD1      axis0Out (float4) — BILLBOARD raw axis vector
-//                  lifeOut  (float)  — ATLAS life-frac (.x only)
-//   TEXCOORD2      axis1Out — BILLBOARD only (.xyzw)
-//   TEXCOORD3      randomOut (float) — HAS_RANDOM && hasUV (the
-//                                      engine never binds ATTR6
-//                                      without a UV stream; gating
-//                                      on hasUV mirrors shipped)
-//   TEXCOORD4      normalWS  — HAS_NT
-//   TEXCOORD5      tangentWS — HAS_NT
+//   COLOR0         color         — POPCORN_HAS_VC
+//   TEXCOORD0      uv      (float2) — POPCORN_HAS_UV && !POPCORN_ATLAS
+//                  uvAtlas (float4) — POPCORN_ATLAS (.xy current frame,
+//                                                    .zw next frame)
+//   TEXCOORD1      axis0Out (float4) — POPCORN_BILLBOARD raw axis vector
+//                  lifeOut  (float)  — POPCORN_ATLAS life-frac (.x only)
+//   TEXCOORD2      axis1Out — POPCORN_BILLBOARD only (.xyzw)
+//   TEXCOORD3      randomOut (float) — POPCORN_HAS_RANDOM_UV (the engine
+//                                      never binds ATTR6 without a UV
+//                                      stream, so the build collapses
+//                                      RANDOM && UV into one define)
+//   TEXCOORD4      normalWS  — POPCORN_HAS_NT
+//   TEXCOORD5      tangentWS — POPCORN_HAS_NT
 //   TEXCOORD7      worldPos  — always
 //
-// Two Conditional fields can share a semantic when their gates are
-// statically mutually exclusive (uv vs uvAtlas on TEXCOORD0,
-// axis0Out vs lifeOut on TEXCOORD1).
-//
-// Requires slangc ≥ 2026.8 — earlier versions miscompile compound
-// bool gates inside Conditional fields, multi-Conditional with
-// different T types on the same struct, and Conditional<float, …>
-// scalar varyings. All three patterns appear in this struct.
-public struct PopcornVSOutput<
-    TMode : IPopcornMode,
-    let HAS_RANDOM : bool,
-    let HAS_VC     : bool,
-    let HAS_NT     : bool>
+// Two fields can share a semantic when their gates are mutually
+// exclusive (uv vs uvAtlas on TEXCOORD0, axis0Out vs lifeOut on
+// TEXCOORD1) — the `#if` form keeps that explicit and lets the SDK
+// slangc emit a clean OSGN, which the previous `Conditional<>` form
+// did not (slangc 2026.1 leaked unlowered `Conditional_0<...>` types
+// through to HLSL emit, breaking the d3d11/d3d12 popcorn_vs builds).
+public struct PopcornVSOutput
 {
     public float4 position : SV_Position;
 
-    public Conditional<float4, HAS_VC> color : COLOR0;
+#if POPCORN_HAS_VC
+    public float4 color : COLOR0;
+#endif
 
-    public Conditional<float2, TMode.hasUV && !TMode.isAtlas> uv      : TEXCOORD0;
-    public Conditional<float4, TMode.isAtlas>                  uvAtlas : TEXCOORD0;
+#if POPCORN_HAS_UV
+#  if POPCORN_ATLAS
+    public float4 uvAtlas : TEXCOORD0;
+#  else
+    public float2 uv      : TEXCOORD0;
+#  endif
+#endif
 
-    public Conditional<float4, TMode.isBillboard> axis0Out : TEXCOORD1;
-    public Conditional<float,  TMode.isAtlas>     lifeOut  : TEXCOORD1;
+#if POPCORN_BILLBOARD
+    public float4 axis0Out : TEXCOORD1;
+    public float4 axis1Out : TEXCOORD2;
+#elif POPCORN_ATLAS
+    public float  lifeOut  : TEXCOORD1;
+#endif
 
-    public Conditional<float4, TMode.isBillboard> axis1Out : TEXCOORD2;
+#if POPCORN_HAS_RANDOM_UV
+    public float randomOut : TEXCOORD3;
+#endif
 
-    public Conditional<float, HAS_RANDOM && TMode.hasUV> randomOut : TEXCOORD3;
-
-    public Conditional<float3, HAS_NT> normalWS  : TEXCOORD4;
-    public Conditional<float4, HAS_NT> tangentWS : TEXCOORD5;
+#if POPCORN_HAS_NT
+    public float3 normalWS  : TEXCOORD4;
+    public float4 tangentWS : TEXCOORD5;
+#endif
 
     public float3 worldPos : TEXCOORD7;
 };
