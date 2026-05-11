@@ -17,14 +17,14 @@ implementing wc3_shaders;
 // reconstruct the bitangent in the pixel shader.
 public struct VSInput<TVF : IVertexFormat>
 {
-    public float3 position    : ATTR0;
-    public float3 normal      : ATTR1;
-    public float4 vertColor   : ATTR2;
-    public float2 uv0         : ATTR3;
-    public float2 uv1         : ATTR4;
-    public float4 weights     : ATTR5;
-    public uint4  boneIndices : ATTR6;
-    public float4 tangent     : ATTR7;
+    public [[vk::location(0)]] float3 position    : ATTR0;
+    public [[vk::location(1)]] float3 normal      : ATTR1;
+    public [[vk::location(2)]] float4 vertColor   : ATTR2;
+    public [[vk::location(3)]] float2 uv0         : ATTR3;
+    public [[vk::location(4)]] float2 uv1         : ATTR4;
+    public [[vk::location(5)]] float4 weights     : ATTR5;
+    public [[vk::location(6)]] uint4  boneIndices : ATTR6;
+    public [[vk::location(7)]] float4 tangent     : ATTR7;
 };
 
 // Full HD vertex-to-pixel payload.
@@ -73,13 +73,13 @@ public struct SDVSOutput
 // a "degenerate vertex" sentinel (see TerrainVSOutput.position quirk).
 public struct TerrainVSInput
 {
-    public float3 position  : ATTR0;
-    public uint4  boneIDs   : ATTR6;
-    public float3 normal    : ATTR1;
-    public float4 tangent   : ATTR7;
-    public float4 vertColor : ATTR2;
-    public float2 uv0       : ATTR3;
-    public float2 uv1       : ATTR4;
+    public [[vk::location(0)]] float3 position  : ATTR0;
+    public [[vk::location(6)]] uint4  boneIDs   : ATTR6;
+    public [[vk::location(1)]] float3 normal    : ATTR1;
+    public [[vk::location(7)]] float4 tangent   : ATTR7;
+    public [[vk::location(2)]] float4 vertColor : ATTR2;
+    public [[vk::location(3)]] float2 uv0       : ATTR3;
+    public [[vk::location(4)]] float2 uv1       : ATTR4;
 };
 
 // Terrain VS → PS payload. Layout matches the slot map the original
@@ -121,14 +121,14 @@ public struct TerrainVSOutput<let HAS_SHADOWS : bool>
 // them (no per-draw skinning on foliage).
 public struct FoliageVSInput
 {
-    public float3 position    : ATTR0;
-    public float4 _boneWeight : ATTR5;
-    public uint4  _boneIndex  : ATTR6;
-    public float3 normal      : ATTR1;
-    public float4 tangent     : ATTR7;
-    public float4 vertColor   : ATTR2;
-    public float2 uv0         : ATTR3;
-    public float2 uv1         : ATTR4;
+    public [[vk::location(0)]] float3 position    : ATTR0;
+    public [[vk::location(5)]] float4 _boneWeight : ATTR5;
+    public [[vk::location(6)]] uint4  _boneIndex  : ATTR6;
+    public [[vk::location(1)]] float3 normal      : ATTR1;
+    public [[vk::location(7)]] float4 tangent     : ATTR7;
+    public [[vk::location(2)]] float4 vertColor   : ATTR2;
+    public [[vk::location(3)]] float2 uv0         : ATTR3;
+    public [[vk::location(4)]] float2 uv1         : ATTR4;
 };
 
 // Foliage VS → PS payload. Shadow-cascade slots are gated by
@@ -164,10 +164,18 @@ public struct FoliageVSOutput<let HAS_SHADOWS : bool>
 // The two slots are non-contiguous (ATTR0 + ATTR3) so the engine can
 // feed sprite draws from the same vertex buffer layout that drives the
 // HD pipeline (which uses ATTR3 for uv0).
+// SpriteVSInput has a gap between ATTR0 and ATTR3 (no normal / vertColor
+// in the sprite vertex stream). Slang's SPIR-V emit for standalone
+// (non-generic) structs with non-contiguous semantic indices assigns
+// sequential locations instead of using the semantic index — so without
+// [[vk::location(3)]], `uv` would land at Location 1, mismatching the
+// renderer's HD-style vertex layout (which puts uv at Location 3 to
+// match every other ATTR3 use). Forcing the location matches the
+// shipped HD layout and is a no-op on HLSL targets.
 public struct SpriteVSInput
 {
-    public float3 position : ATTR0;
-    public float2 uv       : ATTR3;
+    [[vk::location(0)]] public float3 position : ATTR0;
+    [[vk::location(3)]] public float2 uv       : ATTR3;
 };
 
 // Sprite VS → PS payload. Single TEXCOORD0 — the sprite PS samples one
@@ -184,10 +192,10 @@ public struct SpriteVSOutput
 // buffer rather than the 8-attribute HD one.
 public struct WaterVSInput
 {
-    public float3 position    : ATTR0;
-    public float3 normal      : ATTR1;
-    public float4 vertColor   : ATTR2;
-    public float2 uv          : ATTR3;
+    public [[vk::location(0)]] float3 position    : ATTR0;
+    public [[vk::location(1)]] float3 normal      : ATTR1;
+    public [[vk::location(2)]] float4 vertColor   : ATTR2;
+    public [[vk::location(3)]] float2 uv          : ATTR3;
 };
 
 // Water VS → PS payload. Differs from VSOutput in two ways:
@@ -243,15 +251,15 @@ public struct WaterVSOutput
 // readable.
 public struct PopcornVSInput
 {
-    public float3 position    : ATTR0;
-    public float3 normal      : ATTR1;
-    public float4 vertColor   : ATTR2;
-    public float2 uv0         : ATTR3;
-    public float4 modeSlot4   : ATTR4;
-    public float4 modeSlot5   : ATTR5;
-    public float  random      : ATTR6;
-    public float4 tangent     : ATTR7;
-    public float4 pivot       : ATTR8;
+    public [[vk::location(0)]] float3 position    : ATTR0;
+    public [[vk::location(1)]] float3 normal      : ATTR1;
+    public [[vk::location(2)]] float4 vertColor   : ATTR2;
+    public [[vk::location(3)]] float2 uv0         : ATTR3;
+    public [[vk::location(4)]] float4 modeSlot4   : ATTR4;
+    public [[vk::location(5)]] float4 modeSlot5   : ATTR5;
+    public [[vk::location(6)]] float  random      : ATTR6;
+    public [[vk::location(7)]] float4 tangent     : ATTR7;
+    public [[vk::location(8)]] float4 pivot       : ATTR8;
     public uint   vertexID    : SV_VertexID;
 };
 

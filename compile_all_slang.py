@@ -49,7 +49,7 @@ FAMILIES = tuple(FAMILY_CONFIGS.keys())
 TARGETS = {
     "d3d11":  {"target": "dxbc",  "ext": "dxbc",  "vs": "vs_5_0",   "ps": "ps_5_0",   "extra": []},
     "d3d12":  {"target": "dxil",  "ext": "dxil",  "vs": "vs_6_0",   "ps": "ps_6_0",   "extra": []},
-    "vulkan": {"target": "spirv", "ext": "spv",   "vs": "glsl_450", "ps": "glsl_450", "extra": []},
+    "vulkan": {"target": "spirv", "ext": "spv",   "vs": "glsl_450", "ps": "glsl_450", "extra": ["-fvk-use-dx-layout"]},
     "opengl": {"target": "glsl",  "ext": "glsl",  "vs": "glsl_450", "ps": "glsl_450", "extra": []},
     "metal":  {"target": "metal", "ext": "metal", "vs": "sm_6_0",   "ps": "sm_6_0",   "extra": []},
     "webgpu": {"target": "wgsl",  "ext": "wgsl",  "vs": "sm_6_0",   "ps": "sm_6_0",   "extra": []},
@@ -783,7 +783,10 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--family", choices=(*FAMILIES, "all"), default="all")
+    parser.add_argument("--family", action="append",
+                        choices=(*FAMILIES, "all"),
+                        help="Limit compilation to one or more families "
+                             "(repeat the flag). Default: every family.")
     parser.add_argument("--target", choices=(*TARGETS.keys(), "all"),
                         default="d3d11",
                         help="Graphics API target (default: d3d11).")
@@ -835,10 +838,17 @@ def main() -> int:
     if sys.platform == "darwin" and "metal" not in active_targets:
         active_targets.append("metal")
 
+    # `args.family` is None when the flag isn't passed (→ every family),
+    # a list of names when passed one or more times, or `["all"]` for
+    # the explicit catch-all keyword.
+    selected_families = None
+    if args.family and "all" not in args.family:
+        selected_families = set(args.family)
+
     all_results: List[tuple] = []  # (target_key, SweepResult)
     for target_key in active_targets:
         for name, count, mapper, stage in SWEEPS:
-            if args.family != "all" and args.family != name:
+            if selected_families is not None and name not in selected_families:
                 continue
             result = run_sweep(name, count, mapper, stage, target_key, args.jobs)
             all_results.append((target_key, result))
