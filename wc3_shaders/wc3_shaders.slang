@@ -137,3 +137,5 @@ __include "terrain_ps";
 __include "foliage_vs";
 __include "foliage_ps";
 __include "distortion_ps";
+__include "imgui_vs";
+__include "imgui_ps";

@@ -114,6 +114,18 @@
       "entry": "distortion_ps_main",
       "perm_count": 1,
       "bls_name": "distortion.bls"
+    },
+    "imgui_vs": {
+      "stage": "vs",
+      "entry": "imgui_vs_main",
+      "perm_count": 1,
+      "bls_name": "imgui.bls"
+    },
+    "imgui_ps": {
+      "stage": "ps",
+      "entry": "imgui_ps_main",
+      "perm_count": 2,
+      "bls_name": "imgui.bls"
     }
   }
 }

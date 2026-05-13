@@ -159,6 +159,17 @@ public struct SpritePSInput
     public float2 uv         : TEXCOORD0;
 };
 
+// ImGui pixel shader input. Mirrors `ImGuiVSOutput` slot-for-slot.
+// `svPosition` is declared so the ISGN contains the SV_POSITION entry
+// the shipped shader emits; the body never reads it (fxc DCEs the
+// unused interpolant from the `dcl_input_ps` list).
+public struct ImGuiPSInput
+{
+    public float4 svPosition : SV_Position;
+    public float2 uv         : TEXCOORD0;
+    public float4 vertColor  : COLOR0;
+};
+
 // PopcornFX pixel shader input. Mirrors the live members of
 // `PopcornVSOutput` slot-for-slot — each optional slot is `#if`-gated
 // by the same `POPCORN_HAS_*` define that gates the matching VS output

@@ -562,6 +562,29 @@ def map_distortion_ps(idx: int) -> PermSpec:
     return PermSpec(entry="distortion_ps_main", types=[], label="(only)")
 
 
+def map_imgui_vs(idx: int) -> PermSpec:
+    # Single permutation — ImGui VS has a fixed 2D projection layout
+    # and no feature axes.
+    return PermSpec(entry="imgui_vs_main", types=[], label="(only)")
+
+
+def map_imgui_ps(idx: int) -> PermSpec:
+    # 2 permutations driven by 1 bool: HAS_SRGB_DECODE.
+    #
+    # The engine indexes the shipped imgui.bls perms in the inverse
+    # order: perm_000 carries the sRGB-decoded variant (used when
+    # ImGui draws are routed to a linear-storage render target), and
+    # perm_001 is the passthrough modulate (used with an sRGB-format
+    # target where the hardware does the decode on write).
+    has_decode = (idx == 0)
+    dec = "true" if has_decode else "false"
+    return PermSpec(
+        entry="imgui_ps_main",
+        types=[dec],
+        label=f"DEC={dec}",
+    )
+
+
 def map_terrain_vs(idx: int) -> PermSpec:
     # 8 perms = 3 raw bits, but only 4 functionally distinct outputs:
     #   bit 0 — SHADOW_PASS      (caster pass; suppresses cascade output)
@@ -887,6 +910,8 @@ MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "foliage_vs":     map_foliage_vs,
     "foliage_ps":     map_foliage_ps,
     "distortion_ps":  map_distortion_ps,
+    "imgui_vs":       map_imgui_vs,
+    "imgui_ps":       map_imgui_ps,
 }
 
 # Fail fast if the config and the mapper set drift — every family listed

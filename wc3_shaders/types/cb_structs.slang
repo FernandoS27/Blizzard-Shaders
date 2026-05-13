@@ -606,6 +606,36 @@ public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState      s_sceneHdr : re
 public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_sprite : register(t0);
 public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState      s_sprite : register(s0);
 
+// Per-draw constants for the ImGui vertex shader (b2). 12 float4
+// slots — the engine binds 192 bytes here, but the math only consumes
+// the four-slot projection block at cb2[8..11]:
+//
+//   _pad        @ cb2[0..7]    — engine padding, never read.
+//   projection  @ cb2[8..11]   — column-major 2D projection matrix.
+//                                 Column 2 (cb2[10]) is unused by the
+//                                 math, since input positions are 2D —
+//                                 the .z lane of the transform is
+//                                 elided. Stored as a raw float4 array
+//                                 (rather than a `float4x4`) so the
+//                                 per-column accesses lower as direct
+//                                 cb2[i] loads, matching the shipped
+//                                 engine's `cb2[8] / cb2[9] / cb2[11]`
+//                                 reference pattern verbatim.
+public struct ImGuiVSPerDraw
+{
+    public float4 _pad[8];          // cb2[0..7]
+    public float4 projection[4];    // cb2[8..11]
+};
+
+public [[vk::binding(2, 0)]] ConstantBuffer<ImGuiVSPerDraw> imguiVsCB2 : register(b2);
+
+// ImGui PS texture binding. Aliases the same D3D slot the HD mesh PS
+// uses (t0 / s0) — ImGui draws bind their own font / texture atlas
+// here and slangc only emits the binding for the active entry point,
+// so the declaration coexists with the HD material bindings above.
+public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_imgui : register(t0);
+public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState      s_imgui : register(s0);
+
 // Distortion PS texture bindings. The full-screen distortion pass
 // samples a previous-frame scene texture (t0) at four offset UVs
 // driven by an offset map (t1) — see `distortion_ps.slang` for the

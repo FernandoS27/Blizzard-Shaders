@@ -186,6 +186,38 @@ public struct SpriteVSOutput
     public float2 uv       : TEXCOORD0;
 };
 
+// ImGui vertex stream. The engine binds a 4-attribute layout for the
+// in-engine ImGui draws, even though only three of those slots are
+// actually consumed by the math:
+//
+//   ATTR0  position  — 2D position (.xy used; .z lives in the input
+//                      signature as the engine's vertex layout declares
+//                      a float3 here, but the projection only consumes
+//                      the .xy lanes).
+//   ATTR1  _unused1  — declared in the original ISGN with mask `xyz`
+//                      and a `Used` column of zero. The engine still
+//                      binds the stream, so we declare it here as well
+//                      to keep the input signature aligned.
+//   ATTR2  vertColor — per-vertex RGBA tint (forwarded to PS COLOR0).
+//   ATTR3  uv        — per-vertex texture coords (forwarded to PS TEXCOORD0).
+public struct ImGuiVSInput
+{
+    public [[vk::location(0)]] float3 position  : ATTR0;
+    public [[vk::location(1)]] float3 _unused1  : ATTR1;
+    public [[vk::location(2)]] float4 vertColor : ATTR2;
+    public [[vk::location(3)]] float2 uv        : ATTR3;
+};
+
+// ImGui VS → PS payload. Slot order mirrors the engine's OSGN: clip-
+// space position on SV_Position, UV at TEXCOORD0, vertex colour at
+// COLOR0 (the PS reads these in the same order via `ImGuiPSInput`).
+public struct ImGuiVSOutput
+{
+    public float4 position  : SV_Position;
+    public float2 uv        : TEXCOORD0;
+    public float4 vertColor : COLOR0;
+};
+
 // Water vertex stream (subset of the HD stream — no tangent, no UV1,
 // no skinning). Kept separate from VSInput so the water VS emits a
 // 4-attribute input signature matching the engine's water vertex
