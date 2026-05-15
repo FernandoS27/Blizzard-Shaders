@@ -31,6 +31,14 @@ WC3_INCLUDE_DIR = REPO_ROOT / "wc3_shaders"
 CUSTOM_SHADER_DIR = REPO_ROOT / "custom_shaders"
 OUT_BASE = REPO_ROOT / "slang_out"
 
+# When --debug is passed, main() flips these: OUT_BASE moves to a sibling
+# `slang_out_debug` tree (so debug and release bytecode never collide and
+# each gets its own incremental-mtime state) and DEBUG_BUILD makes
+# invoke_slangc emit full debug symbols + no optimisation. build_bls.py is
+# then pointed at slang_out_debug via its existing --slang-out override.
+OUT_BASE_DEBUG = REPO_ROOT / "slang_out_debug"
+DEBUG_BUILD = False
+
 _source_mtime_cache: Optional[float] = None
 
 
@@ -182,6 +190,15 @@ def invoke_slangc(entry: str, target: str, profile: str,
         "-o", str(out_path),
         "-warnings-disable", "39001",
     ]
+    # Debug builds: full debug symbols (-g2) and no optimisation (-O0) so
+    # the bytecode maps cleanly back to slang source in RenderDoc / PIX /
+    # the Vulkan validation layers. SPIR-V additionally needs
+    # -emit-spirv-directly: the default SPIRV-via-GLSL path drops slang's
+    # debug info, the direct backend preserves it.
+    if DEBUG_BUILD:
+        args += ["-g2", "-O0"]
+        if target == "spirv":
+            args.append("-emit-spirv-directly")
     if extra:
         args += extra
     args.append(str(shader_path))
@@ -933,6 +950,8 @@ SWEEPS = [
 
 
 def main() -> int:
+    global OUT_BASE, DEBUG_BUILD
+
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -944,6 +963,12 @@ def main() -> int:
     parser.add_argument("--target", choices=(*TARGETS.keys(), "all"),
                         default="d3d11",
                         help="Graphics API target (default: d3d11).")
+    parser.add_argument("--debug", action="store_true",
+                        help="Emit debug shaders: full debug symbols (-g2), "
+                             "no optimisation (-O0), and -emit-spirv-directly "
+                             "for the vulkan target. Output goes to a separate "
+                             "slang_out_debug/ tree so it never collides with "
+                             "the optimised slang_out/.")
     parser.add_argument("--metallib", metavar="MACOS_MIN",
                         help="Emit compiled Metal bytecode (.metallib) with the given "
                              "macOS deployment target (e.g. `11` or `11.0`). Requires "
@@ -970,6 +995,13 @@ def main() -> int:
     if args.jobs < 1:
         args.jobs = 1
 
+    # --debug retargets the whole run: bytecode goes to slang_out_debug/
+    # and invoke_slangc switches on the -g2 / -O0 / -emit-spirv-directly
+    # path. Done before any path is touched so OUT_BASE is consistent.
+    if args.debug:
+        OUT_BASE = OUT_BASE_DEBUG
+        DEBUG_BUILD = True
+
     # On macOS we can drive Apple's metal compiler to emit real .metallib
     # bytecode (not just .metal source), which build_bls.py can then pack
     # into mtlfs/mtlvs BLS files. On other platforms this step is skipped
@@ -988,6 +1020,9 @@ def main() -> int:
     print(f"Using slangc: {slangc}")
     print(f"Shader module: {SHADER}")
     print(f"Parallel jobs: {args.jobs}")
+    print(f"Output base:   {OUT_BASE}")
+    if DEBUG_BUILD:
+        print("Build mode:    DEBUG (-g2 -O0, +emit-spirv-directly)")
     if mac_min:
         print(f"Metal output: metallib (macOS min={mac_min})")
 
