@@ -23,40 +23,35 @@
 
 implementing wc3_shaders;
 
+// IS_DEPTH_PREPASS / IS_MRT migrated to WC3_IS_DEPTH_PREPASS / WC3_IS_MRT
+// preprocessor defines (see hd_ps.slang for the rationale).
 [shader("fragment")]
-public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> crystal_ps_main<
+public PSOutput crystal_ps_main<
     TFog     : IFogMode,
     TAlpha   : IAlphaTest,
     TMat     : IMaterialLayer,
     let HAS_IBL            : bool,
-    let IS_DEPTH_PREPASS   : bool,
-    let IS_MRT             : bool,
     let HAS_DEBUG_VIS      : bool
 >(PSInput input, uint frontFace : SV_IsFrontFace)
 {
-    PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> output;
+    PSOutput output;
     bool isFrontFace = frontFace != 0;
 
-    // Early backface discard for every non-IBL non-prepass draw. The IBL
-    // path delays it until the world normal has been produced; the
-    // prepass runs it inside its body.
-    if (!HAS_IBL && !IS_DEPTH_PREPASS)
-        backfaceDiscard(input.worldPos.w);
-
-    if (IS_DEPTH_PREPASS)
+#if WC3_IS_DEPTH_PREPASS
     {
-        // Both branches discard backfaces themselves; the stub does no
-        // more work, the body runs the alpha test. NEVER follow the stub
-        // with an unconditional `discard`: that would kill every
-        // surviving fragment and suppress the rasterizer's depth write,
-        // defeating the whole prepass.
         if (!TAlpha.enabled)
             depthPrepassStub(input);
         else
             crystalDepthPrepassBody<TAlpha, TMat>(input, isFrontFace);
-        output.color = float4(0, 0, 0, 0);
         return output;
     }
+#else
+    {
+
+    // Early backface discard for non-IBL draws. The IBL path delays it
+    // until the world normal has been produced.
+    if (!HAS_IBL)
+        backfaceDiscard(input.worldPos.w);
 
     // Dispatch to the appropriate lit body.
     float4 result;
@@ -70,22 +65,21 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> crystal_ps_main<
     // MRT path: alpha test + deferred-coverage gate + G-buffer payloads.
     float3 mrtNormal = float3(0, 0, 0);
     float  preAlpha  = 0;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
         TAlpha.test(result.w, psCB2.alphaRef);
 
-        // Deferred-only alpha gate on the centre albedo sample (matches
-        // the HD path — we want the same coverage mask even when the
-        // refracted colour is wildly different).
         float mrtAlpha = t_albedo.Sample(s_albedo, input.uv.xy).w;
         mrtAlphaTest(mrtAlpha, psCB2.inverseSoftness);
 
         mrtNormal = computeMRTNormal(input, isFrontFace);
         preAlpha  = result.w;
     }
-
-    if (!IS_MRT)
+#else
+    {
         TAlpha.test(result.w, psCB2.alphaRef);
+    }
+#endif
 
     // When fog is on we pre-multiply alpha by inverseSoftness so the fog
     // blend below doesn't further modulate it; the non-fog branch does
@@ -135,11 +129,15 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> crystal_ps_main<
     }
 
     output.color = result;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
         output.specular = float4(input.worldPos.z, 0, 0, 1);
         output.normal   = float4(mrtNormal, preAlpha);
     }
+#endif
 
     return output;
+
+    }
+#endif
 }

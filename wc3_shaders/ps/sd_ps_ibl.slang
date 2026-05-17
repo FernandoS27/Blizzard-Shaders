@@ -132,12 +132,14 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
     // VS provided the cascade-space clip coords. The generic SD path
     // passes this flag false and skips shadow work entirely.
     float shadowAtten = 1.0;
+#if WC3_HAS_SHADOWS
     if (HAS_EXTRA_VERTS)
     {
         shadowAtten = sdSampleShadowCascades(
             input.shadowClip0, input.shadowClip1, input.shadowClip2,
             asuint(sdPsCB1.numCascades));
     }
+#endif
 
     // `lightCountSlot.z` stores the uint-reinterpreted light count —
     // the SD CB uses a float slot here.

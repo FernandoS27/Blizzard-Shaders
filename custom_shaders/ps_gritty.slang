@@ -242,12 +242,14 @@ public float4 psGrittyIBLBody<
     albedo.xyz = grittyRecolorRough(albedo.xyz, metalness, roughness, blendWeight);
 
     float shadowAtten = 1.0;
+#if WC3_HAS_SHADOWS
     if (HAS_EXTRA_VERTS)
     {
         shadowAtten = sdSampleShadowCascades(
             input.shadowClip0, input.shadowClip1, input.shadowClip2,
             asuint(sdPsCB1.numCascades));
     }
+#endif
 
     float3 tsNormal = decodeNormalMap(normalSample);
     float3 viewNormal = tangentToWorld(tsNormal, input.tangentWS.xyz, input.normalWS.xyz, input.tangentWS.w);

@@ -19,14 +19,15 @@
 
 implementing custom_shaders;
 
+// HAS_SHADOWS migrated to the `WC3_HAS_SHADOWS` preprocessor define
+// (see types/vs_io.slang for the rationale).
 [shader("vertex")]
-public VSOutput<HAS_SHADOWS> gritty_vs_main<
+public VSOutput gritty_vs_main<
     TSkin : ISkinning,
-    TVF   : IVertexFormat,
-    let HAS_SHADOWS : bool
+    TVF   : IVertexFormat
 >(VSInput<TVF> input)
 {
-    VSOutput<HAS_SHADOWS> output;
+    VSOutput output;
 
     float3 skinnedPos, skinnedNormal, skinnedTangent;
     TSkin.transform(
@@ -49,7 +50,7 @@ public VSOutput<HAS_SHADOWS> gritty_vs_main<
         output.tangentWS = float4(0, 0, 0, 0);
     }
 
-    if (HAS_SHADOWS)
+#if WC3_HAS_SHADOWS
     {
         float4 worldPos4 = computeWorldPos4(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldPos4.z, vsCB2.clipHeight, vsCB2.underWater);
@@ -60,15 +61,12 @@ public VSOutput<HAS_SHADOWS> gritty_vs_main<
         output.shadowClip1 = sc1;
         output.shadowClip2 = sc2;
     }
-    else
+#else
     {
         float worldZ = computeScalarWorldZ(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldZ, vsCB2.clipHeight, vsCB2.underWater);
-
-        output.shadowClip0 = float4(0, 0, 0, 0);
-        output.shadowClip1 = float4(0, 0, 0, 0);
-        output.shadowClip2 = float4(0, 0, 0, 0);
     }
+#endif
 
     if (TVF.hasVertexColor)
         output.color = vsCB2.diffuseColor * input.vertColor;

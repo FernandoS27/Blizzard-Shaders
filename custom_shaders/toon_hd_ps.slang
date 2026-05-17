@@ -23,34 +23,33 @@
 
 implementing custom_shaders;
 
+// IS_DEPTH_PREPASS / IS_MRT migrated to WC3_IS_DEPTH_PREPASS / WC3_IS_MRT
+// preprocessor defines (see hd_ps.slang for the rationale).
 [shader("fragment")]
-public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> toon_ps_main<
+public PSOutput toon_ps_main<
     TFog     : IFogMode,
     TAlpha   : IAlphaTest,
     TMat     : IMaterialLayer,
     let HAS_IBL            : bool,
     let HAS_EXTRA_VERTS    : bool,
-    let IS_DEPTH_PREPASS   : bool,
-    let IS_MRT             : bool,
     let HAS_DEBUG_VIS      : bool
 >(PSInput input, uint frontFace : SV_IsFrontFace)
 {
-    PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> output;
+    PSOutput output;
     bool isFrontFace = frontFace != 0;
 
-    if (IS_DEPTH_PREPASS)
+#if WC3_IS_DEPTH_PREPASS
     {
         // The depth prepass only cares about producing an identical
-        // alpha mask to the lit pass. Since toon materials run the same
-        // fresnel/cloak alpha math as HD, we reuse the HD prepass body
-        // unchanged.
+        // alpha mask to the lit pass. Toon reuses the HD prepass body.
         if (!TAlpha.enabled)
             depthPrepassStub(input);
         else
             depthPrepassBody<TAlpha, TMat>(input, isFrontFace);
-        output.color = float4(0, 0, 0, 0);
         return output;
     }
+#else
+    {
 
     // Toon body dispatch. Three variants paralleling the HD bodies:
     //   - HAS_IBL            → full shadow-cascaded + IBL-ambient toon.
@@ -64,11 +63,10 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> toon_ps_main<
     else
         result = psToonStandardBody<HAS_DEBUG_VIS>(input, isFrontFace);
 
-    // MRT + alpha-test + fog sequencing: byte-identical to hd_ps so the
-    // toon path drops into the same render targets / deferred resolver.
+    // MRT + alpha-test + fog sequencing: byte-identical to hd_ps.
     float3 mrtNormal = float3(0, 0, 0);
     float preAlpha = 0;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
         TAlpha.test(result.w, psCB2.alphaRef);
 
@@ -78,9 +76,11 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> toon_ps_main<
         mrtNormal = computeMRTNormal(input, isFrontFace);
         preAlpha = result.w;
     }
-
-    if (!IS_MRT)
+#else
+    {
         TAlpha.test(result.w, psCB2.alphaRef);
+    }
+#endif
 
     if (TFog.hasFog)
         result.w = psCB2.inverseSoftness * result.w;
@@ -116,17 +116,19 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> toon_ps_main<
             result.w = psCB2.inverseSoftness * result.w;
     }
 
-    // Early backface discard for the non-IBL / non-prepass paths — the
-    // IBL body defers it, the prepass handles it internally.
     if (HAS_IBL)
         backfaceDiscard(input.worldPos.w);
 
     output.color = result;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
         output.specular = float4(input.worldPos.z, 0, 0, 1);
         output.normal = float4(mrtNormal, preAlpha);
     }
+#endif
 
     return output;
+
+    }
+#endif
 }

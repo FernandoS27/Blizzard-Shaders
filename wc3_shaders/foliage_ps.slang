@@ -28,25 +28,27 @@
 
 implementing wc3_shaders;
 
+// HAS_NULL_PASS / HAS_MRT migrated to WC3_TERRAIN_NULL_PASS / WC3_HAS_MRT
+// preprocessor defines (see terrain_ps.slang for the rationale — same
+// shape, just shared with the foliage struct). HAS_SHADOWS / TFog /
+// HAS_ALPHA_TEST / HAS_TINT stay as slang template params.
 [shader("fragment")]
-public FoliagePSOutput<!HAS_NULL_PASS, !HAS_NULL_PASS && HAS_MRT> foliage_ps_main<
-    let HAS_NULL_PASS  : bool,
-    let HAS_MRT        : bool,
+public FoliagePSOutput foliage_ps_main<
     let HAS_SHADOWS    : bool,
     TFog               : IFogMode,
     let HAS_ALPHA_TEST : bool,
     let HAS_TINT       : bool>(
     FoliagePSInput input)
 {
-    FoliagePSOutput<!HAS_NULL_PASS, !HAS_NULL_PASS && HAS_MRT> output;
+    FoliagePSOutput output;
 
-    if (HAS_NULL_PASS)
+#if WC3_TERRAIN_NULL_PASS
     {
         // 64-perm "skip" stub. With alpha-test enabled the stub still
         // performs the discard so the depth buffer punches the right
         // silhouette through cut-out leaves; otherwise it's a bare
-        // `ret` with zero output dcls (the Conditional gates collapse
-        // every SV_Target away, matching the shipped 312-byte perm).
+        // `ret` with zero output dcls (the struct's color/MRT slots are
+        // gated out via #if in ps_io.slang, matching the shipped layout).
         if (HAS_ALPHA_TEST)
         {
             float alphaTex = t_foliageAlbedo.Sample(s_foliageAlbedo,
@@ -56,13 +58,13 @@ public FoliagePSOutput<!HAS_NULL_PASS, !HAS_NULL_PASS && HAS_MRT> foliage_ps_mai
         }
         return output;
     }
+#else
+    {
 
     FoliageShadeResult shaded =
         foliagePSBody<TFog, HAS_SHADOWS, HAS_TINT>(input);
 
-    // Alpha-test discard: recompute against the raw texAlpha (the body
-    // saved it on the result struct because the multiply-into-color
-    // path consumes it elsewhere).
+    // Alpha-test discard: recompute against the raw texAlpha.
     if (HAS_ALPHA_TEST)
     {
         if (input.color.w * shaded.texAlpha - psCB2.alphaRef < 0.0)
@@ -71,17 +73,16 @@ public FoliagePSOutput<!HAS_NULL_PASS, !HAS_NULL_PASS && HAS_MRT> foliage_ps_mai
 
     output.color = float4(shaded.color, shaded.alpha);
 
-    if (HAS_MRT)
+#if WC3_HAS_MRT
     {
-        // SV_Target1 — depth-feedback (view-space Z + sentinel .w = 1).
         output.depthFeed = float4(shaded.viewZ, 0, 0, 1);
-        // SV_Target2 — packed world normal `(n + 1) · 0.5` in RGB,
-        // pre-fog alpha in .w. The debug-viz path keeps this output
-        // intact (the engine quirk is to substitute *only* SV_Target0
-        // under TINT_OVERRIDE).
         output.normalEnc = float4(shaded.worldNormal * 0.5 + 0.5,
                                   shaded.alpha);
     }
+#endif
 
     return output;
+
+    }
+#endif
 }

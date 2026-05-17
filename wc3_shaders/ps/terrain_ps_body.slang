@@ -100,12 +100,14 @@ public TerrainShadeResult terrainPSBody<
 
     // ---- Shadow visibility ----
     float shadowVis = 1.0;
+#if WC3_HAS_SHADOWS
     if (HAS_SHADOWS)
     {
         shadowVis = computeTerrainShadow(
             input.shadowClip0, input.shadowClip1, input.shadowClip2,
             asuint(sdPsCB1.numCascades));
     }
+#endif
 
     float NdotV = dot(worldN, viewDir);
 

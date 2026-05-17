@@ -15,6 +15,7 @@ import argparse
 import concurrent.futures
 import glob
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -180,8 +181,14 @@ def invoke_slangc(entry: str, target: str, profile: str,
     args = [slangc_exe, "-entry", entry]
     for t in specialize:
         args += ["-specialize", t]
-    for d in defines or []:
-        args += ["-D", d]
+    # WGSL backend uses #ifdef WGSL_TARGET to shrink PS binding offsets.
+    effective_defines = list(defines or [])
+    if target == "wgsl":
+        effective_defines.append("WGSL_TARGET=1")
+    for d in effective_defines:
+        # slangc 2026.x rejects `-D NAME=val` (space-separated) when
+        # followed by `-specialize`; use the concatenated form.
+        args += [f"-D{d}"]
     for inc in include_dirs or []:
         args += ["-I", str(inc)]
     args += [
@@ -216,7 +223,74 @@ def invoke_slangc(entry: str, target: str, profile: str,
         err_path = out_path.with_suffix(out_path.suffix + ".err")
         err_path.write_text(proc.stderr or proc.stdout or "(no slangc output)")
         return False
+    if target == "wgsl" and out_path.exists() and out_path.stat().st_size > 0:
+        fix_wgsl_depth_textures(out_path)
+        rename_wgsl_entry_to_main(out_path)
     return out_path.exists() and out_path.stat().st_size > 0
+
+
+def rename_wgsl_entry_to_main(wgsl_path: Path) -> None:
+    """Rename the entry function to `main` — the WebGPU backend uses
+    a fixed "main" entryPoint."""
+    text = wgsl_path.read_text(encoding="utf-8")
+    new_text = re.sub(
+        r"(@(vertex|fragment|compute)[ \t\r\n]+fn[ \t]+)[A-Za-z_]\w*",
+        r"\1main",
+        text,
+    )
+    if new_text != text:
+        wgsl_path.write_text(new_text, encoding="utf-8")
+
+
+def fix_wgsl_depth_textures(wgsl_path: Path) -> None:
+    """Propagate `texture_depth_2d` typing from textureSampleCompareLevel
+    use sites back through the call chain. Works around slangc 2026.x
+    emitting comparison-sampled textures as texture_2d<f32>."""
+    text = wgsl_path.read_text(encoding="utf-8")
+
+    # Seed: every NAME that's the texture argument to textureSampleCompareLevel.
+    depth_names = set(re.findall(r"textureSampleCompareLevel\s*\(\s*\(?\s*([A-Za-z_]\w*)",
+                                  text))
+    if not depth_names:
+        return
+
+    fn_sig_re = re.compile(r"\bfn\s+([A-Za-z_]\w*)\s*\(([^)]*)\)")
+    fn_params: Dict[str, List[str]] = {}
+    for m in fn_sig_re.finditer(text):
+        fname = m.group(1)
+        names = []
+        for piece in m.group(2).split(","):
+            pm = re.match(r"([A-Za-z_]\w*)\s*:", piece.strip())
+            if pm:
+                names.append(pm.group(1))
+        fn_params[fname] = names
+
+    for _ in range(8):
+        grew = False
+        for fname, params in fn_params.items():
+            depth_param_positions = [i for i, p in enumerate(params) if p in depth_names]
+            if not depth_param_positions:
+                continue
+            for call_m in re.finditer(rf"\b{re.escape(fname)}\s*\(([^)]*)\)", text):
+                args = [a.strip() for a in call_m.group(1).split(",")]
+                for pos in depth_param_positions:
+                    if pos < len(args):
+                        arg = args[pos].lstrip("(").rstrip(")").strip()
+                        if re.fullmatch(r"[A-Za-z_]\w*", arg) and arg not in depth_names:
+                            depth_names.add(arg)
+                            grew = True
+        if not grew:
+            break
+
+
+    name_alt = "|".join(re.escape(n) for n in sorted(depth_names))
+    new_text = re.sub(
+        rf"\b({name_alt})\b(\s*:\s*)texture_2d<\s*f32\s*>",
+        r"\1\2texture_depth_2d",
+        text,
+    )
+    if new_text != text:
+        wgsl_path.write_text(new_text, encoding="utf-8")
 
 
 def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
@@ -345,9 +419,23 @@ def map_hd_vs(idx: int) -> PermSpec:
     hasU1 = "true" if texcoord >= 2 else "false"
     shad  = "true" if (shadows == 1 and prepass == 0) else "false"
 
+    # HAS_SHADOWS is no longer a slang `let HAS_SHADOWS : bool` template
+    # parameter — VSOutput dropped the template so its WGSL emit doesn't
+    # tunnel `Conditional<float4, HAS_SHADOWS>` through `array<float4, 1>`
+    # (rejected on @location varyings). We pass it as a preprocessor `-D`
+    # define instead; types/vs_io.slang gates the shadowClip fields on
+    # `#if HAS_SHADOWS`, and hd_vs.slang's body switches between the
+    # shadow and non-shadow paths with the same #if.
+    # Match popcorn's pattern: only emit -D when the flag is true (slangc
+    # rejects `-D NAME=0` in this build); the #if HAS_SHADOWS gate evaluates
+    # to 0 when the define is absent (slangc warns 15205 but still compiles).
+    defines: List[str] = []
+    if shad == "true":
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="vs_main",
-        types=[skin, f"VertexFormat<{hasT},{hasC},{hasU0},{hasU1}>", shad],
+        types=[skin, f"VertexFormat<{hasT},{hasC},{hasU0},{hasU1}>"],
+        defines=defines,
         label=f"{skin}+T={hasT}+C={hasC}+UV={texcoord}+SH={shad}",
     )
 
@@ -392,52 +480,74 @@ def _hd_ps_types(b):
 def map_hd_ps(idx: int) -> PermSpec:
     b = _hd_ps_bits(idx)
     fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS = _hd_ps_types(b)
+    defines: List[str] = []
+    if b["dp"]:
+        defines.append("WC3_IS_DEPTH_PREPASS=1")
+    if b["mrt"]:
+        defines.append("WC3_IS_MRT=1")
+    # `ev` (HAS_EXTRA_VERTS) gates the shadowClip0..2 fields in PSInput.
+    # Must mirror the VS-side WC3_HAS_SHADOWS so the @location indices
+    # align across VS-output / PS-input on WGSL (the renderer pairs the
+    # VS perm with shadows=true to the PS perm with ev=true).
+    if b["ev"]:
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="ps_main",
-        types=[fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS],
+        types=[fog, alpha, mat, iblS, evS, dbgS],
+        defines=defines,
         label=f"{fog}+{alpha}+{mat}+IBL={iblS}+EV={evS}+DP={dpS}+MRT={mrtS}+DBG={dbgS}",
     )
 
 
 def map_toon_hd_vs(idx: int) -> PermSpec:
     # Toon-HD shares the HD vertex-format encoding 1:1 — same 144 perms,
-    # same specialisation types, different entry point.
+    # same specialisation types + defines, different entry point.
     spec = map_hd_vs(idx)
-    return PermSpec(entry="toon_vs_main", types=spec.types, label=spec.label)
+    return PermSpec(entry="toon_vs_main", types=spec.types, defines=spec.defines,
+                    label=spec.label)
 
 
 def map_toon_hd_ps(idx: int) -> PermSpec:
     # Toon-HD shares the HD pixel-shader 9-bit feature encoding 1:1 —
     # same 512 perms, same specialisation types, different entry point.
     spec = map_hd_ps(idx)
-    return PermSpec(entry="toon_ps_main", types=spec.types, label=spec.label)
+    return PermSpec(entry="toon_ps_main", types=spec.types, defines=spec.defines,
+                    label=spec.label)
 
 
 def map_gritty_hd_vs(idx: int) -> PermSpec:
     # Gritty-HD shares the HD vertex-format encoding 1:1 — same 144
-    # perms, same specialisation types, different entry point.
+    # perms, same specialisation types + defines, different entry point.
     spec = map_hd_vs(idx)
-    return PermSpec(entry="gritty_vs_main", types=spec.types, label=spec.label)
+    return PermSpec(entry="gritty_vs_main", types=spec.types, defines=spec.defines,
+                    label=spec.label)
 
 
 def map_gritty_hd_ps(idx: int) -> PermSpec:
     # Gritty-HD shares the HD pixel-shader 9-bit feature encoding 1:1 —
     # same 512 perms, same specialisation types, different entry point.
     spec = map_hd_ps(idx)
-    return PermSpec(entry="gritty_ps_main", types=spec.types, label=spec.label)
+    return PermSpec(entry="gritty_ps_main", types=spec.types, defines=spec.defines,
+                    label=spec.label)
 
 
 def map_crystal_ps(idx: int) -> PermSpec:
     # Crystal shares hd_ps's 9-bit encoding for most features. Bit 2 /
     # EXTRA_VERTS is unused on crystal's PS signature (crystal doesn't
     # expose a shadow-cascade path yet), so we drop it from the
-    # specialisation tuple — `crystal_ps_main` keeps the shorter
-    # 7-let form.
+    # specialisation tuple. IS_DEPTH_PREPASS / IS_MRT migrated to
+    # preprocessor defines (see map_hd_ps).
     b = _hd_ps_bits(idx)
     fog, alpha, mat, iblS, _evS, dpS, mrtS, dbgS = _hd_ps_types(b)
+    defines: List[str] = []
+    if b["dp"]:
+        defines.append("WC3_IS_DEPTH_PREPASS=1")
+    if b["mrt"]:
+        defines.append("WC3_IS_MRT=1")
     return PermSpec(
         entry="crystal_ps_main",
-        types=[fog, alpha, mat, iblS, dpS, mrtS, dbgS],
+        types=[fog, alpha, mat, iblS, dbgS],
+        defines=defines,
         label=f"{fog}+{alpha}+{mat}+IBL={iblS}+DP={dpS}+MRT={mrtS}+DBG={dbgS}",
     )
 
@@ -457,9 +567,16 @@ def map_sd_on_hd_vs(idx: int) -> PermSpec:
     hasU1 = "true" if texcoord >= 2 else "false"
     shad  = "true" if (shadows == 1 and prepass == 0) else "false"
 
+    # Same HAS_SHADOWS-as-define migration as map_hd_vs — see the comment
+    # there. The slang entry no longer takes a `let HAS_SHADOWS : bool`,
+    # and the cascade fields are gated by `#if HAS_SHADOWS` in vs_io.slang.
+    defines: List[str] = []
+    if shad == "true":
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="sd_on_hd_vs_main",
-        types=[skin, f"VertexFormat<{hasT},{hasC},{hasU0},{hasU1}>", shad],
+        types=[skin, f"VertexFormat<{hasT},{hasC},{hasU0},{hasU1}>"],
+        defines=defines,
         label=f"{skin}+T={hasT}+C={hasC}+UV={texcoord}+SH={shad}",
     )
 
@@ -496,9 +613,17 @@ def map_sd_on_hd_ps(idx: int) -> PermSpec:
     srgbS = "true" if srgb else "false"
     dbgS  = "true" if dbg else "false"
 
+    defines: List[str] = []
+    if dp:
+        defines.append("WC3_IS_DEPTH_PREPASS=1")
+    if mrt:
+        defines.append("WC3_IS_MRT=1")
+    if ev:
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="sd_on_hd_ps_main",
-        types=[fog, alpha, iblS, evS, dpS, mrtS, srgbS, dbgS],
+        types=[fog, alpha, iblS, evS, srgbS, dbgS],
+        defines=defines,
         label=(f"{fog}+{alpha}+IBL={iblS}+EV={evS}+DP={dpS}"
                f"+MRT={mrtS}+SRGB={srgbS}+DBG={dbgS}"),
     )
@@ -616,12 +741,17 @@ def map_terrain_vs(idx: int) -> PermSpec:
     vert_color  = bool(idx & 4)
     has_shadows = receive and not shadow_pass
 
-    vc = "true" if vert_color  else "false"
-    sh = "true" if has_shadows else "false"
+    vc = "true" if vert_color else "false"
+    # HAS_SHADOWS migrated to WC3_HAS_SHADOWS preprocessor define (see
+    # map_hd_vs). HAS_VERTEX_COLOR stays as a slang template param.
+    defines: List[str] = []
+    if has_shadows:
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="terrain_vs_main",
-        types=[vc, sh],
-        label=f"VC={vc}+SH={sh}",
+        types=[vc],
+        defines=defines,
+        label=f"VC={vc}+SH={'true' if has_shadows else 'false'}",
     )
 
 
@@ -637,12 +767,17 @@ def map_foliage_vs(idx: int) -> PermSpec:
     wind        = bool(idx & 4)
     has_shadows = receive and not shadow_pass
 
-    sh = "true" if has_shadows else "false"
-    wd = "true" if wind        else "false"
+    wd = "true" if wind else "false"
+    # HAS_SHADOWS migrated to WC3_HAS_SHADOWS preprocessor define (see
+    # map_hd_vs). HAS_WIND stays as a slang template param.
+    defines: List[str] = []
+    if has_shadows:
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="foliage_vs_main",
-        types=[sh, wd],
-        label=f"SH={sh}+WIND={wd}",
+        types=[wd],
+        defines=defines,
+        label=f"SH={'true' if has_shadows else 'false'}+WIND={wd}",
     )
 
 
@@ -677,9 +812,21 @@ def map_foliage_ps(idx: int) -> PermSpec:
     shS  = "true" if shadows   else "false"
     atS  = "true" if at        else "false"
     tnS  = "true" if tint      else "false"
+    # HAS_NULL_PASS / HAS_MRT migrated to preprocessor defines so
+    # FoliagePSOutput can use #if instead of `Conditional<>` (see
+    # foliage_ps.slang). WC3_HAS_MRT factors in NULL_PASS already; the
+    # script sets it explicitly rather than relying on derivation.
+    defines: List[str] = []
+    if null_pass:
+        defines.append("WC3_TERRAIN_NULL_PASS=1")
+    elif mrt:
+        defines.append("WC3_HAS_MRT=1")
+    if shadows:
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="foliage_ps_main",
-        types=[npS, mrtS, shS, fog, atS, tnS],
+        types=[shS, fog, atS, tnS],
+        defines=defines,
         label=f"NULL={npS}+MRT={mrtS}+SH={shS}+{fog}+AT={atS}+TINT={tnS}",
     )
 
@@ -705,9 +852,19 @@ def map_terrain_ps(idx: int) -> PermSpec:
     mrtS = "true" if mrt      else "false"
     shS  = "true" if shadows  else "false"
     tnS  = "true" if tint     else "false"
+    # HAS_NULL_PASS / HAS_MRT migrated to preprocessor defines (see
+    # terrain_ps.slang and ps_io.slang for the rationale).
+    defines: List[str] = []
+    if null_pass:
+        defines.append("WC3_TERRAIN_NULL_PASS=1")
+    elif mrt:
+        defines.append("WC3_HAS_MRT=1")
+    if shadows:
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="terrain_ps_main",
-        types=[npS, mrtS, shS, tnS],
+        types=[shS, tnS],
+        defines=defines,
         label=f"NULL={npS}+MRT={mrtS}+SH={shS}+TINT={tnS}",
     )
 
@@ -862,10 +1019,15 @@ def map_popcorn_ps(idx: int) -> PermSpec:
         defines.append("POPCORN_HAS_NT=1")
     if (inner & 0x10) and uv_var != 0:
         defines.append("POPCORN_HAS_RANDOM_UV=1")
+    # HAS_GBUFFER && !IS_MOTION_PASS migrated to WC3_POPCORN_HAS_GBUFFER
+    # preprocessor define so the deferred-targets struct fields can be
+    # #if-gated (see popcorn_ps.slang for the WGSL emit rationale).
+    if (inner & 0x01) and uv_var != 2:
+        defines.append("WC3_POPCORN_HAS_GBUFFER=1")
 
     return PermSpec(
         entry="popcorn_ps_main",
-        types=[mode, fog, is_motion, has_gbuf, has_sp, has_alut, has_vc, has_lit],
+        types=[mode, fog, is_motion, has_sp, has_alut, has_vc, has_lit],
         label=(f"{mode}+M={is_motion}+{fog}+G={has_gbuf}+SP={has_sp}"
                f"+ALUT={has_alut}+VC={has_vc}+LIT={has_lit}"),
         defines=defines,

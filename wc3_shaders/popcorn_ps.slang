@@ -45,19 +45,23 @@
 
 implementing wc3_shaders;
 
+// HAS_GBUFFER && !IS_MOTION_PASS migrated to the WC3_POPCORN_HAS_GBUFFER
+// preprocessor define so the depthRT/materialRT fields can be #if-gated
+// (see types/ps_io.slang for the WGSL emit rationale). IS_MOTION_PASS
+// stays as a slang template param — it gates body dispatch only, not
+// struct fields.
 [shader("fragment")]
-public PopcornPSOutput<HAS_GBUFFER && !IS_MOTION_PASS> popcorn_ps_main<
+public PopcornPSOutput popcorn_ps_main<
     TMode  : IPopcornMode,
     TFog   : IFogMode,
     let IS_MOTION_PASS     : bool,
-    let HAS_GBUFFER        : bool,
     let HAS_SOFT_PARTICLES : bool,
     let HAS_ALPHA_LUT      : bool,
     let HAS_VC             : bool,
     let HAS_LIT            : bool
 >(PopcornPSInput input, uint frontFace : SV_IsFrontFace)
 {
-    PopcornPSOutput<HAS_GBUFFER && !IS_MOTION_PASS> output;
+    PopcornPSOutput output;
 
     if (IS_MOTION_PASS)
     {
@@ -77,14 +81,14 @@ public PopcornPSOutput<HAS_GBUFFER && !IS_MOTION_PASS> popcorn_ps_main<
     output.color = shaded.color;
 
     // Deferred g-buffer. RT1 carries the view-space depth + a packed
-    // normal hint; RT2 the default material slot + the pre-SP /
-    // pre-fog alpha (the deferred resolver re-applies its own
-    // alpha-blend pass).
-    if (HAS_GBUFFER)
+    // normal hint; RT2 the default material slot + the pre-SP / pre-fog
+    // alpha (the deferred resolver re-applies its own alpha-blend pass).
+#if WC3_POPCORN_HAS_GBUFFER
     {
         output.depthRT    = float4(input.worldPos.z, 0.0, 0.0, 1.0);
         output.materialRT = float4(GBUFFER_DEFAULT_MAT, shaded.gbufferAlpha);
     }
+#endif
 
     return output;
 }

@@ -82,11 +82,10 @@ bool isDegenerateVertex(uint4 boneIDs)
 
 // Terrain VS body. Returns the fully populated VS output payload; the
 // entry shader thin-wrappers this and forwards it.
-public TerrainVSOutput<HAS_SHADOWS> terrainVSBody<
-    let HAS_VERTEX_COLOR : bool,
-    let HAS_SHADOWS      : bool>(TerrainVSInput input)
+public TerrainVSOutput terrainVSBody<
+    let HAS_VERTEX_COLOR : bool>(TerrainVSInput input)
 {
-    TerrainVSOutput<HAS_SHADOWS> output;
+    TerrainVSOutput output;
 
     // 1. Splat layer indices pass through to the PS unchanged.
     output.boneIDs = input.boneIDs;
@@ -130,7 +129,9 @@ public TerrainVSOutput<HAS_SHADOWS> terrainVSBody<
     // cb2[0..3] — distinct from the world matrix in cb2[4..7], because
     // the engine bakes its own near-shadow bias / clip-plane fix into
     // the shadow path's transform.
-    if (HAS_SHADOWS)
+    // Cascade fields only exist on this perm when WC3_HAS_SHADOWS is set
+    // (gated on the TerrainVSOutput struct in types/vs_io.slang).
+#if WC3_HAS_SHADOWS
     {
         float4 shadowPos = mul(terrainVsCB2.shadowWorld,
                                float4(input.position, 1.0));
@@ -138,6 +139,7 @@ public TerrainVSOutput<HAS_SHADOWS> terrainVSBody<
         output.shadowClip1 = mul(vsCB1.cascade1, shadowPos);
         output.shadowClip2 = mul(vsCB1.cascade2, shadowPos);
     }
+#endif
 
     return output;
 }

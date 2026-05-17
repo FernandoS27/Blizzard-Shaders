@@ -23,10 +23,12 @@
 
 implementing wc3_shaders;
 
+// HAS_SHADOWS migrated to the `WC3_HAS_SHADOWS` preprocessor define
+// (see types/vs_io.slang). HAS_VERTEX_COLOR stays as a slang template
+// param — it gates body logic only, not VS→PS struct fields.
 [shader("vertex")]
-public TerrainVSOutput<HAS_SHADOWS> terrain_vs_main<
-    let HAS_VERTEX_COLOR : bool,
-    let HAS_SHADOWS      : bool>(TerrainVSInput input)
+public TerrainVSOutput terrain_vs_main<
+    let HAS_VERTEX_COLOR : bool>(TerrainVSInput input)
 {
-    return terrainVSBody<HAS_VERTEX_COLOR, HAS_SHADOWS>(input);
+    return terrainVSBody<HAS_VERTEX_COLOR>(input);
 }

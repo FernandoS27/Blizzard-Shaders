@@ -16,31 +16,33 @@
 
 implementing wc3_shaders;
 
+// IS_DEPTH_PREPASS / IS_MRT migrated to WC3_IS_DEPTH_PREPASS / WC3_IS_MRT
+// preprocessor defines (see hd_ps.slang for the rationale).
 [shader("fragment")]
-public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> sd_on_hd_ps_main<
+public PSOutput sd_on_hd_ps_main<
     TFog    : IFogMode,
     TAlpha  : IAlphaTest,
     let HAS_IBL          : bool,
     let HAS_EXTRA_VERTS  : bool,
-    let IS_DEPTH_PREPASS : bool,
-    let IS_MRT           : bool,
     let HAS_SRGB_OUTPUT  : bool,
     let HAS_DEBUG_VIS    : bool
 >(PSInput input, uint frontFace : SV_IsFrontFace)
 {
-    PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> output;
+    PSOutput output;
     bool isFrontFace = frontFace != 0;
 
-    // Depth prepass short-circuits everything below.
-    if (IS_DEPTH_PREPASS)
+#if WC3_IS_DEPTH_PREPASS
     {
+        // Depth-only path: discard internally, rasterizer writes depth.
+        // PSOutput has no color slot on this perm.
         if (!TAlpha.enabled)
             sdDepthPrepassStub(input);
         else
             sdDepthPrepassBody<TAlpha>(input, isFrontFace);
-        output.color = float4(0, 0, 0, 0);
         return output;
     }
+#else
+    {
 
     // Dispatch to the IBL body or the cheap standard body.
     float4 result;
@@ -51,10 +53,9 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> sd_on_hd_ps_main
 
     float3 mrtNormal = float3(0, 0, 0);
     float preAlpha = 0;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
-        // MRT path: same alpha-test + extra-coverage pattern as the HD
-        // entry, plus a packed world-space normal.
+        // MRT path: alpha-test + extra-coverage + packed normal.
         TAlpha.test(result.w, sdPsCB2.alphaRef);
 
         float mrtAlpha = t_albedo.Sample(s_albedo, input.uv.xy).w;
@@ -63,9 +64,11 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> sd_on_hd_ps_main
         mrtNormal = sdComputeMRTNormal(input, isFrontFace);
         preAlpha = result.w;
     }
-
-    if (!IS_MRT)
+#else
+    {
         TAlpha.test(result.w, sdPsCB2.alphaRef);
+    }
+#endif
 
     // Always pre-scale alpha by inverseSoftness here — the SD-on-HD
     // pipeline has no "run after color matrix" branch.
@@ -77,10 +80,7 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> sd_on_hd_ps_main
     // Backface discard happens after the lit body here because the
     // IBL path needs the world-space normal for the probe sample. The
     // non-IBL path still needs the discard so we run it in both cases.
-    if (HAS_IBL)
-        backfaceDiscard(input.worldPos.w);
-    else if (!IS_DEPTH_PREPASS)
-        backfaceDiscard(input.worldPos.w);
+    backfaceDiscard(input.worldPos.w);
 
     // sRGB encoding for UNORM render targets. Skipped in debug mode
     // because the debug overlay emits already-displayable colors.
@@ -95,11 +95,15 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> sd_on_hd_ps_main
     }
 
     output.color = result;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
         output.specular = float4(input.worldPos.z, 0, 0, 1);
         output.normal = float4(mrtNormal, preAlpha);
     }
+#endif
 
     return output;
+
+    }
+#endif
 }

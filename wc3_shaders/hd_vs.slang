@@ -16,13 +16,12 @@
 implementing wc3_shaders;
 
 [shader("vertex")]
-public VSOutput<HAS_SHADOWS> vs_main<
+public VSOutput vs_main<
     TSkin : ISkinning,
-    TVF   : IVertexFormat,
-    let HAS_SHADOWS : bool
+    TVF   : IVertexFormat
 >(VSInput<TVF> input)
 {
-    VSOutput<HAS_SHADOWS> output;
+    VSOutput output;
 
     // Step 1: skinning. Rigid passes the attributes through; FourBone
     // performs a 4-bone linear blend against the bone palette (vsCB3).
@@ -57,7 +56,7 @@ public VSOutput<HAS_SHADOWS> vs_main<
         output.tangentWS = float4(0, 0, 0, 0);
     }
 
-    if (HAS_SHADOWS)
+#if WC3_HAS_SHADOWS
     {
         // When shadows are needed, compute the world-space position
         // once and reuse it for both fog altitude and the three cascade
@@ -65,27 +64,26 @@ public VSOutput<HAS_SHADOWS> vs_main<
         float4 worldPos4 = computeWorldPos4(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldPos4.z, vsCB2.clipHeight, vsCB2.underWater);
 
-        // Pass local temps through the `out float4` helper; `shadowClip*`
-        // are Conditional<float4, HAS_SHADOWS> so the cascade path must
-        // go through a concrete float4 before assigning.
+        // Pass local temps through the `out float4` helper; the cascade
+        // path must go through a concrete float4 before assigning, since
+        // some downstream slang lowering rejected direct out-param binds
+        // to struct fields in previous Conditional<>-gated versions.
         float4 sc0, sc1, sc2;
         computeShadowCascades(worldPos4, vsCB1, sc0, sc1, sc2);
         output.shadowClip0 = sc0;
         output.shadowClip1 = sc1;
         output.shadowClip2 = sc2;
     }
-    else
+#else
     {
         // Non-shadow path skips the full world transform and only reads
-        // the Z row of `world` — cheaper by 3 multiplies + an adder.
-        // The shadowClip writes below compile out entirely via Conditional.
+        // the Z row of `world` — cheaper by 3 multiplies + an adder. The
+        // shadowClip fields don't exist on this perm (gated by #if above
+        // on the VSOutput struct), so no writes needed.
         float worldZ = computeScalarWorldZ(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldZ, vsCB2.clipHeight, vsCB2.underWater);
-
-        output.shadowClip0 = float4(0, 0, 0, 0);
-        output.shadowClip1 = float4(0, 0, 0, 0);
-        output.shadowClip2 = float4(0, 0, 0, 0);
     }
+#endif
 
     // Step 4: per-vertex tint. `diffuseColor` is the material tint;
     // when the format carries a per-vertex color (e.g. AO from the

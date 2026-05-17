@@ -33,7 +33,9 @@ bool cascadeContains(float4 clip, out float2 uv, out float depth)
 // 9-tap (3×3) PCF using one cascade's comparison sampler. Texel size
 // comes from the cascade map itself — the engine uses square shadow
 // maps so a single dimension query is enough.
-float pcfCascade(Texture2D<float4> shadowMap,
+// `ShadowMapTex` aliases the right Texture2D form per target — see
+// cb_structs.slang.
+float pcfCascade(ShadowMapTex shadowMap,
                  SamplerComparisonState shadowSampler,
                  float2 uv, float depth)
 {
@@ -50,7 +52,7 @@ float pcfCascade(Texture2D<float4> shadowMap,
             float2 ofs = float2((float)i * texel, (float)j * texel);
             taps   = taps + 1.0;
             sumLit = sumLit
-                   + shadowMap.SampleCmpLevelZero(shadowSampler, uv + ofs, depth).x;
+                   + shadowMap.SampleCmpLevelZero(shadowSampler, uv + ofs, depth);
         }
     }
     return saturate(sumLit / taps);

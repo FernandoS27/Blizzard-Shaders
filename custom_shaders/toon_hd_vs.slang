@@ -18,14 +18,15 @@
 
 implementing custom_shaders;
 
+// HAS_SHADOWS migrated to the `WC3_HAS_SHADOWS` preprocessor define
+// (see types/vs_io.slang for the rationale).
 [shader("vertex")]
-public VSOutput<HAS_SHADOWS> toon_vs_main<
+public VSOutput toon_vs_main<
     TSkin : ISkinning,
-    TVF   : IVertexFormat,
-    let HAS_SHADOWS : bool
+    TVF   : IVertexFormat
 >(VSInput<TVF> input)
 {
-    VSOutput<HAS_SHADOWS> output;
+    VSOutput output;
 
     float3 skinnedPos, skinnedNormal, skinnedTangent;
     TSkin.transform(
@@ -48,28 +49,25 @@ public VSOutput<HAS_SHADOWS> toon_vs_main<
         output.tangentWS = float4(0, 0, 0, 0);
     }
 
-    if (HAS_SHADOWS)
+#if WC3_HAS_SHADOWS
     {
         float4 worldPos4 = computeWorldPos4(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldPos4.z, vsCB2.clipHeight, vsCB2.underWater);
 
-        // Local temps because `shadowClip*` are Conditional<float4, HAS_SHADOWS>
-        // and can't bind directly to the `out float4` cascade helper.
+        // Local temps because the cascade helper takes `out float4`.
         float4 sc0, sc1, sc2;
         computeShadowCascades(worldPos4, vsCB1, sc0, sc1, sc2);
         output.shadowClip0 = sc0;
         output.shadowClip1 = sc1;
         output.shadowClip2 = sc2;
     }
-    else
+#else
     {
         float worldZ = computeScalarWorldZ(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldZ, vsCB2.clipHeight, vsCB2.underWater);
-
-        output.shadowClip0 = float4(0, 0, 0, 0);
-        output.shadowClip1 = float4(0, 0, 0, 0);
-        output.shadowClip2 = float4(0, 0, 0, 0);
+        // shadowClip fields don't exist on this perm.
     }
+#endif
 
     if (TVF.hasVertexColor)
         output.color = vsCB2.diffuseColor * input.vertColor;

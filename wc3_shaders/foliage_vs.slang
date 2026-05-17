@@ -20,10 +20,15 @@
 
 implementing wc3_shaders;
 
+// HAS_SHADOWS migrated to the `WC3_HAS_SHADOWS` preprocessor define
+// (see types/vs_io.slang) so the cascade slots in FoliageVSOutput can
+// disappear via `#if` without slangc emitting them as `array<float4, 1>`
+// in WGSL. HAS_WIND stays as a slang template param — it gates body
+// logic only, not VS→PS struct fields, so the WGSL array-varying issue
+// doesn't apply to it.
 [shader("vertex")]
-public FoliageVSOutput<HAS_SHADOWS> foliage_vs_main<
-    let HAS_SHADOWS : bool,
-    let HAS_WIND    : bool>(FoliageVSInput input)
+public FoliageVSOutput foliage_vs_main<
+    let HAS_WIND : bool>(FoliageVSInput input)
 {
-    return foliageVSBody<HAS_SHADOWS, HAS_WIND>(input);
+    return foliageVSBody<HAS_WIND>(input);
 }

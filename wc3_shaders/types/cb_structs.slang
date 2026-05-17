@@ -22,6 +22,18 @@ implementing wc3_shaders;
 // (`GsBindingOffset = 32`, `HsBindingOffset = 48`, …) when added.
 public static const int PsBindingOffset = 16;
 
+// Tighter PS offsets under WGSL so the runtime bind-group layout fits
+// WebGPU's per-stage caps (12 uniforms / 16 textures / 16 samplers).
+#ifdef WGSL_TARGET
+public static const int PsCbBindingOffset      = 4;
+public static const int PsSrvBindingOffset     = 12;
+public static const int PsSamplerBindingOffset = 12;
+#else
+public static const int PsCbBindingOffset      = PsBindingOffset;
+public static const int PsSrvBindingOffset     = PsBindingOffset;
+public static const int PsSamplerBindingOffset = PsBindingOffset;
+#endif
+
 // One analytical light as uploaded by the engine.
 // type == 0 => directional (position is actually the light direction).
 // type  > 0 => point light (position is a world-space position).
@@ -38,9 +50,24 @@ public struct ShaderLight
 // Holds fog + alpha-test parameters, view/projection matrices used by IBL,
 // effect knobs (cloak, fresnel overlay, emissive gain), IBL blend state
 // between the "from" and "to" probe cubemaps, and the active light list.
+//
+// Under WGSL the padding `float3 _p0` is split into three scalar lanes:
+// WebGPU's std140-style uniform layout forces vec3 to a 16-byte
+// alignment boundary, which would shift every following field by 12
+// bytes relative to the engine's wire format (alphaRef@0, _p0@4..16).
+// Splitting `_p0` into `_p0_x/_p0_y/_p0_z` keeps the WGSL byte layout
+// identical to the original HLSL cbuffer packing — the padding lanes
+// are never read by any shader, so the split is invisible to callers.
+// Same pattern applied to every `scalar; float3 _pad;` group below.
 public struct PSPerDraw
 {
+#ifdef WGSL_TARGET
+    public float   alphaRef;
+    public float   _p0_x;            public float  _p0_y;
+    public float   _p0_z;
+#else
     public float   alphaRef;         public float3 _p0;
+#endif
     public float   fogStart;         public float  fogEnd;
     public float   fogDensity;       public float  _p1;
     public float4  fogColor;
@@ -126,8 +153,8 @@ public struct DebugVisCB
     public float3 overrideOrm;    public float  _p2;
 };
 
-public [[vk::binding(PsBindingOffset + 2, 0)]] ConstantBuffer<PSPerDraw>      psCB2 : register(b2);
-public [[vk::binding(PsBindingOffset + 3, 0)]] ConstantBuffer<DebugVisCB>     psCB3 : register(b3);
+public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<PSPerDraw>      psCB2 : register(b2);
+public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<DebugVisCB>     psCB3 : register(b3);
 public [[vk::binding(1, 0)]] ConstantBuffer<ShadowCascades> vsCB1 : register(b1);
 public [[vk::binding(2, 0)]] ConstantBuffer<VSPerDraw>      vsCB2 : register(b2);
 public [[vk::binding(3, 0)]] ConstantBuffer<BonePalette>    vsCB3 : register(b3);
@@ -137,23 +164,23 @@ public [[vk::binding(3, 0)]] ConstantBuffer<BonePalette>    vsCB3 : register(b3)
 //   t3 emissive, t4 team color mask.
 //   t13/t14 are the two IBL cubemap arrays we blend between during
 //   environment transitions; t15 is the split-sum BRDF LUT.
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4>         t_albedo    : register(t0);
-public [[vk::binding(PsBindingOffset + 1, 1)]] Texture2D<float4>         t_normal    : register(t1);
-public [[vk::binding(PsBindingOffset + 2, 1)]] Texture2D<float4>         t_orm       : register(t2);
-public [[vk::binding(PsBindingOffset + 3, 1)]] Texture2D<float4>         t_emissive  : register(t3);
-public [[vk::binding(PsBindingOffset + 4, 1)]] Texture2D<float4>         t_teamColor : register(t4);
-public [[vk::binding(PsBindingOffset + 13, 1)]] TextureCubeArray<float4>  t_iblFrom   : register(t13);
-public [[vk::binding(PsBindingOffset + 14, 1)]] TextureCubeArray<float4>  t_iblTo     : register(t14);
-public [[vk::binding(PsBindingOffset + 15, 1)]] Texture2D<float4>         t_brdfLut   : register(t15);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4>         t_albedo    : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4>         t_normal    : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4>         t_orm       : register(t2);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4>         t_emissive  : register(t3);
+public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4>         t_teamColor : register(t4);
+public [[vk::binding(PsSrvBindingOffset + 13, 1)]] TextureCubeArray<float4>  t_iblFrom   : register(t13);
+public [[vk::binding(PsSrvBindingOffset + 14, 1)]] TextureCubeArray<float4>  t_iblTo     : register(t14);
+public [[vk::binding(PsSrvBindingOffset + 15, 1)]] Texture2D<float4>         t_brdfLut   : register(t15);
 
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState s_albedo    : register(s0);
-public [[vk::binding(PsBindingOffset + 1, 2)]] SamplerState s_normal    : register(s1);
-public [[vk::binding(PsBindingOffset + 2, 2)]] SamplerState s_orm       : register(s2);
-public [[vk::binding(PsBindingOffset + 3, 2)]] SamplerState s_emissive  : register(s3);
-public [[vk::binding(PsBindingOffset + 4, 2)]] SamplerState s_teamColor : register(s4);
-public [[vk::binding(PsBindingOffset + 13, 2)]] SamplerState s_iblFrom   : register(s13);
-public [[vk::binding(PsBindingOffset + 14, 2)]] SamplerState s_iblTo     : register(s14);
-public [[vk::binding(PsBindingOffset + 15, 2)]] SamplerState s_brdfLut   : register(s15);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_albedo    : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_normal    : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_orm       : register(s2);
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_emissive  : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_teamColor : register(s4);
+public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_iblFrom   : register(s13);
+public [[vk::binding(PsSamplerBindingOffset + 14, 2)]] SamplerState s_iblTo     : register(s14);
+public [[vk::binding(PsSamplerBindingOffset + 15, 2)]] SamplerState s_brdfLut   : register(s15);
 
 // Per-draw constants for the SD-on-HD pixel shader (b2).
 // The layout mirrors the original SD engine CB, so most fields are
@@ -163,7 +190,13 @@ public [[vk::binding(PsBindingOffset + 15, 2)]] SamplerState s_brdfLut   : regis
 // view-to-world rotation used to orient the IBL cubemap samples.
 public struct SDPSPerDraw
 {
+#ifdef WGSL_TARGET
+    public float   alphaRef;
+    public float   _p0_x;            public float  _p0_y;
+    public float   _p0_z;
+#else
     public float   alphaRef;         public float3 _p0;
+#endif
     public float   fogStart;         public float  fogEnd;
     public float   fogDensity;       public float  _p1;
     public float4  fogColor;
@@ -204,21 +237,33 @@ public struct SDPSPerDraw
 // same cb1[0].x active-cascade count.
 public struct ShadowCascadeCount
 {
+#ifdef WGSL_TARGET
+    public float numCascades;
+    public float _pad_x;       public float _pad_y;
+    public float _pad_z;
+#else
     public float numCascades;  public float3 _pad;
+#endif
 };
 
-public [[vk::binding(PsBindingOffset + 2, 0)]] ConstantBuffer<SDPSPerDraw>        sdPsCB2 : register(b2);
-public [[vk::binding(PsBindingOffset + 1, 0)]] ConstantBuffer<ShadowCascadeCount> sdPsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<SDPSPerDraw>        sdPsCB2 : register(b2);
+public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<ShadowCascadeCount> sdPsCB1 : register(b1);
 
-// Shadow cascades at t10-12 / s10-12 are shared between the HD IBL path
-// and the SD-on-HD pipeline — both bind the same comparison-sampled
-// 2D shadow maps here and run the PCF helper in sd_ps_shadow.
-public [[vk::binding(PsBindingOffset + 10, 1)]] Texture2D<float4>      sd_t_shadow0 : register(t10);
-public [[vk::binding(PsBindingOffset + 11, 1)]] Texture2D<float4>      sd_t_shadow1 : register(t11);
-public [[vk::binding(PsBindingOffset + 12, 1)]] Texture2D<float4>      sd_t_shadow2 : register(t12);
-public [[vk::binding(PsBindingOffset + 10, 2)]] SamplerComparisonState sd_s_shadow0 : register(s10);
-public [[vk::binding(PsBindingOffset + 11, 2)]] SamplerComparisonState sd_s_shadow1 : register(s11);
-public [[vk::binding(PsBindingOffset + 12, 2)]] SamplerComparisonState sd_s_shadow2 : register(s12);
+// Shadow cascades at t10-12 / s10-12. Bytecode must stay bit-identical
+// to the shipped Blizzard shaders on D3D, hence Texture2D<float4>. WGSL
+// needs Texture2D<float> so slangc emits texture_depth_2d. PCF helpers
+// take `ShadowMapTex` which aliases the right form per target.
+#ifdef WGSL_TARGET
+public typealias ShadowMapTex = Texture2D<float>;
+#else
+public typealias ShadowMapTex = Texture2D<float4>;
+#endif
+public [[vk::binding(PsSrvBindingOffset + 10, 1)]] ShadowMapTex sd_t_shadow0 : register(t10);
+public [[vk::binding(PsSrvBindingOffset + 11, 1)]] ShadowMapTex sd_t_shadow1 : register(t11);
+public [[vk::binding(PsSrvBindingOffset + 12, 1)]] ShadowMapTex sd_t_shadow2 : register(t12);
+public [[vk::binding(PsSamplerBindingOffset + 10, 2)]] SamplerComparisonState sd_s_shadow0 : register(s10);
+public [[vk::binding(PsSamplerBindingOffset + 11, 2)]] SamplerComparisonState sd_s_shadow1 : register(s11);
+public [[vk::binding(PsSamplerBindingOffset + 12, 2)]] SamplerComparisonState sd_s_shadow2 : register(s12);
 
 // Per-draw constants for the SD highspec vertex shader (b0): transforms,
 // tint, two texcoord matrices, and the light list — per-vertex lighting
@@ -240,14 +285,20 @@ public struct SDHighspecVSPerDraw
 // texture-stage ops and the interpolated vertex color.
 public struct SDClassicPSPerDraw
 {
+#ifdef WGSL_TARGET
+    public float  alphaRef;
+    public float  _p0_x;        public float  _p0_y;
+    public float  _p0_z;
+#else
     public float  alphaRef;     public float3 _p0;
+#endif
     public float  fogStart;     public float  fogEnd;
     public float  fogDensity;   public float  _p1;
     public float4 fogColor;
 };
 
 public [[vk::binding(0, 0)]] ConstantBuffer<SDHighspecVSPerDraw>  sdHighspecVsCB0 : register(b0);
-public [[vk::binding(PsBindingOffset + 0, 0)]] ConstantBuffer<SDClassicPSPerDraw>   sdClassicPsCB0  : register(b0);
+public [[vk::binding(PsCbBindingOffset + 0, 0)]] ConstantBuffer<SDClassicPSPerDraw>   sdClassicPsCB0  : register(b0);
 
 // Per-draw constants for the water pixel shader (b2). Shares most of
 // its layout with `PSPerDraw` — fog, invView rotation, IBL probe params,
@@ -294,7 +345,7 @@ public struct WaterPSPerDraw
     public ShaderLight lights[8];                         // cb2[21..]
 };
 
-public [[vk::binding(PsBindingOffset + 2, 0)]] ConstantBuffer<WaterPSPerDraw> waterPsCB2 : register(b2);
+public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<WaterPSPerDraw> waterPsCB2 : register(b2);
 
 // Water PS texture bindings. The water draw reuses HD slot numbers but
 // binds different resources there — the aliases below make the intent
@@ -308,15 +359,15 @@ public [[vk::binding(PsBindingOffset + 2, 0)]] ConstantBuffer<WaterPSPerDraw> wa
 //
 //   s4 = scene-color sampler (note: paired with t0, not s0)
 //   s1/s2/s3 match their texture counterparts
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_waterScene  : register(t0);
-public [[vk::binding(PsBindingOffset + 1, 1)]] Texture2D<float4> t_waterDepth  : register(t1);
-public [[vk::binding(PsBindingOffset + 2, 1)]] Texture2D<float4> t_waterNormal : register(t2);
-public [[vk::binding(PsBindingOffset + 3, 1)]] Texture2D<float4> t_waterProbe  : register(t3);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_waterScene  : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_waterDepth  : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4> t_waterNormal : register(t2);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4> t_waterProbe  : register(t3);
 
-public [[vk::binding(PsBindingOffset + 4, 2)]] SamplerState s_waterScene  : register(s4);
-public [[vk::binding(PsBindingOffset + 1, 2)]] SamplerState s_waterDepth  : register(s1);
-public [[vk::binding(PsBindingOffset + 2, 2)]] SamplerState s_waterNormal : register(s2);
-public [[vk::binding(PsBindingOffset + 3, 2)]] SamplerState s_waterProbe  : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_waterScene  : register(s4);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_waterDepth  : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_waterNormal : register(s2);
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_waterProbe  : register(s3);
 
 // Per-draw constants for the foliage vertex shader (b2). 16 float4
 // slots — superset of the terrain VS layout with two extra float4s for
@@ -352,7 +403,13 @@ public struct FoliageVSPerDraw
     public float4   worldRow2;       // cb2[6]
     public float4   worldTranslate;  // cb2[7]
     public float4x4 worldViewProj;   // cb2[8..11]
+#ifdef WGSL_TARGET
+    public float    effectTime;
+    public float    _padTime_x;      public float _padTime_y;
+    public float    _padTime_z;      // cb2[12]
+#else
     public float    effectTime;      public float3 _padTime; // cb2[12]
+#endif
     public float4   tintColor;       // cb2[13]
     public float4   texMtx0Row0;     // cb2[14]
     public float4   texMtx0Row1;     // cb2[15]
@@ -384,17 +441,17 @@ public [[vk::binding(0, 2)]] SamplerState      s_foliageWind : register(s0);
 //   (yz = roughness/metallic), t3 emissive, t4 lightmap / AO (.w lane).
 // Cascaded shadow + IBL probe + BRDF LUT bindings are reused from the
 // shared HD aliases (sd_t_shadow*, t_iblFrom/To, t_brdfLut).
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_foliageAlbedo   : register(t0);
-public [[vk::binding(PsBindingOffset + 1, 1)]] Texture2D<float4> t_foliageNormal   : register(t1);
-public [[vk::binding(PsBindingOffset + 2, 1)]] Texture2D<float4> t_foliageMask     : register(t2);
-public [[vk::binding(PsBindingOffset + 3, 1)]] Texture2D<float4> t_foliageEmissive : register(t3);
-public [[vk::binding(PsBindingOffset + 4, 1)]] Texture2D<float4> t_foliageLightmap : register(t4);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_foliageAlbedo   : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_foliageNormal   : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4> t_foliageMask     : register(t2);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4> t_foliageEmissive : register(t3);
+public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4> t_foliageLightmap : register(t4);
 
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState s_foliageAlbedo   : register(s0);
-public [[vk::binding(PsBindingOffset + 1, 2)]] SamplerState s_foliageNormal   : register(s1);
-public [[vk::binding(PsBindingOffset + 2, 2)]] SamplerState s_foliageMask     : register(s2);
-public [[vk::binding(PsBindingOffset + 3, 2)]] SamplerState s_foliageEmissive : register(s3);
-public [[vk::binding(PsBindingOffset + 4, 2)]] SamplerState s_foliageLightmap : register(s4);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_foliageAlbedo   : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_foliageNormal   : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_foliageMask     : register(s2);
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_foliageEmissive : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_foliageLightmap : register(s4);
 
 // Per-draw constants for the terrain vertex shader (b2). The terrain
 // pipeline uses a layout distinct from the HD `VSPerDraw`:
@@ -438,15 +495,15 @@ public [[vk::binding(2, 0)]] ConstantBuffer<TerrainVSPerDraw> terrainVsCB2 : reg
 // global lightmap / AO (.w = AO factor). The terrain PS shares t10..t15
 // (cascade shadows + IBL probes + BRDF LUT) with the HD pipeline via
 // the existing aliases declared above.
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2DArray<float4> t_splatColor  : register(t0);
-public [[vk::binding(PsBindingOffset + 1, 1)]] Texture2DArray<float4> t_splatNormal : register(t1);
-public [[vk::binding(PsBindingOffset + 2, 1)]] Texture2DArray<float4> t_splatMask   : register(t2);
-public [[vk::binding(PsBindingOffset + 3, 1)]] Texture2D<float4>      t_lightmap    : register(t3);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2DArray<float4> t_splatColor  : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2DArray<float4> t_splatNormal : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2DArray<float4> t_splatMask   : register(t2);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4>      t_lightmap    : register(t3);
 
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState s_splatColor  : register(s0);
-public [[vk::binding(PsBindingOffset + 1, 2)]] SamplerState s_splatNormal : register(s1);
-public [[vk::binding(PsBindingOffset + 2, 2)]] SamplerState s_splatMask   : register(s2);
-public [[vk::binding(PsBindingOffset + 3, 2)]] SamplerState s_lightmap    : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_splatColor  : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_splatNormal : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_splatMask   : register(s2);
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_lightmap    : register(s3);
 
 // Per-draw constants for the PopcornFX vertex shader (b2). Aliases
 // the same buffer as `vsCB2` (the engine binds them at the same
@@ -530,7 +587,13 @@ public struct PopcornPSPerDraw
     public float4   worldToClip[4];                         // cb2[11..14]
 
     public float4   depthUVRemap;                           // cb2[15]
+#ifdef WGSL_TARGET
+    public float    depthFadeScale;
+    public float    _p16_x;         public float _p16_y;
+    public float    _p16_z;                                 // cb2[16]
+#else
     public float    depthFadeScale; public float3 _p16;     // cb2[16]
+#endif
     public float4   _pad17;                                 // cb2[17]
     public float4   _pad18;                                 // cb2[18]
     public float    iblMipFrom;     public float iblMipTo;
@@ -540,7 +603,7 @@ public struct PopcornPSPerDraw
     public ShaderLight lights[8];                           // cb2[21..52]
 };
 
-public [[vk::binding(PsBindingOffset + 2, 0)]] ConstantBuffer<PopcornPSPerDraw> popcornPsCB2 : register(b2);
+public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<PopcornPSPerDraw> popcornPsCB2 : register(b2);
 
 // Popcorn pixel-shader textures. Slot ordering matches the engine
 // bindings recovered from the BLS perms:
@@ -559,23 +622,23 @@ public [[vk::binding(PsBindingOffset + 2, 0)]] ConstantBuffer<PopcornPSPerDraw> 
 // declared above (e.g. t13/t14/t15 are also used by the HD IBL path);
 // slangc only emits the bindings the active entry actually
 // references, so the duplicate declarations are harmless.
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4>        t_popcornDiffuse  : register(t0);
-public [[vk::binding(PsBindingOffset + 1, 1)]] Texture2D<float4>        t_popcornAlphaLut : register(t1);
-public [[vk::binding(PsBindingOffset + 2, 1)]] Texture2D<float4>        t_popcornNormal   : register(t2);
-public [[vk::binding(PsBindingOffset + 3, 1)]] Texture2D<float4>        t_popcornSmoothMet: register(t3);
-public [[vk::binding(PsBindingOffset + 4, 1)]] Texture2D<float4>        t_popcornDepth    : register(t4);
-public [[vk::binding(PsBindingOffset + 13, 1)]] TextureCubeArray<float4> t_popcornCubeFrom : register(t13);
-public [[vk::binding(PsBindingOffset + 14, 1)]] TextureCubeArray<float4> t_popcornCubeTo   : register(t14);
-public [[vk::binding(PsBindingOffset + 15, 1)]] Texture2D<float4>        t_popcornBrdfLut  : register(t15);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4>        t_popcornDiffuse  : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4>        t_popcornAlphaLut : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4>        t_popcornNormal   : register(t2);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4>        t_popcornSmoothMet: register(t3);
+public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4>        t_popcornDepth    : register(t4);
+public [[vk::binding(PsSrvBindingOffset + 13, 1)]] TextureCubeArray<float4> t_popcornCubeFrom : register(t13);
+public [[vk::binding(PsSrvBindingOffset + 14, 1)]] TextureCubeArray<float4> t_popcornCubeTo   : register(t14);
+public [[vk::binding(PsSrvBindingOffset + 15, 1)]] Texture2D<float4>        t_popcornBrdfLut  : register(t15);
 
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState s_popcornDiffuse  : register(s0);
-public [[vk::binding(PsBindingOffset + 1, 2)]] SamplerState s_popcornAlphaLut : register(s1);
-public [[vk::binding(PsBindingOffset + 2, 2)]] SamplerState s_popcornNormal   : register(s2);
-public [[vk::binding(PsBindingOffset + 3, 2)]] SamplerState s_popcornSmoothMet: register(s3);
-public [[vk::binding(PsBindingOffset + 4, 2)]] SamplerState s_popcornDepth    : register(s4);
-public [[vk::binding(PsBindingOffset + 13, 2)]] SamplerState s_popcornCubeFrom : register(s13);
-public [[vk::binding(PsBindingOffset + 14, 2)]] SamplerState s_popcornCubeTo   : register(s14);
-public [[vk::binding(PsBindingOffset + 15, 2)]] SamplerState s_popcornBrdfLut  : register(s15);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_popcornDiffuse  : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_popcornAlphaLut : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_popcornNormal   : register(s2);
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_popcornSmoothMet: register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_popcornDepth    : register(s4);
+public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_popcornCubeFrom : register(s13);
+public [[vk::binding(PsSamplerBindingOffset + 14, 2)]] SamplerState s_popcornCubeTo   : register(s14);
+public [[vk::binding(PsSamplerBindingOffset + 15, 2)]] SamplerState s_popcornBrdfLut  : register(s15);
 
 // Per-draw constants for the tonemap pixel shader (b1). The engine
 // only uploads a single 16-byte slot — the linear exposure multiplier
@@ -585,10 +648,16 @@ public [[vk::binding(PsBindingOffset + 15, 2)]] SamplerState s_popcornBrdfLut  :
 public struct TonemapPSPerDraw
 {
     public float  exposure;
+#ifdef WGSL_TARGET
+    public float  _p0_x;
+    public float  _p0_y;
+    public float  _p0_z;
+#else
     public float3 _p0;
+#endif
 };
 
-public [[vk::binding(PsBindingOffset + 1, 0)]] ConstantBuffer<TonemapPSPerDraw> tonemapPsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<TonemapPSPerDraw> tonemapPsCB1 : register(b1);
 
 // Tonemap PS texture bindings. Aliases the same D3D slots the HD mesh
 // PS uses (t0 / s0) — the tonemap pass runs on its own pipeline object
@@ -596,15 +665,15 @@ public [[vk::binding(PsBindingOffset + 1, 0)]] ConstantBuffer<TonemapPSPerDraw> 
 // these declarations coexist with the HD material bindings above.
 //   t0 = linear-HDR scene target produced by the preceding lighting pass
 //   s0 = linear-clamp sampler paired with the scene target
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_sceneHdr : register(t0);
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState      s_sceneHdr : register(s0);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_sceneHdr : register(t0);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState      s_sceneHdr : register(s0);
 
 // Sprite PS texture bindings. Aliases the same D3D slots the HD mesh
 // PS uses (t0 / s0) — sprite draws bind their own source texture here
 // and slangc only emits the binding for the active entry point, so the
 // declaration coexists with the HD material bindings above.
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_sprite : register(t0);
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState      s_sprite : register(s0);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_sprite : register(t0);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState      s_sprite : register(s0);
 
 // Per-draw constants for the ImGui vertex shader (b2). 12 float4
 // slots — the engine binds 192 bytes here, but the math only consumes
@@ -633,8 +702,8 @@ public [[vk::binding(2, 0)]] ConstantBuffer<ImGuiVSPerDraw> imguiVsCB2 : registe
 // uses (t0 / s0) — ImGui draws bind their own font / texture atlas
 // here and slangc only emits the binding for the active entry point,
 // so the declaration coexists with the HD material bindings above.
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_imgui : register(t0);
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState      s_imgui : register(s0);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_imgui : register(t0);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState      s_imgui : register(s0);
 
 // Distortion PS texture bindings. The full-screen distortion pass
 // samples a previous-frame scene texture (t0) at four offset UVs
@@ -642,8 +711,8 @@ public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState      s_imgui : regis
 // per-channel chromatic blend. Both bindings reuse the engine's
 // shared t0/t1 slot numbers; slangc only emits whichever entry-
 // point references them, so they coexist with the HD aliases above.
-public [[vk::binding(PsBindingOffset + 0, 1)]] Texture2D<float4> t_distortionScene : register(t0);
-public [[vk::binding(PsBindingOffset + 1, 1)]] Texture2D<float4> t_distortionMap   : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_distortionScene : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_distortionMap   : register(t1);
 
-public [[vk::binding(PsBindingOffset + 0, 2)]] SamplerState s_distortionScene : register(s0);
-public [[vk::binding(PsBindingOffset + 1, 2)]] SamplerState s_distortionMap   : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_distortionScene : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_distortionMap   : register(s1);

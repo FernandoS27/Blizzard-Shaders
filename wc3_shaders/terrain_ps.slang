@@ -30,28 +30,35 @@
 
 implementing wc3_shaders;
 
+// HAS_NULL_PASS / HAS_MRT migrated to WC3_TERRAIN_NULL_PASS / WC3_HAS_MRT
+// preprocessor defines so TerrainPSOutput's color + MRT slots can be
+// gated via #if instead of `Conditional<>`. WC3_HAS_COLOR is derived
+// (= !WC3_TERRAIN_NULL_PASS) and WC3_HAS_MRT is set only when both
+// !NULL_PASS && HAS_MRT — both done in compile_all_slang.py's
+// map_terrain_ps. HAS_SHADOWS / HAS_TINT stay as slang template params
+// (body logic only, no IO).
 [shader("fragment")]
-public TerrainPSOutput<!HAS_NULL_PASS, !HAS_NULL_PASS && HAS_MRT> terrain_ps_main<
-    let HAS_NULL_PASS : bool,
-    let HAS_MRT       : bool,
-    let HAS_SHADOWS   : bool,
-    let HAS_TINT      : bool>(
+public TerrainPSOutput terrain_ps_main<
+    let HAS_SHADOWS : bool,
+    let HAS_TINT    : bool>(
     TerrainPSInput input)
 {
-    TerrainPSOutput<!HAS_NULL_PASS, !HAS_NULL_PASS && HAS_MRT> output;
+    TerrainPSOutput output;
 
-    if (HAS_NULL_PASS)
+#if WC3_TERRAIN_NULL_PASS
     {
-        // 64-perm "skip" stub — all output fields are compiled out via
-        // the false `HAS_COLOR` / `HAS_MRT` Conditional gates, leaving
-        // a bare `ret` that matches the shipped DXBC byte-for-byte.
+        // 64-perm "skip" stub — PSOutput has no fields on this perm
+        // (gated by the WC3_HAS_COLOR / WC3_HAS_MRT #ifs in ps_io.slang),
+        // so the dxbc emits a bare `ret` matching the shipped layout.
         return output;
     }
+#else
+    {
 
     TerrainShadeResult shaded = terrainPSBody<HAS_SHADOWS, HAS_TINT>(input);
     output.color = shaded.color;
 
-    if (HAS_MRT)
+#if WC3_HAS_MRT
     {
         // Depth-feedback target: world-space Z carried through the VS
         // payload.
@@ -71,6 +78,10 @@ public TerrainPSOutput<!HAS_NULL_PASS, !HAS_NULL_PASS && HAS_MRT> terrain_ps_mai
             output.normalEnc = float4(shaded.worldNormal * 0.5 + 0.5, 1.0);
         }
     }
+#endif
 
     return output;
+
+    }
+#endif
 }

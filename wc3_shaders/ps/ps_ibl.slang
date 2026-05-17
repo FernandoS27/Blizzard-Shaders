@@ -304,12 +304,14 @@ public float4 psIBLBody<
     // sample is the next logical fetch. Skipped when the VS didn't pass
     // shadowClip coords (HAS_EXTRA_VERTS=false).
     float shadowAtten = 1.0;
+#if WC3_HAS_SHADOWS
     if (HAS_EXTRA_VERTS)
     {
         shadowAtten = sdSampleShadowCascades(
             input.shadowClip0, input.shadowClip1, input.shadowClip2,
             asuint(sdPsCB1.numCascades));
     }
+#endif
 
     // Build the view-space shading normal and reconstruct a roughness mip that
     // accounts for sub-pixel normal variance (specular-AA) when the

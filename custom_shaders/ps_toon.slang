@@ -175,12 +175,14 @@ public float4 psToonIBLBody<
     // Shadow cascades (when the VS provided the three clip-space
     // outputs). Same call as the HD IBL body uses.
     float shadowAtten = 1.0;
+#if WC3_HAS_SHADOWS
     if (HAS_EXTRA_VERTS)
     {
         shadowAtten = sdSampleShadowCascades(
             input.shadowClip0, input.shadowClip1, input.shadowClip2,
             asuint(sdPsCB1.numCascades));
     }
+#endif
 
     // View-space shading normal. Toon doesn't run specular-AA — the
     // step-based highlight already hides sub-pixel variance.

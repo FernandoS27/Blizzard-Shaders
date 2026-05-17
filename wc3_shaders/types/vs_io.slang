@@ -32,11 +32,25 @@ public struct VSInput<TVF : IVertexFormat>
 // computeFogDepth) rather than a real homogeneous coordinate — the PS
 // reads it to evaluate fog without recomputing the view-space Z.
 // The three shadowClip slots carry the cascade-space clip positions
-// when shadows are enabled; they compile out entirely via `Conditional`
+// when shadows are enabled; they compile out entirely via `#if HAS_SHADOWS`
 // in the non-shadow permutations — the shipped game shader omits them
 // from the VS output signature rather than emitting dead zero writes,
 // and we follow that layout so VS→PS linkage matches.
-public struct VSOutput<let HAS_SHADOWS : bool>
+//
+// WC3_HAS_SHADOWS is a per-permutation preprocessor define (set via -D by
+// compile_all_slang.py). It used to be a `<let HAS_SHADOWS : bool>` template
+// param wrapping each cascade field in `Conditional<float4, HAS_SHADOWS>`,
+// but slangc 2026.x emits Conditional as `array<float4, 1>` in WGSL, and
+// WGSL forbids @location on array types. The #if form sidesteps that emit
+// path while preserving the same per-perm field-omission behavior on every
+// other target (slang's preprocessor expands before any backend emit).
+//
+// The `WC3_` prefix avoids colliding with the `HAS_SHADOWS` identifier
+// that's still in use as a slang template param in unmigrated shaders
+// (terrain_ps, foliage_ps, etc); slang's preprocessor is global to the
+// compilation unit, so a `-D HAS_SHADOWS=1` would expand the identifier
+// inside those files too and break their template-param resolution.
+public struct VSOutput
 {
     public float4 position    : SV_Position;
     public float4 color       : COLOR0;
@@ -44,9 +58,11 @@ public struct VSOutput<let HAS_SHADOWS : bool>
     public float4 worldPos    : TEXCOORD1;
     public float3 normalWS    : TEXCOORD2;
     public float4 tangentWS   : TEXCOORD3;
-    public Conditional<float4, HAS_SHADOWS> shadowClip0 : TEXCOORD4;
-    public Conditional<float4, HAS_SHADOWS> shadowClip1 : TEXCOORD5;
-    public Conditional<float4, HAS_SHADOWS> shadowClip2 : TEXCOORD6;
+#if WC3_HAS_SHADOWS
+    public float4 shadowClip0 : TEXCOORD4;
+    public float4 shadowClip1 : TEXCOORD5;
+    public float4 shadowClip2 : TEXCOORD6;
+#endif
 };
 
 // Compact payload used by the SD classic pipeline, which does all
@@ -96,9 +112,10 @@ public struct TerrainVSInput
 //   TEXCOORD5  shadowClip1 — cascade-1 light-clip-space position.
 //   TEXCOORD6  shadowClip2 — cascade-2 light-clip-space position.
 //
-// The cascade slots are gated by `HAS_SHADOWS` so the non-shadow perms
-// emit a smaller VS→PS signature, exactly matching the BLS layout.
-public struct TerrainVSOutput<let HAS_SHADOWS : bool>
+// The cascade slots are gated by `WC3_HAS_SHADOWS` (preprocessor define
+// — see the VSOutput comment for why) so the non-shadow perms emit a
+// smaller VS→PS signature, exactly matching the BLS layout.
+public struct TerrainVSOutput
 {
     public nointerpolation uint4 boneIDs : TEXCOORD7;
     public float4 position     : SV_Position;
@@ -107,9 +124,11 @@ public struct TerrainVSOutput<let HAS_SHADOWS : bool>
     public float4 worldPos     : TEXCOORD1;
     public float3 worldNormal  : TEXCOORD2;
     public float4 worldTangent : TEXCOORD3;
-    public Conditional<float4, HAS_SHADOWS> shadowClip0 : TEXCOORD4;
-    public Conditional<float4, HAS_SHADOWS> shadowClip1 : TEXCOORD5;
-    public Conditional<float4, HAS_SHADOWS> shadowClip2 : TEXCOORD6;
+#if WC3_HAS_SHADOWS
+    public float4 shadowClip0 : TEXCOORD4;
+    public float4 shadowClip1 : TEXCOORD5;
+    public float4 shadowClip2 : TEXCOORD6;
+#endif
 };
 
 // Foliage vertex stream. Eight attribute slots arrive in the engine
@@ -145,7 +164,7 @@ public struct FoliageVSInput
 //                                handedness stencil (-1 / 0 / +1).
 //   TEXCOORD4-6  shadowClip0/1/2 — cascade-space clip positions
 //                                  (HAS_SHADOWS only).
-public struct FoliageVSOutput<let HAS_SHADOWS : bool>
+public struct FoliageVSOutput
 {
     public float4 position     : SV_Position;
     public float4 color        : COLOR0;
@@ -153,9 +172,11 @@ public struct FoliageVSOutput<let HAS_SHADOWS : bool>
     public float4 worldPos     : TEXCOORD1;
     public float3 worldNormal  : TEXCOORD2;
     public float4 worldTangent : TEXCOORD3;
-    public Conditional<float4, HAS_SHADOWS> shadowClip0 : TEXCOORD4;
-    public Conditional<float4, HAS_SHADOWS> shadowClip1 : TEXCOORD5;
-    public Conditional<float4, HAS_SHADOWS> shadowClip2 : TEXCOORD6;
+#if WC3_HAS_SHADOWS
+    public float4 shadowClip0 : TEXCOORD4;
+    public float4 shadowClip1 : TEXCOORD5;
+    public float4 shadowClip2 : TEXCOORD6;
+#endif
 };
 
 // Sprite vertex stream. The sprite pipeline takes a pre-projected

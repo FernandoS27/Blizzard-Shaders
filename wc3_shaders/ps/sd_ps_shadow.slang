@@ -29,8 +29,10 @@ static bool isInShadowFrustum(float3 clipCoord)
 // `SampleCmpLevelZero` lets the hardware do the depth-compare and
 // bilinear filter in one fetch, so the loop actually computes a
 // 3×3 ×(hw 2×2) = 6×6 effective footprint.
+// `ShadowMapTex` aliases Texture2D<float4> on D3D/Vulkan and
+// Texture2D<float> on WGSL — see cb_structs.slang.
 static float samplePCF2x2(
-    Texture2D<float4> shadowTex,
+    ShadowMapTex shadowTex,
     SamplerComparisonState shadowSampler,
     float3 clipCoord)
 {

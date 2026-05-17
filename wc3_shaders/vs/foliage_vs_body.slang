@@ -135,11 +135,10 @@ float foliageHandedness(float tangentW)
     return sign(tangentW);
 }
 
-public FoliageVSOutput<HAS_SHADOWS> foliageVSBody<
-    let HAS_SHADOWS : bool,
-    let HAS_WIND    : bool>(FoliageVSInput input)
+public FoliageVSOutput foliageVSBody<
+    let HAS_WIND : bool>(FoliageVSInput input)
 {
-    FoliageVSOutput<HAS_SHADOWS> output;
+    FoliageVSOutput output;
 
     // 1. Optionally apply wind to the vertex XY. Z is always fixed.
     float2 xy = HAS_WIND
@@ -185,7 +184,9 @@ public FoliageVSOutput<HAS_SHADOWS> foliageVSBody<
 
     // 8. Shadow cascades — the pre-shadow transform uses the displaced
     // XY + original Z, so wind-disturbed pixels self-shadow correctly.
-    if (HAS_SHADOWS)
+    // Cascade fields only exist on this perm when WC3_HAS_SHADOWS is set
+    // (gated on the FoliageVSOutput struct in types/vs_io.slang).
+#if WC3_HAS_SHADOWS
     {
         float4 shadowPos = mul(foliageVsCB2.shadowWorld,
                                float4(displaced, 1.0));
@@ -193,6 +194,7 @@ public FoliageVSOutput<HAS_SHADOWS> foliageVSBody<
         output.shadowClip1 = mul(vsCB1.cascade1, shadowPos);
         output.shadowClip2 = mul(vsCB1.cascade2, shadowPos);
     }
+#endif
 
     return output;
 }

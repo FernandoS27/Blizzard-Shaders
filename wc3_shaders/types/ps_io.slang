@@ -18,9 +18,11 @@ public struct PSInput
     public float4 worldPos     : TEXCOORD1;
     public float3 normalWS     : TEXCOORD2;
     public float4 tangentWS    : TEXCOORD3;
+#if WC3_HAS_SHADOWS
     public float4 shadowClip0  : TEXCOORD4;
     public float4 shadowClip1  : TEXCOORD5;
     public float4 shadowClip2  : TEXCOORD6;
+#endif
 };
 
 // HD pixel shader output. When the MRT path is disabled the specular and
@@ -34,18 +36,65 @@ public struct PSInput
 //   specular = view-space depth (x) for screen-space resolve effects
 //   normal   = packed world-space normal (xyz) + pre-fog alpha (w)
 //
-// SPIR-V note: slangc's emit for Conditional<float4, true> drops the
-// Output Location decoration, so every SV_TargetN ends up at Location 0
-// in the .spv. build_bls.py post-processes each .spv to renumber
-// colliding Output locations by OpEntryPoint interface order — so the
-// HLSL semantic shape here is preserved while still producing valid
-// SPIR-V. No [[vk::location]] annotations help: slangc honors them on
-// non-Conditional fields but loses them through the Conditional wrapper.
-public struct PSOutput<let IS_MRT : bool, let HAS_COLOR : bool>
+// Field gating uses two preprocessor defines that the build script sets
+// per perm via -D:
+//   WC3_IS_DEPTH_PREPASS=1  on depth-only perms
+//   WC3_IS_MRT=1            on MRT perms
+// The struct-level gates WC3_HAS_COLOR / WC3_HAS_MRT are *derived* from
+// those — see the #if block right below. Deriving in the slang source
+// rather than the script means files in the same module that don't set
+// PS-perm defines (e.g., we compile a VS family alongside the PS files
+// because they share the module) still see consistent struct shapes.
+//
+// History: these used to be `Conditional<float4, BOOL>` template-gated
+// fields on a `<let IS_MRT, let HAS_COLOR>` struct template, but slangc
+// 2026.x emits Conditional as `array<float4, 1>` in WGSL and WGSL
+// forbids @location on array types. The #if form produces the same
+// per-perm field layout on every other target (slang's preprocessor
+// runs before any backend emit). The `WC3_` prefix avoids colliding
+// with the `IS_MRT`/`HAS_COLOR` slang template-param identifiers still
+// used in body code below.
+//
+// SPIR-V note: slangc's emit for Conditional<float4, true> dropped the
+// Output Location decoration, requiring build_bls.py to post-process
+// each .spv to renumber colliding Output locations by OpEntryPoint
+// interface order. The #if form keeps explicit [[vk::location]]
+// honored — but the post-processing pass is still harmless on bytecode
+// that already has correct locations.
+// Per-struct gating flags, derived (defaulted-on) from the per-perm
+// inhibit/enable defines the script sets:
+//
+//   WC3_IS_DEPTH_PREPASS=1   → PSOutput has no color/mrt (hd-style)
+//   WC3_IS_MRT=1             → PSOutput has mrt (hd-style)
+//   WC3_TERRAIN_NULL_PASS=1  → TerrainPSOutput / FoliagePSOutput empty
+//   WC3_HAS_MRT=1            → TerrainPSOutput / FoliagePSOutput mrt slots
+//                              (set explicitly by terrain/foliage mappers
+//                               because the gate expression already
+//                               factors in NULL_PASS)
+//
+// Each struct uses its OWN gate flag — sharing WC3_HAS_COLOR across
+// PSOutput and TerrainPSOutput would mean terrain's NULL_PASS perms
+// also disable PSOutput.color, which breaks hd_ps.slang when both
+// shaders live in the same compilation unit.
+#if !defined(WC3_IS_DEPTH_PREPASS)
+#define WC3_PSO_HAS_COLOR 1
+#endif
+#if defined(WC3_IS_MRT) && !defined(WC3_IS_DEPTH_PREPASS)
+#define WC3_PSO_HAS_MRT 1
+#endif
+#if !defined(WC3_TERRAIN_NULL_PASS)
+#define WC3_TERRAIN_HAS_COLOR 1
+#endif
+
+public struct PSOutput
 {
-    public Conditional<float4, HAS_COLOR> color    : SV_Target0;
-    public Conditional<float4, IS_MRT>    specular : SV_Target1;
-    public Conditional<float4, IS_MRT>    normal   : SV_Target2;
+#if WC3_PSO_HAS_COLOR
+    public float4 color    : SV_Target0;
+#endif
+#if WC3_PSO_HAS_MRT
+    public float4 specular : SV_Target1;
+    public float4 normal   : SV_Target2;
+#endif
 };
 
 // SD classic pipeline pixel shader input. No normals or tangents because
@@ -90,10 +139,8 @@ public struct TonemapPSInput
 };
 
 // Terrain pixel shader input. Mirrors `TerrainVSOutput` slot-for-slot.
-// The cascade clip slots are declared unconditionally — slangc's PS
-// input layout is fixed at the struct level, but fxc DCEs the
-// `dcl_input_ps` for unread slots on the non-shadow perms (matching
-// what every other slang PS in this module does).
+// Shadow slots gated on WC3_HAS_SHADOWS so WGSL @location indices
+// stay in sync with the VS-side output.
 public struct TerrainPSInput
 {
     public nointerpolation uint4 boneIDs : TEXCOORD7;
@@ -103,28 +150,36 @@ public struct TerrainPSInput
     public float4 worldPos     : TEXCOORD1;
     public float3 worldNormal  : TEXCOORD2;
     public float4 worldTangent : TEXCOORD3;
+#if WC3_HAS_SHADOWS
     public float4 shadowClip0  : TEXCOORD4;
     public float4 shadowClip1  : TEXCOORD5;
     public float4 shadowClip2  : TEXCOORD6;
+#endif
 };
 
 // Terrain pixel shader output. The single colour target is gated by
-// `HAS_COLOR` so the engine's NULL_PASS stub (which emits no output
-// signature whatsoever — `dcl_output` is absent in the original DXBC)
-// can be reconstructed by passing `HAS_COLOR=false`. The two MRT targets
-// (depth-feedback in .x = view-Z, and packed world normal + 1) are
-// independently gated by `HAS_MRT`.
-public struct TerrainPSOutput<let HAS_COLOR : bool, let HAS_MRT : bool>
+// `WC3_HAS_COLOR` (= !HAS_NULL_PASS) so the engine's NULL_PASS stub
+// (which emits no output signature whatsoever — `dcl_output` is absent
+// in the original DXBC) can be reconstructed by leaving it undefined.
+// The two MRT targets (depth-feedback in .x = view-Z, and packed world
+// normal + 1) are gated by `WC3_HAS_MRT` (= !HAS_NULL_PASS && HAS_MRT).
+// Both defines are set per perm by compile_all_slang.py — see
+// map_terrain_ps. The migration off `Conditional<float4, FLAG>` follows
+// the same WGSL emit fix as PSOutput above.
+public struct TerrainPSOutput
 {
-    public Conditional<float4, HAS_COLOR>    color      : SV_Target0;
-    public Conditional<float4, HAS_MRT>      depthFeed  : SV_Target1;
-    public Conditional<float4, HAS_MRT>      normalEnc  : SV_Target2;
+#if WC3_TERRAIN_HAS_COLOR
+    public float4 color     : SV_Target0;
+#endif
+#if WC3_HAS_MRT
+    public float4 depthFeed : SV_Target1;
+    public float4 normalEnc : SV_Target2;
+#endif
 };
 
 // Foliage pixel shader input. Mirrors `FoliageVSOutput` slot-for-slot.
-// The cascade clip slots are declared unconditionally — slangc's PS
-// input layout is fixed at the struct level, but fxc DCEs the
-// `dcl_input_ps` for unread slots on the non-shadow perms.
+// Shadow slots gated on WC3_HAS_SHADOWS so WGSL @location indices
+// stay in sync with the VS-side output.
 public struct FoliagePSInput
 {
     public float4 svPosition   : SV_Position;
@@ -133,20 +188,24 @@ public struct FoliagePSInput
     public float4 worldPos     : TEXCOORD1;
     public float3 worldNormal  : TEXCOORD2;
     public float4 worldTangent : TEXCOORD3;
+#if WC3_HAS_SHADOWS
     public float4 shadowClip0  : TEXCOORD4;
     public float4 shadowClip1  : TEXCOORD5;
     public float4 shadowClip2  : TEXCOORD6;
+#endif
 };
 
-// Foliage pixel shader output. Like `TerrainPSOutput`, the colour
-// target is gated by `HAS_COLOR` so the engine's NULL_PASS stub
-// (no SV_Target entries) can be reconstructed by passing
-// `HAS_COLOR=false`. The two MRT targets are independently gated.
-public struct FoliagePSOutput<let HAS_COLOR : bool, let HAS_MRT : bool>
+// Foliage pixel shader output. Like `TerrainPSOutput`, gated on
+// `WC3_HAS_COLOR` + `WC3_HAS_MRT`.
+public struct FoliagePSOutput
 {
-    public Conditional<float4, HAS_COLOR>    color      : SV_Target0;
-    public Conditional<float4, HAS_MRT>      depthFeed  : SV_Target1;
-    public Conditional<float4, HAS_MRT>      normalEnc  : SV_Target2;
+#if WC3_TERRAIN_HAS_COLOR
+    public float4 color     : SV_Target0;
+#endif
+#if WC3_HAS_MRT
+    public float4 depthFeed : SV_Target1;
+    public float4 normalEnc : SV_Target2;
+#endif
 };
 
 // Sprite pixel shader input. Mirrors SpriteVSOutput. svPosition is
@@ -244,9 +303,14 @@ public struct PopcornPSInput
 //   materialRT   — .xyz = (1, 0.5, 0.5) default material params,
 //                  .w   = pre-SP-fade surface alpha (the deferred
 //                  resolver reapplies its own alpha blending).
-public struct PopcornPSOutput<let HAS_GBUFFER : bool>
+// HAS_GBUFFER migrated to `WC3_POPCORN_HAS_GBUFFER` preprocessor define
+// (set per perm by map_popcorn_ps). The WC3_ prefix avoids clashing
+// with slang template-param identifiers elsewhere.
+public struct PopcornPSOutput
 {
-    public float4                              color      : SV_Target0;
-    public Conditional<float4, HAS_GBUFFER>    depthRT    : SV_Target1;
-    public Conditional<float4, HAS_GBUFFER>    materialRT : SV_Target2;
+    public float4 color      : SV_Target0;
+#if WC3_POPCORN_HAS_GBUFFER
+    public float4 depthRT    : SV_Target1;
+    public float4 materialRT : SV_Target2;
+#endif
 };

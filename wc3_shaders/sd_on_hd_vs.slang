@@ -13,13 +13,12 @@
 implementing wc3_shaders;
 
 [shader("vertex")]
-public VSOutput<HAS_SHADOWS> sd_on_hd_vs_main<
+public VSOutput sd_on_hd_vs_main<
     TSkin : ISkinning,
-    TVF   : IVertexFormat,
-    let HAS_SHADOWS : bool
+    TVF   : IVertexFormat
 >(VSInput<TVF> input)
 {
-    VSOutput<HAS_SHADOWS> output;
+    VSOutput output;
 
     // Skinning — same policy choice as the HD path. `SDFourBoneSkinning`
     // renormalises the skinned normal internally so the raw transform
@@ -47,13 +46,13 @@ public VSOutput<HAS_SHADOWS> sd_on_hd_vs_main<
         output.tangentWS = float4(0, 0, 0, 0);
     }
 
-    if (HAS_SHADOWS)
+#if WC3_HAS_SHADOWS
     {
         // Cascade clip coords for the SD shadow sampler — cascade
         // matrices take world-space positions, so we need the `world`
         // product (not the view-space one above). Local temps because
-        // `shadowClip*` are Conditional<float4, HAS_SHADOWS> and can't
-        // be bound directly to the `out float4` cascade helper.
+        // the cascade helper expects `out float4` params and the
+        // shadowClip struct fields are gated by the same #if above.
         float4 worldPos4 = computeWorldPos4(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldPos4.z, vsCB2.clipHeight, vsCB2.underWater);
 
@@ -63,15 +62,13 @@ public VSOutput<HAS_SHADOWS> sd_on_hd_vs_main<
         output.shadowClip1 = sc1;
         output.shadowClip2 = sc2;
     }
-    else
+#else
     {
         float worldZ = computeScalarWorldZ(skinnedPos, vsCB2.world);
         output.worldPos.w = computeFogDepth(worldZ, vsCB2.clipHeight, vsCB2.underWater);
-
-        output.shadowClip0 = float4(0, 0, 0, 0);
-        output.shadowClip1 = float4(0, 0, 0, 0);
-        output.shadowClip2 = float4(0, 0, 0, 0);
+        // shadowClip fields don't exist on this perm — no writes.
     }
+#endif
 
     if (TVF.hasVertexColor)
         output.color = vsCB2.diffuseColor * input.vertColor;

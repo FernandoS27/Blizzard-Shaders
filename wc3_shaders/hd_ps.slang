@@ -23,43 +23,45 @@
 
 implementing wc3_shaders;
 
+// IS_DEPTH_PREPASS / IS_MRT migrated from `let X : bool` template
+// params to `WC3_IS_DEPTH_PREPASS` / `WC3_IS_MRT` preprocessor defines
+// (see types/ps_io.slang for the reasoning). The struct gates use
+// derived flags WC3_HAS_COLOR (= !WC3_IS_DEPTH_PREPASS) and WC3_HAS_MRT
+// (= WC3_IS_MRT && !WC3_IS_DEPTH_PREPASS), both set by the script.
 [shader("fragment")]
-public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> ps_main<
+public PSOutput ps_main<
     TFog     : IFogMode,
     TAlpha   : IAlphaTest,
     TMat     : IMaterialLayer,
     let HAS_IBL            : bool,
     let HAS_EXTRA_VERTS    : bool,
-    let IS_DEPTH_PREPASS   : bool,
-    let IS_MRT             : bool,
     let HAS_DEBUG_VIS      : bool
 >(PSInput input, uint frontFace : SV_IsFrontFace)
 {
-    PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> output;
+    PSOutput output;
     bool isFrontFace = frontFace != 0;
 
-    // Non-IBL / non-prepass draws discard fragments flagged by the VS
-    // as "behind the fog-clip plane" before doing any further work.
-    // The IBL path delays this until after the body (it needs the
-    // world-space normal anyway) and the prepass runs it internally.
-    if (!HAS_IBL && !IS_DEPTH_PREPASS)
-        backfaceDiscard(input.worldPos.w);
-
-    if (IS_DEPTH_PREPASS)
+#if WC3_IS_DEPTH_PREPASS
     {
         // Depth-only path: either run the alpha-tested prepass or the
-        // cheap stub, then return a zero color (only depth is needed).
-        // Both branches already discard backfaces / failed alpha tests
-        // themselves; do NOT follow with an unconditional `discard` —
-        // that would kill every surviving fragment and suppress the
-        // rasterizer's depth write, defeating the whole prepass.
+        // cheap stub. Both branches discard internally; the rasterizer
+        // writes depth from SV_Position. No color write — the PSOutput
+        // has no fields on this perm.
         if (!TAlpha.enabled)
             depthPrepassStub(input);
         else
             depthPrepassBody<TAlpha, TMat>(input, isFrontFace);
-        output.color = float4(0, 0, 0, 0);
         return output;
     }
+#else
+    {
+
+    // Non-IBL draws discard fragments flagged by the VS as "behind the
+    // fog-clip plane" before doing any further work. The IBL path
+    // delays this until after the body (it needs the world-space
+    // normal anyway).
+    if (!HAS_IBL)
+        backfaceDiscard(input.worldPos.w);
 
     // Dispatch to the appropriate lit body.
     float4 result;
@@ -74,7 +76,7 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> ps_main<
     // G-buffer" test, and G-buffer payloads.
     float3 mrtNormal = float3(0, 0, 0);
     float preAlpha = 0;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
         TAlpha.test(result.w, psCB2.alphaRef);
 
@@ -89,12 +91,14 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> ps_main<
         // reconstruct the surface opacity.
         preAlpha = result.w;
     }
-
-    // Non-MRT path runs the alpha test here since the MRT block ran
-    // it above. Running it before fog avoids paying the fog apply()
-    // cost on discarded pixels.
-    if (!IS_MRT)
+#else
+    {
+        // Non-MRT path runs the alpha test here since the MRT block
+        // would have run it above. Running it before fog avoids paying
+        // the fog apply() cost on discarded pixels.
         TAlpha.test(result.w, psCB2.alphaRef);
+    }
+#endif
 
     // When fog is active we pre-multiply by inverseSoftness now so the
     // fog apply() doesn't further modulate alpha. The non-fog branch
@@ -140,21 +144,22 @@ public PSOutput<IS_MRT && !IS_DEPTH_PREPASS, !IS_DEPTH_PREPASS> ps_main<
 
     // The IBL path defers its backface discard to the very end —
     // matches the retail shader, where `discard_nz` is the last
-    // instruction before the SV_Target writes. Doing the discard
-    // earlier would force slangc to emit it before the post-lighting
-    // texture samples (e.g. the deferred emissive read), which can
-    // disrupt quad-level derivative computation on some GPUs.
+    // instruction before the SV_Target writes.
     if (HAS_IBL)
         backfaceDiscard(input.worldPos.w);
 
     output.color = result;
-    if (IS_MRT)
+#if WC3_IS_MRT
     {
         // specular.x carries view-space Z for SSR / resolve effects;
         // normal.w carries the pre-fog alpha for coverage.
         output.specular = float4(input.worldPos.z, 0, 0, 1);
         output.normal = float4(mrtNormal, preAlpha);
     }
+#endif
 
     return output;
+
+    }
+#endif
 }
