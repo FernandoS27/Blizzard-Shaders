@@ -40,6 +40,17 @@ OUT_BASE = REPO_ROOT / "slang_out"
 OUT_BASE_DEBUG = REPO_ROOT / "slang_out_debug"
 DEBUG_BUILD = False
 
+# When the --metallib path is active, slangc emits .metal source (target=metal)
+# and we drive Apple's `xcrun metal` + `xcrun metallib` ourselves to compile
+# it. We do this instead of letting slangc invoke its own metal downstream
+# because slangc (as of 2026.9) ignores `-Xmetal -mmacosx-version-min=...`
+# and always produces metallib container version 1.2.7 — driving xcrun
+# directly lets us pin -mmacosx-version-min and emit older metallib versions
+# (e.g. min=11 → metallib 1.2.5, which matches the lowest container slang's
+# Metal-2.3 emit syntax is compatible with; the Wc3-shipped 1.2.2 isn't
+# reachable because slangc has no pre-2.3 Metal output).
+METALLIB_MAC_MIN: Optional[str] = None
+
 _source_mtime_cache: Optional[float] = None
 
 
@@ -191,10 +202,16 @@ def invoke_slangc(entry: str, target: str, profile: str,
         args += [f"-D{d}"]
     for inc in include_dirs or []:
         args += ["-I", str(inc)]
+    # Metallib via xcrun: slangc emits .metal source to a sibling temp
+    # path; the .air → .metallib step runs after slangc returns. See
+    # METALLIB_MAC_MIN docstring for why we don't let slangc do it itself.
+    metal_via_xcrun = (target == "metal" and METALLIB_MAC_MIN is not None
+                       and str(out_path).endswith(".metallib"))
+    slangc_out = out_path.with_suffix(".metal") if metal_via_xcrun else out_path
     args += [
         "-profile", profile,
         "-target", target,
-        "-o", str(out_path),
+        "-o", str(slangc_out),
         "-warnings-disable", "39001",
     ]
     # Debug builds: full debug symbols (-g2) and no optimisation (-O0) so
@@ -214,6 +231,8 @@ def invoke_slangc(entry: str, target: str, profile: str,
     # masquerade as success via a leftover .dxbc from a prior run.
     if out_path.exists():
         out_path.unlink()
+    if metal_via_xcrun and slangc_out.exists():
+        slangc_out.unlink()
 
     proc = subprocess.run(args, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -223,7 +242,36 @@ def invoke_slangc(entry: str, target: str, profile: str,
         err_path = out_path.with_suffix(out_path.suffix + ".err")
         err_path.write_text(proc.stderr or proc.stdout or "(no slangc output)")
         return False
-    if target == "wgsl" and out_path.exists() and out_path.stat().st_size > 0:
+    if metal_via_xcrun:
+        if not slangc_out.exists() or slangc_out.stat().st_size == 0:
+            return False
+        air_path = out_path.with_suffix(".air")
+        metal_proc = subprocess.run(
+            ["xcrun", "metal", "-c",
+             f"-mmacosx-version-min={METALLIB_MAC_MIN}",
+             str(slangc_out), "-o", str(air_path)],
+            capture_output=True, text=True)
+        if metal_proc.returncode != 0:
+            err_path = out_path.with_suffix(out_path.suffix + ".err")
+            err_path.write_text(
+                "xcrun metal failed:\n" +
+                (metal_proc.stderr or metal_proc.stdout or ""))
+            slangc_out.unlink(missing_ok=True)
+            return False
+        lib_proc = subprocess.run(
+            ["xcrun", "metallib", str(air_path), "-o", str(out_path)],
+            capture_output=True, text=True)
+        # Intermediates aren't useful to keep around — they confuse the
+        # incremental mtime check on the next run and clutter slang_out/.
+        slangc_out.unlink(missing_ok=True)
+        air_path.unlink(missing_ok=True)
+        if lib_proc.returncode != 0:
+            err_path = out_path.with_suffix(out_path.suffix + ".err")
+            err_path.write_text(
+                "xcrun metallib failed:\n" +
+                (lib_proc.stderr or lib_proc.stdout or ""))
+            return False
+    elif target == "wgsl" and out_path.exists() and out_path.stat().st_size > 0:
         fix_wgsl_depth_textures(out_path)
         rename_wgsl_entry_to_main(out_path)
     return out_path.exists() and out_path.stat().st_size > 0
@@ -1170,13 +1218,20 @@ def main() -> int:
     # — Apple's toolchain is not available.
     mac_min = args.metallib or ("11" if sys.platform == "darwin" else None)
     if mac_min:
+        # Emit .metal source via slangc, then drive xcrun metal + metallib
+        # ourselves so we control the deployment target. slangc's built-in
+        # metallib backend ignores -Xmetal -mmacosx-version-min and pins
+        # the container at 1.2.7 (Metal 4.x), whereas xcrun-driven we get
+        # 1.2.5 at mac-min=11 (Metal 2.3, the lowest slangc syntax permits).
         TARGETS["metal"] = {
-            "target": "metallib",
+            "target": "metal",
             "ext":    "metallib",
             "vs":     "sm_6_0",
             "ps":     "sm_6_0",
-            "extra":  ["-Xmetal", f"-mmacosx-version-min={mac_min}"],
+            "extra":  [],
         }
+        global METALLIB_MAC_MIN
+        METALLIB_MAC_MIN = mac_min
 
     slangc = resolve_slangc(args.slangc)
     print(f"Using slangc: {slangc}")
