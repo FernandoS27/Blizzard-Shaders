@@ -45,7 +45,7 @@ public float4 psStandardBody<let HAS_DEBUG_VIS : bool>(PSInput input, bool isFro
 
         // enabledShaders bit 0 → force the albedo to a solid color.
         if (asint(psCB3.enabledShaders) & 1)
-            albedo.xyz = psCB3.overrideAlbedo;
+            albedo.xyz = psCB3.overrideAlbedo.xyz;
 
         float3 tsNormal = decodeNormalMap(normalSample);
         worldNormal = tangentToWorld(tsNormal, input.tangentWS.xyz, input.normalWS.xyz, input.tangentWS.w);
@@ -162,7 +162,7 @@ public float4 psMultiLayerBody<let HAS_DEBUG_VIS : bool>(PSInput input, bool isF
         teamAlbedo = t_teamColor.Sample(s_teamColor, input.uv.xy).xyz;
 
         if (asint(psCB3.enabledShaders) & 1)
-            albedo.xyz = psCB3.overrideAlbedo;
+            albedo.xyz = psCB3.overrideAlbedo.xyz;
 
         linearVert = srgbToLinear(input.vertColor.xyz);
     }

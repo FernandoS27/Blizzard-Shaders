@@ -62,7 +62,7 @@ public FoliageShadeResult foliagePSBody<
     if (HAS_TINT)
     {
         uint2 tintBits = asuint(psCB3.enabledShaders.xx) & uint2(1, 2);
-        albedo.xyz = (tintBits.x != 0) ? psCB3.overrideAlbedo : albedo.xyz;
+        albedo.xyz = (tintBits.x != 0) ? psCB3.overrideAlbedo.xyz : albedo.xyz;
         mask       = (tintBits.y != 0) ? psCB3.overrideOrm.yz : mask;
     }
 

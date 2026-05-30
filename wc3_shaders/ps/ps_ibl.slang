@@ -179,11 +179,11 @@ public float3 lightLoop(
         float3 lightDir;
         float attenuation;
 
-        if (light.type > 0)
+        if (light.position.w > 0)
         {
             // Point light: direction toward the light + inverse-square
             // attenuation (with the tiny distance bias from POINT_EPS).
-            float3 lightVec = light.position - viewPos;
+            float3 lightVec = light.position.xyz - viewPos;
             float distSq = dot(lightVec, lightVec);
             float dist = sqrt(distSq);
             attenuation = pointLightAttenuation(distSq, dist);
@@ -192,7 +192,7 @@ public float3 lightLoop(
         else
         {
             // Directional light: position is already the unit direction.
-            lightDir = light.position;
+            lightDir = light.position.xyz;
             attenuation = 1.0;
         }
 
@@ -224,11 +224,11 @@ public float3 lightLoop(
         // Direct-light contribution: (diffuse + specular) * light color.
         float3 specular = D * F * V;
         float3 brdf = specular + lambertianDiffuse;
-        accum += light.diffuse * brdf * contribution;
+        accum += light.diffuse.xyz * brdf * contribution;
 
         // Per-light ambient (attenuated, independent of NdotL) —
         // matches the analytical-ambient term the engine uploads.
-        accum += light.ambient * lambertianDiffuse * attenuation;
+        accum += light.ambient.xyz * lambertianDiffuse * attenuation;
 
         lightIdx++;
     }
@@ -267,7 +267,7 @@ public float4 psIBLBody<
     {
         uint enabled = asuint(psCB3.enabledShaders);
         if ((enabled & 1u) != 0)
-            albedo.xyz = psCB3.overrideAlbedo;
+            albedo.xyz = psCB3.overrideAlbedo.xyz;
         if ((enabled & 2u) != 0)
             orm = psCB3.overrideOrm.yz;
     }
@@ -343,11 +343,11 @@ public float4 psIBLBody<
     // their ambient mix. Subsequent lights run through the generic
     // light loop.
     bool hasFirstLight = asuint(psCB2.lightCount) > 0;
-    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].type == 0.0);
+    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].position.w == 0.0);
 
     if (firstIsDirectional)
     {
-        float3 lightDir = psCB2.lights[0].position;
+        float3 lightDir = psCB2.lights[0].position.xyz;
 
         // Cook-Torrance for the main directional light.
         float3 H = normalize(viewDir + lightDir);
@@ -377,14 +377,16 @@ public float4 psIBLBody<
 
         float maxDiffuse = max(max(psCB2.lights[0].diffuse.x, psCB2.lights[0].diffuse.y), psCB2.lights[0].diffuse.z);
         float ambientWeight = psCB2.lights[0]._pad2.x; // Per-light ambient weight.
+        float3 light0Diffuse = psCB2.lights[0].diffuse.xyz;
+        float3 light0Ambient = psCB2.lights[0].ambient.xyz;
 
         // Diffuse ambient: analytical+IBL mix, modulated by shadow-
         // attenuated NdotL so the lit / shadow sides of the Blizzard
         // ambient split respond to occlusion.
         float3 ambientResult = blizzardAmbientBlend(
-            psCB2.lights[0].diffuse, ibl.diffuseIrradiance,
+            light0Diffuse, ibl.diffuseIrradiance,
             litNdotL, maxDiffuse, ibl.isActive, ambientWeight);
-        ambientResult += psCB2.lights[0].ambient;
+        ambientResult += light0Ambient;
 
         // Direct + indirect specular combine. The direct spec is scaled
         // by the combined weight so it matches the ambient strength,
@@ -397,7 +399,7 @@ public float4 psIBLBody<
         float3 indirectSpec = F0 * ibl.brdfLUT.x + ibl.brdfLUT.y;
         float ambientIBLWeight = totalWeight * ibl.isActive * ambientWeight;
         indirectSpec *= ambientIBLWeight;
-        indirectSpec += scaledSpec * psCB2.lights[0].diffuse;
+        indirectSpec += scaledSpec * light0Diffuse;
         indirectSpec *= ibl.specularRadiance;
 
         accum = ambientResult * lambertianDiffuse + indirectSpec;

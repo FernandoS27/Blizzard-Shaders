@@ -47,7 +47,7 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
     // Refracted albedo (centre.w preserved for downstream alpha).
     float4 albedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask);
     if (HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 1) != 0)
-        albedo.xyz = psCB3.overrideAlbedo;
+        albedo.xyz = psCB3.overrideAlbedo.xyz;
 
     float3 normalSample = t_normal.Sample(s_normal, input.uv.xy).xyw;
     float3 emissive = t_emissive.Sample(s_emissive, input.uv.xy).xyz;
@@ -87,11 +87,11 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
 
     // --- First light + IBL blend (only if light 0 is directional) ---
     bool hasFirstLight     = asuint(psCB2.lightCount) > 0;
-    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].type == 0.0);
+    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].position.w == 0.0);
 
     if (firstIsDirectional)
     {
-        float3 lightDir = psCB2.lights[0].position;
+        float3 lightDir = psCB2.lights[0].position.xyz;
 
         float3 H = normalize(viewDir + lightDir);
         float  VdotH = dot(H, viewDir);
@@ -114,9 +114,9 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
         float ambientWeight = psCB2.lights[0]._pad2.x;
 
         float3 ambientResult = blizzardAmbientBlend(
-            psCB2.lights[0].diffuse, ibl.diffuseIrradiance,
+            psCB2.lights[0].diffuse.xyz, ibl.diffuseIrradiance,
             clampedNdotL, maxDiffuse, ibl.isActive, ambientWeight);
-        ambientResult += psCB2.lights[0].ambient;
+        ambientResult += psCB2.lights[0].ambient.xyz;
 
         float totalWeight = maxDiffuse + ibl.isActive;
         float3 scaledSpec = spec * totalWeight * clampedNdotL;
@@ -124,7 +124,7 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
         float3 indirectSpec = F0 * ibl.brdfLUT.x + ibl.brdfLUT.y;
         float  ambientIBLWeight = totalWeight * ibl.isActive * ambientWeight;
         indirectSpec *= ambientIBLWeight;
-        indirectSpec += scaledSpec * psCB2.lights[0].diffuse;
+        indirectSpec += scaledSpec * psCB2.lights[0].diffuse.xyz;
         indirectSpec *= ibl.specularRadiance;
 
         accum = ambientResult * lambertianDiffuse + indirectSpec;

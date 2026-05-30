@@ -107,7 +107,7 @@ public PSOutput gritty_ps_main<
 
         float3 effectiveAlbedo = t_albedo.Sample(s_albedo, input.uv.xy).xyz;
         if ((asuint(psCB3.enabledShaders) & 1) != 0)
-            effectiveAlbedo = psCB3.overrideAlbedo;
+            effectiveAlbedo = psCB3.overrideAlbedo.xyz;
 
         result = debugVisualize(result, input, wn, normalLen, effectiveAlbedo);
         if (!TFog.hasFog)

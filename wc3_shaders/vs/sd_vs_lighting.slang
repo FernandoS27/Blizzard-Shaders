@@ -37,11 +37,11 @@ public float3 sdComputePerVertexLighting<let NUM_LIGHTS : int>(
         float3 lightVec;
         float  atten;
 
-        if (lights[i].type > 0.0)
+        if (lights[i].position.w > 0.0)
         {
             // Point light: unit direction toward the light + quadratic
             // falloff on squared distance (see sdAttenuation).
-            float3 delta = lights[i].position - worldPos;
+            float3 delta = lights[i].position.xyz - worldPos;
             float  dSq = dot(delta, delta);
             float  d = sqrt(dSq);
             lightVec = delta / d;
@@ -51,15 +51,15 @@ public float3 sdComputePerVertexLighting<let NUM_LIGHTS : int>(
         {
             // Directional light: `position` is already a unit direction
             // and attenuation is a no-op.
-            lightVec = lights[i].position;
+            lightVec = lights[i].position.xyz;
             atten    = 1.0;
         }
 
         // Lambertian NdotL; ambient accumulates unconditionally so
         // unlit sides still pick up the light's ambient contribution.
         float NdotL = saturate(dot(worldNormal, lightVec));
-        diffAccum += lights[i].diffuse * NdotL * atten;
-        ambAccum  += lights[i].ambient * atten;
+        diffAccum += lights[i].diffuse.xyz * NdotL * atten;
+        ambAccum  += lights[i].ambient.xyz * atten;
     }
 
     return saturate(diffAccum * material.xyz + ambAccum * material.xyz);

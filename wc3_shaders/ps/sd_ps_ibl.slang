@@ -149,11 +149,11 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
     float3 ambAccum = float3(0, 0, 0);
 
     int loopStart = 0;
-    if (lightCount > 0 && sdPsCB2.lights[0].type == 0.0)
+    if (lightCount > 0 && sdPsCB2.lights[0].position.w == 0.0)
     {
         // Special-case the first directional light to combine it with
         // the IBL blend, matching the HD path's scheme.
-        float3 L = sdPsCB2.lights[0].position;
+        float3 L = sdPsCB2.lights[0].position.xyz;
 
         float3 H = normalize(viewDir + L);
         float VdotH = dot(H, viewDir);
@@ -169,7 +169,7 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         // Apply shadow only to the direct (NdotL) term, not to ambient.
         float litNdotL = HAS_EXTRA_VERTS ? (clampedNdotL * shadowAtten) : clampedNdotL;
 
-        float3 lightDiffuse = sdPsCB2.lights[0].diffuse;
+        float3 lightDiffuse = sdPsCB2.lights[0].diffuse.xyz;
         float maxAmb = max(max(lightDiffuse.x, lightDiffuse.y), lightDiffuse.z);
         float invMaxAmb = 1.0 / (maxAmb + SAFE_EPS);
 
@@ -201,7 +201,7 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         // Blend between upper (lit) and litLower (shadow-side ambient)
         // by litNdotL so the shadow side retains the IBL contribution.
         unlitLower = litNdotL * unlitLower + litLower;
-        ambAccum = sdPsCB2.lights[0].ambient + unlitLower;
+        ambAccum = sdPsCB2.lights[0].ambient.xyz + unlitLower;
 
         // Specular combine: direct lobe + indirect from the IBL
         // specular probe weighted by the LUT.
@@ -218,8 +218,8 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
     // Generic analytical loop for the remaining lights (up to 8).
     for (uint i = (uint)loopStart; i < lightCount && i < 8; i++)
     {
-        float3 lightPos = sdPsCB2.lights[i].position;
-        float lightType = sdPsCB2.lights[i].type;
+        float3 lightPos = sdPsCB2.lights[i].position.xyz;
+        float lightType = sdPsCB2.lights[i].position.w;
 
         float3 L;
         float atten;
@@ -247,10 +247,10 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
 
         // Per-light specular + diffuse, weighted by the light color.
         float3 specAndDiff = specTerm * INV_PI + diffAlbedo;
-        specAndDiff = sdPsCB2.lights[i].diffuse * specAndDiff;
+        specAndDiff = sdPsCB2.lights[i].diffuse.xyz * specAndDiff;
         diffAccum += specAndDiff * clampedNdotL;
 
-        ambAccum += sdPsCB2.lights[i].ambient * atten;
+        ambAccum += sdPsCB2.lights[i].ambient.xyz * atten;
     }
 
     // Convert back to physical units (undo the INV_PI scale) and
