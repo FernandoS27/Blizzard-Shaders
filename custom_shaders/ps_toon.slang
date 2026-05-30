@@ -146,7 +146,7 @@ public float4 psToonIBLBody<
     {
         uint enabled = asuint(psCB3.enabledShaders);
         if ((enabled & 1u) != 0)
-            albedo.xyz = psCB3.overrideAlbedo;
+            albedo.xyz = psCB3.overrideAlbedo.xyz;
         if ((enabled & 2u) != 0)
             orm = psCB3.overrideOrm.yz;
     }
@@ -233,13 +233,13 @@ public float4 psToonIBLBody<
     uint firstLightProcessed = 0;
 
     bool hasFirstLight = asuint(psCB2.lightCount) > 0;
-    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].type == 0.0);
+    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].position.w == 0.0);
 
     // Main directional light + IBL: hue-tint the shadow side with the
     // IBL diffuse so environment probes still influence the toon ambient.
     if (firstIsDirectional)
     {
-        float3 lightDir = psCB2.lights[0].position;
+        float3 lightDir = psCB2.lights[0].position.xyz;
 
         float3 H = normalize(viewDir + lightDir);
         float NdotH = dot(viewNormal, H);
@@ -261,17 +261,17 @@ public float4 psToonIBLBody<
         float diffuseBand = toonDiffuseBand(NdotL, shadowAtten);
         float litMask = step(TOON_LIT_THRESHOLD, NdotL * shadowAtten);
 
-        float3 ambientTint = psCB2.lights[0].ambient
+        float3 ambientTint = psCB2.lights[0].ambient.xyz
                            + ibl.isActive * ibl.diffuseIrradiance * ambientWeight;
         float3 bandTint    = toonBandTint(NdotL, shadowAtten);
-        float3 litTint     = psCB2.lights[0].diffuse * diffuseBand * bandTint;
+        float3 litTint     = psCB2.lights[0].diffuse.xyz * diffuseBand * bandTint;
 
         accumDiffuse += ambientTint + litTint;
 
         // Hard specular, only fires where the surface is lit.
         float3 F = schlickFresnel(F0, VdotH);
         float specMask = toonSpecular(NdotH, roughness) * litMask;
-        accumSpec += specMask * F * psCB2.lights[0].diffuse;
+        accumSpec += specMask * F * psCB2.lights[0].diffuse.xyz;
 
         // Metals also reflect the environment outside the hard highlight
         // disc — without this they'd go flat/black in shadow. Scaled by
@@ -296,9 +296,9 @@ public float4 psToonIBLBody<
         float3 lightDir;
         float attenuation;
 
-        if (light.type > 0)
+        if (light.position.w > 0)
         {
-            float3 lightVec = light.position - input.worldPos.xyz;
+            float3 lightVec = light.position.xyz - input.worldPos.xyz;
             float distSq = dot(lightVec, lightVec);
             float dist = sqrt(distSq);
             attenuation = pointLightAttenuation(distSq, dist);
@@ -306,7 +306,7 @@ public float4 psToonIBLBody<
         }
         else
         {
-            lightDir = light.position;
+            lightDir = light.position.xyz;
             attenuation = 1.0;
         }
 
@@ -319,12 +319,12 @@ public float4 psToonIBLBody<
         float litMask = step(TOON_LIT_THRESHOLD, NdotL);
         float3 bandTint = toonBandTint(NdotL, 1.0);
 
-        accumDiffuse += light.ambient * attenuation
-                      + light.diffuse * diffuseBand * attenuation * bandTint;
+        accumDiffuse += light.ambient.xyz * attenuation
+                      + light.diffuse.xyz * diffuseBand * attenuation * bandTint;
 
         float3 F = schlickFresnel(F0, VdotH);
         float specMask = toonSpecular(NdotH, roughness) * litMask;
-        accumSpec += specMask * F * light.diffuse * attenuation;
+        accumSpec += specMask * F * light.diffuse.xyz * attenuation;
 
         lightIdx++;
     }
@@ -401,7 +401,7 @@ public float4 psToonStandardBody<let HAS_DEBUG_VIS : bool>(PSInput input, bool i
     float3 emissive = t_emissive.Sample(s_emissive, input.uv.xy).xyz;
 
     if (HAS_DEBUG_VIS && (asint(psCB3.enabledShaders) & 1))
-        albedo.xyz = psCB3.overrideAlbedo;
+        albedo.xyz = psCB3.overrideAlbedo.xyz;
 
     float3 tsNormal = decodeNormalMap(normalSample);
     float3 worldNormal = tangentToWorld(tsNormal, input.tangentWS.xyz, input.normalWS.xyz, input.tangentWS.w);
@@ -451,7 +451,7 @@ public float4 psToonMultiLayerBody<let HAS_DEBUG_VIS : bool>(PSInput input, bool
     float3 normalSample = t_normal.Sample(s_normal, input.uv.xy).xyw;
 
     if (HAS_DEBUG_VIS && (asint(psCB3.enabledShaders) & 1))
-        albedo.xyz = psCB3.overrideAlbedo;
+        albedo.xyz = psCB3.overrideAlbedo.xyz;
 
     MultiLayerResult ml = multiLayerBlend(albedo.xyz, teamAlbedo, blendWeight, emissive);
     float teamLuma = max(max(teamAlbedo.x, teamAlbedo.y), teamAlbedo.z);

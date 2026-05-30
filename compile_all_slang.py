@@ -192,10 +192,17 @@ def invoke_slangc(entry: str, target: str, profile: str,
     args = [slangc_exe, "-entry", entry]
     for t in specialize:
         args += ["-specialize", t]
-    # WGSL backend uses #ifdef WGSL_TARGET to shrink PS binding offsets.
+    # WGSL backend uses #ifdef WGSL_TARGET to shrink PS binding offsets,
+    # and shares the scalar-split CB layout with Metal — see PSPerDraw
+    # in cb_structs.slang. Both targets land at the same byte offsets the
+    # host CB writer expects (HLSL register-packing); the alternative
+    # `float3` padding would shift everything by 16 bytes under WGSL
+    # std140 / Slang's Metal natural-buffer layout.
     effective_defines = list(defines or [])
     if target == "wgsl":
         effective_defines.append("WGSL_TARGET=1")
+    if target == "metal":
+        effective_defines.append("METAL_TARGET=1")
     for d in effective_defines:
         # slangc 2026.x rejects `-D NAME=val` (space-separated) when
         # followed by `-specialize`; use the concatenated form.

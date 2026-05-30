@@ -119,7 +119,7 @@ public TerrainDominantLight evaluateDominantLight(
 
     // The dominant light is light 0 if it's directional (.w == 0).
     bool hasLight0 = asuint(psCB2.lightCount) > 0;
-    bool light0IsDir = hasLight0 && (psCB2.lights[0].type == 0.0);
+    bool light0IsDir = hasLight0 && (psCB2.lights[0].position.w == 0.0);
 
     if (!light0IsDir)
     {
@@ -128,7 +128,7 @@ public TerrainDominantLight evaluateDominantLight(
         return result;
     }
 
-    float3 lightDir = psCB2.lights[0].position;
+    float3 lightDir = psCB2.lights[0].position.xyz;
 
     // Half-vector + dot products. NdotV is precomputed by caller.
     float3 H = viewDir + lightDir;
@@ -168,8 +168,8 @@ public TerrainDominantLight evaluateDominantLight(
     TerrainIBLSample ibl = sampleTerrainIBL(viewPos, worldNormal, roughness, NdotV);
 
     // Asymmetric ambient blend (Blizzard split: 0.675 upper / 0.325 lower).
-    float3 lightDiffuse = psCB2.lights[0].diffuse;
-    float3 lightAmbient = psCB2.lights[0].ambient;
+    float3 lightDiffuse = psCB2.lights[0].diffuse.xyz;
+    float3 lightAmbient = psCB2.lights[0].ambient.xyz;
 
     float maxLightDiff = max(lightDiffuse.y, lightDiffuse.z);
     maxLightDiff = max(lightDiffuse.x, maxLightDiff);
@@ -250,9 +250,9 @@ public float3 evaluateAdditionalLights(
 
         float3 lightDir;
         float  attenuation;
-        if (light.type > 0.0)
+        if (light.position.w > 0.0)
         {
-            float3 lightVec = light.position - viewPos;
+            float3 lightVec = light.position.xyz - viewPos;
             float  distSq = dot(lightVec, lightVec);
             float  dist = sqrt(distSq);
             attenuation = 1.0 / (distSq + POINT_EPS * dist);
@@ -260,7 +260,7 @@ public float3 evaluateAdditionalLights(
         }
         else
         {
-            lightDir    = light.position;
+            lightDir    = light.position.xyz;
             attenuation = 1.0;
         }
 
@@ -287,8 +287,8 @@ public float3 evaluateAdditionalLights(
 
         float3 spec  = F * D * V;
         float3 brdf  = spec + diffuseScaled;
-        accum += light.diffuse * brdf * contribution;
-        accum += light.ambient * diffuseScaled * attenuation;
+        accum += light.diffuse.xyz * brdf * contribution;
+        accum += light.ambient.xyz * diffuseScaled * attenuation;
     }
     return accum;
 }

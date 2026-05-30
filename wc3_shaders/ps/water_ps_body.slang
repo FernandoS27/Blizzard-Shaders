@@ -329,10 +329,10 @@ float3 waterLightLoop(
         float3 Ldir;
         float  atten;
 
-        if (light.type > 0)
+        if (light.position.w > 0)
         {
             // Point light: direction + water's own soft falloff.
-            float3 toLight = light.position - worldPos;
+            float3 toLight = light.position.xyz - worldPos;
             float  distSq  = dot(toLight, toLight);
             float  dist    = sqrt(distSq);
             atten = waterPointAttenuation(distSq);
@@ -340,7 +340,7 @@ float3 waterLightLoop(
         }
         else
         {
-            Ldir  = light.position;
+            Ldir  = light.position.xyz;
             atten = 1.0;
         }
 
@@ -370,8 +370,8 @@ float3 waterLightLoop(
 
         // Diffuse + specular modulated by the light's diffuse colour.
         float3 brdf = F * D * V + f0Water;
-        accum += light.diffuse * brdf * gate;
-        accum += light.ambient * f0Water * atten;
+        accum += light.diffuse.xyz * brdf * gate;
+        accum += light.ambient.xyz * f0Water * atten;
 
         ++lightIdx;
     }
@@ -461,15 +461,15 @@ public float4 waterPSBody<TFog : IFogMode>(WaterPSInput input)
     uint   firstLightIdx    = 0;
 
     bool hasLights     = asuint(waterPsCB2.lightCount) > 0;
-    bool dominantIsDir = waterPsCB2.lights[0].type == 0.0;
+    bool dominantIsDir = waterPsCB2.lights[0].position.w == 0.0;
     if (hasLights && dominantIsDir)
     {
         ShaderLight light0 = waterPsCB2.lights[0];
 
-        float3 H     = normalize(-input.worldPos * invViewDist + light0.position);
+        float3 H     = normalize(-input.worldPos * invViewDist + light0.position.xyz);
         float  VdotH = dot(H, viewDir);
         float  NdotH = dot(worldN, H);
-        float  NdotL = dot(worldN, light0.position);
+        float  NdotL = dot(worldN, light0.position.xyz);
 
         float3 F = schlickFresnel(f0Schlick, VdotH);
         float  D = ggxNDF(NdotH, ndfAlpha);
@@ -485,9 +485,9 @@ public float4 waterPSBody<TFog : IFogMode>(WaterPSInput input)
 
         // Blizzard ambient blend (+ per-light ambient term).
         float3 ambient = blizzardAmbientBlend(
-            light0.diffuse, ibl.diffuseIrradiance,
+            light0.diffuse.xyz, ibl.diffuseIrradiance,
             NdotLsat, maxDiffuse, ibl.isActive, ambientWeight);
-        ambient += light0.ambient;
+        ambient += light0.ambient.xyz;
 
         // Direct + indirect specular composition.
         float totalWeight      = maxDiffuse + ibl.isActive;
@@ -495,7 +495,7 @@ public float4 waterPSBody<TFog : IFogMode>(WaterPSInput input)
         float3 indirectSpec    = f0Schlick * ibl.brdfLUT.x + ibl.brdfLUT.y;
         float  ambientIBLWeight = totalWeight * ibl.isActive * ambientWeight;
         indirectSpec          *= ambientIBLWeight;
-        indirectSpec          += scaledSpec * light0.diffuse;
+        indirectSpec          += scaledSpec * light0.diffuse.xyz;
         indirectSpec          *= ibl.specularRadiance;
 
         dominantLitColor = ambient * f0Water + indirectSpec;

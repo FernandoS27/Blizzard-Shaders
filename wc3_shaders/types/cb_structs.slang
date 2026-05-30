@@ -38,11 +38,17 @@ public static const int PsSamplerBindingOffset = PsBindingOffset;
 // type == 0 => directional (position is actually the light direction).
 // type  > 0 => point light (position is a world-space position).
 // _pad2.x is repurposed as "ambient weight" in the IBL combine path.
+//
+// All four members are float4 so the CB layout is identical across
+// HLSL register-packing (D3D11) and Slang's Metal natural-buffer layout.
+// The original engine wire format stores xyz components plus a trailing
+// scalar in each 16-byte slot; the `.w` channels carry the pad/type
+// scalars that used to be standalone fields.
 public struct ShaderLight
 {
-    public float3 ambient;    public float _pad0;
-    public float3 diffuse;    public float _pad1;
-    public float3 position;   public float  type;
+    public float4 ambient;       // .xyz = ambient color, .w = _pad0
+    public float4 diffuse;       // .xyz = diffuse color, .w = _pad1
+    public float4 position;      // .xyz = position/direction, .w = type
     public float4 _pad2;
 };
 
@@ -61,7 +67,14 @@ public struct ShaderLight
 // Same pattern applied to every `scalar; float3 _pad;` group below.
 public struct PSPerDraw
 {
-#ifdef WGSL_TARGET
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // WGSL std140 and Slang's Metal natural-buffer layout both put a
+    // `float3` at the next 16-byte boundary, which would push `fogStart`
+    // from offset 16 (HLSL register-packing) to 32 and shift every
+    // following field by 16 bytes — and the host CB writer expects the
+    // HLSL/D3D wire layout. Splitting `_p0` into three scalars makes
+    // them pack into the same 16-byte register as `alphaRef`, matching
+    // the original HLSL packing on every target.
     public float   alphaRef;
     public float   _p0_x;            public float  _p0_y;
     public float   _p0_z;
@@ -149,8 +162,13 @@ public struct DebugVisCB
 {
     public uint  enabledShaders;  public float  debugMode;
     public float2 _p0;
-    public float3 overrideAlbedo; public float  _p1;
-    public float3 overrideOrm;    public float  _p2;
+    // `overrideAlbedo` / `overrideOrm` are float4 so the CB layout is
+    // identical across HLSL register-packing (D3D11), WGSL std140, and
+    // Slang's Metal natural-buffer layout — see PSPerDraw for the same
+    // rationale on `_p0`. Callers read `.xyz` for the float3 portion and
+    // `.w` (formerly `_p1` / `_p2`) is unused padding.
+    public float4 overrideAlbedo; // .xyz override, .w = _p1
+    public float4 overrideOrm;    // .xyz override, .w = _p2
 };
 
 public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<PSPerDraw>      psCB2 : register(b2);
@@ -190,7 +208,8 @@ public [[vk::binding(PsSamplerBindingOffset + 15, 2)]] SamplerState s_brdfLut   
 // view-to-world rotation used to orient the IBL cubemap samples.
 public struct SDPSPerDraw
 {
-#ifdef WGSL_TARGET
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // See PSPerDraw for the layout rationale behind the scalar split.
     public float   alphaRef;
     public float   _p0_x;            public float  _p0_y;
     public float   _p0_z;
@@ -237,7 +256,8 @@ public struct SDPSPerDraw
 // same cb1[0].x active-cascade count.
 public struct ShadowCascadeCount
 {
-#ifdef WGSL_TARGET
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // See PSPerDraw for the layout rationale behind the scalar split.
     public float numCascades;
     public float _pad_x;       public float _pad_y;
     public float _pad_z;
@@ -285,7 +305,8 @@ public struct SDHighspecVSPerDraw
 // texture-stage ops and the interpolated vertex color.
 public struct SDClassicPSPerDraw
 {
-#ifdef WGSL_TARGET
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // See PSPerDraw for the layout rationale behind the scalar split.
     public float  alphaRef;
     public float  _p0_x;        public float  _p0_y;
     public float  _p0_z;
@@ -403,7 +424,8 @@ public struct FoliageVSPerDraw
     public float4   worldRow2;       // cb2[6]
     public float4   worldTranslate;  // cb2[7]
     public float4x4 worldViewProj;   // cb2[8..11]
-#ifdef WGSL_TARGET
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // See PSPerDraw for the layout rationale behind the scalar split.
     public float    effectTime;
     public float    _padTime_x;      public float _padTime_y;
     public float    _padTime_z;      // cb2[12]
@@ -587,7 +609,8 @@ public struct PopcornPSPerDraw
     public float4   worldToClip[4];                         // cb2[11..14]
 
     public float4   depthUVRemap;                           // cb2[15]
-#ifdef WGSL_TARGET
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // See PSPerDraw for the layout rationale behind the scalar split.
     public float    depthFadeScale;
     public float    _p16_x;         public float _p16_y;
     public float    _p16_z;                                 // cb2[16]
@@ -648,7 +671,8 @@ public [[vk::binding(PsSamplerBindingOffset + 15, 2)]] SamplerState s_popcornBrd
 public struct TonemapPSPerDraw
 {
     public float  exposure;
-#ifdef WGSL_TARGET
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // See PSPerDraw for the layout rationale behind the scalar split.
     public float  _p0_x;
     public float  _p0_y;
     public float  _p0_z;

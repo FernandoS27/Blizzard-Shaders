@@ -193,7 +193,7 @@ public float4 psGrittyIBLBody<
     {
         uint enabled = asuint(psCB3.enabledShaders);
         if ((enabled & 1u) != 0)
-            albedo.xyz = psCB3.overrideAlbedo;
+            albedo.xyz = psCB3.overrideAlbedo.xyz;
         if ((enabled & 2u) != 0)
             orm = psCB3.overrideOrm.yz;
     }
@@ -269,11 +269,11 @@ public float4 psGrittyIBLBody<
     uint firstLightProcessed = 0;
 
     bool hasFirstLight = asuint(psCB2.lightCount) > 0;
-    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].type == 0.0);
+    bool firstIsDirectional = hasFirstLight && (psCB2.lights[0].position.w == 0.0);
 
     if (firstIsDirectional)
     {
-        float3 lightDir = psCB2.lights[0].position;
+        float3 lightDir = psCB2.lights[0].position.xyz;
 
         float3 H = normalize(viewDir + lightDir);
         float VdotH = dot(H, viewDir);
@@ -298,9 +298,9 @@ public float4 psGrittyIBLBody<
         float ambientWeight = psCB2.lights[0]._pad2.x;
 
         float3 ambientResult = blizzardAmbientBlend(
-            psCB2.lights[0].diffuse, ibl.diffuseIrradiance,
+            psCB2.lights[0].diffuse.xyz, ibl.diffuseIrradiance,
             litNdotL, maxDiffuse, ibl.isActive, ambientWeight);
-        ambientResult += psCB2.lights[0].ambient;
+        ambientResult += psCB2.lights[0].ambient.xyz;
 
         // Gritty: attenuate ambient/IBL-diffuse only — direct spec /
         // IBL spec stay full strength so highlights still read.
@@ -312,7 +312,7 @@ public float4 psGrittyIBLBody<
         float3 indirectSpec = F0 * ibl.brdfLUT.x + ibl.brdfLUT.y;
         float ambientIBLWeight = totalWeight * ibl.isActive * ambientWeight;
         indirectSpec *= ambientIBLWeight;
-        indirectSpec += scaledSpec * psCB2.lights[0].diffuse;
+        indirectSpec += scaledSpec * psCB2.lights[0].diffuse.xyz;
         indirectSpec *= ibl.specularRadiance;
 
         accum = ambientResult * lambertianDiffuse + indirectSpec;
@@ -420,7 +420,7 @@ public float4 psGrittyStandardBody<let HAS_DEBUG_VIS : bool>(PSInput input, bool
         emissive = t_emissive.Sample(s_emissive, input.uv.xy).xyz;
 
         if (asint(psCB3.enabledShaders) & 1)
-            albedo.xyz = psCB3.overrideAlbedo;
+            albedo.xyz = psCB3.overrideAlbedo.xyz;
 
         float3 recoloredAlbedo = grittyRecolor(albedo.xyz, 0.0);
 
@@ -537,7 +537,7 @@ public float4 psGrittyMultiLayerBody<let HAS_DEBUG_VIS : bool>(PSInput input, bo
         teamAlbedo = t_teamColor.Sample(s_teamColor, input.uv.xy).xyz;
 
         if (asint(psCB3.enabledShaders) & 1)
-            albedo.xyz = psCB3.overrideAlbedo;
+            albedo.xyz = psCB3.overrideAlbedo.xyz;
 
         linearVert = srgbToLinear(input.vertColor.xyz);
     }

@@ -236,8 +236,8 @@ PopcornIBLSample popcornSampleIBL(float3 worldNormal, float3 worldPos,
 float3 popcornComposeIBLTint(
     PopcornIBLSample ibl, float3 F0, float3 diffTerm, float iblOn)
 {
-    float3 baseMat = popcornPsCB2.lights[0].diffuse;     // cb2[22].xyz
-    float3 ambient = popcornPsCB2.lights[0].ambient;     // cb2[21].xyz
+    float3 baseMat = popcornPsCB2.lights[0].diffuse.xyz;     // cb2[22].xyz
+    float3 ambient = popcornPsCB2.lights[0].ambient.xyz;     // cb2[21].xyz
     float  matMax    = max(baseMat.x, max(baseMat.y, baseMat.z));
     float  invMatMax = 1.0 / (SAFE_EPS + matMax);
     float  iblWeight = matMax + iblOn;
@@ -273,10 +273,10 @@ PopcornLightContrib popcornEvalLight(
 {
     float3 lightVec;
     float  lightAtten;
-    bool   isPunctual = (light.type > 0.0);
+    bool   isPunctual = (light.position.w > 0.0);
     if (isPunctual)
     {
-        lightVec = light.position - worldPos;
+        lightVec = light.position.xyz - worldPos;
         float d2 = dot(lightVec, lightVec);
         float d  = sqrt(d2);
         lightAtten = pointLightAttenuation(d2, d);
@@ -284,7 +284,7 @@ PopcornLightContrib popcornEvalLight(
     }
     else
     {
-        lightVec   = light.position;
+        lightVec   = light.position.xyz;
         lightAtten = 1.0;
     }
 
@@ -299,8 +299,8 @@ PopcornLightContrib popcornEvalLight(
     float  energy   = max(0.0, nDotL) * lightAtten;
 
     PopcornLightContrib c;
-    c.spec = (D * F * vis + diffTerm) * light.diffuse * energy;
-    c.diff = light.ambient * diffTerm * lightAtten;
+    c.spec = (D * F * vis + diffTerm) * light.diffuse.xyz * energy;
+    c.diff = light.ambient.xyz * diffTerm * lightAtten;
     return c;
 }
 
@@ -347,7 +347,7 @@ public float3 popcornLitBody(PopcornPSInput input, PopcornUV uv,
     // IBL block — gated on (lightCount > 0) AND light0 is directional
     // (light0 is the special "directional sun + IBL driver" slot).
     bool  lightsOn = (asuint(popcornPsCB2.lightCount) > 0u)
-                   && (popcornPsCB2.lights[0].type == 0.0);
+                   && (popcornPsCB2.lights[0].position.w == 0.0);
     float3 iblTinted = float3(0, 0, 0);
     if (lightsOn)
     {

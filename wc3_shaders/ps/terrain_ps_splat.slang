@@ -50,7 +50,7 @@ public SplatLayerSample sampleSplatLayer<let HAS_TINT : bool>(
     if (HAS_TINT)
     {
         uint2 tintBits = asuint(psCB3.enabledShaders.xx) & uint2(1, 2);
-        s.albedo.xyz = (tintBits.x != 0) ? psCB3.overrideAlbedo : s.albedo.xyz;
+        s.albedo.xyz = (tintBits.x != 0) ? psCB3.overrideAlbedo.xyz : s.albedo.xyz;
         s.maskUV     = (tintBits.y != 0) ? psCB3.overrideOrm.yz : s.maskUV;
     }
 
