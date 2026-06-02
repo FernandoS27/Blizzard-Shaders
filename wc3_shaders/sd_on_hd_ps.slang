@@ -74,8 +74,11 @@ public PSOutput sd_on_hd_ps_main<
     // pipeline has no "run after color matrix" branch.
     result.w = sdPsCB2.inverseSoftness * result.w;
 
-    result.xyz = TFog.apply(result.xyz, sdPsCB2.fogColor.xyz,
-                            input.worldPos.z, sdPsCB2.fogStart, sdPsCB2.fogEnd, sdPsCB2.fogDensity);
+    if (!HAS_DEBUG_VIS)
+    {
+        result.xyz = TFog.apply(result.xyz, sdPsCB2.fogColor.xyz,
+                                input.worldPos.z, sdPsCB2.fogStart, sdPsCB2.fogEnd, sdPsCB2.fogDensity);
+    }
 
     // Backface discard happens after the lit body here because the
     // IBL path needs the world-space normal for the probe sample. The
@@ -86,7 +89,7 @@ public PSOutput sd_on_hd_ps_main<
     // because the debug overlay emits already-displayable colors.
     if (HAS_SRGB_OUTPUT && !HAS_DEBUG_VIS)
     {
-        result.xyz = linearToSrgb(result.xyz);
+        result.xyz = lerp(result.xyz, linearToSrgb(result.xyz), result.w);
     }
 
     if (HAS_DEBUG_VIS)

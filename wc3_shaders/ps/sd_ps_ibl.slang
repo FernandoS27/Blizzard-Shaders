@@ -210,7 +210,6 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         float specIBL = scaledLut * ibl.brdfY;
         diffAccum = combinedSpec * lightDiffuse + specIBL;
         diffAccum = diffAccum * ibl.specIBL;
-        diffAccum = ambAccum * diffAlbedo + diffAccum;
 
         loopStart = 1; // Skip light 0 in the generic loop.
     }
@@ -225,11 +224,11 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         float atten;
         if (lightType > 0)
         {
-            // Point light: inverse-square attenuation.
+            // Point light:
             float3 delta = lightPos - input.worldPos.xyz;
             float distSq = dot(delta, delta);
             float dist = sqrt(distSq);
-            atten = pointLightAttenuation(distSq, dist);
+            atten = 1.0 / (1.0 + POINT_EPS * distSq);
             L = delta / dist;
         }
         else
@@ -246,12 +245,19 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         float clampedNdotL = max(0, NdotL) * atten;
 
         // Per-light specular + diffuse, weighted by the light color.
-        float3 specAndDiff = specTerm * INV_PI + diffAlbedo;
+        float3 specAndDiff = specTerm + diffAlbedo;
         specAndDiff = sdPsCB2.lights[i].diffuse.xyz * specAndDiff;
         diffAccum += specAndDiff * clampedNdotL;
 
         ambAccum += sdPsCB2.lights[i].ambient.xyz * atten;
     }
+
+    // Fold the accumulated ambient — the first light's IBL/ambient blend
+    // plus each loop light's `ambient*atten` — into the diffuse accumulator,
+    // modulated by the albedo. The shipped shader adds `diffAlbedo*ambient*
+    // atten` per loop light (plus the first-light ambient term); summing
+    // ambAccum first and folding once is the distributive equivalent.
+    diffAccum = ambAccum * diffAlbedo + diffAccum;
 
     // Convert back to physical units (undo the INV_PI scale) and
     // modulate by the linearised vertex color (carries AO / tints).

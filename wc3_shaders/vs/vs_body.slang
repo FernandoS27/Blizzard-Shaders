@@ -114,7 +114,18 @@ public float computeFogDepth(float worldZ, float clipHeight, float underWater)
 // Fast path for computeWorldPos4().z when only Z is required (non-shadow
 // branches). Reading a single matrix row saves 3 multiplies and a
 // transpose compared to computing the full world pos.
+//
+// Spelled as an explicit scalar accumulation rather than
+// `dot(world[2], float4(pos, 1.0))`: the dot() form makes slang gather
+// `world[2]` into a temp vector (four component movs) and emit a `dp4`,
+// whereas the shipped Wc3 VS bytecode computes this Z as a flat
+// `mul`/`mad` scalar chain. Loading the four `world[2]` components
+// individually keeps the chain scalar and drops the extra temp, matching
+// the original calculation structure on both the HD and SD-on-HD paths.
 public float computeScalarWorldZ(float3 pos, float4x4 world)
 {
-    return dot(world[2], float4(pos, 1.0));
+    return world[2].x * pos.x
+         + world[2].y * pos.y
+         + world[2].z * pos.z
+         + world[2].w;
 }
