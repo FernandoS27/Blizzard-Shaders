@@ -139,3 +139,13 @@ __include "foliage_ps";
 __include "distortion_ps";
 __include "imgui_vs";
 __include "imgui_ps";
+
+// CMAA (Conservative Morphological Anti-Aliasing) post-process passes.
+__include "cmaa_edge0_ps";
+__include "cmaa_edge1_ps";
+__include "cmaa_edge_combine_ps";
+__include "cmaa_process_apply_ps";
+
+// Bloom post-process passes (bright-pass extract + composite).
+__include "bloomextract_ps";
+__include "bloomcombine_ps";

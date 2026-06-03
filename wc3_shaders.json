@@ -126,6 +126,42 @@
       "entry": "imgui_ps_main",
       "perm_count": 2,
       "bls_name": "imgui.bls"
+    },
+    "ffxcmaaedge0": {
+      "stage": "ps",
+      "entry": "cmaa_edge0_ps_main",
+      "perm_count": 1,
+      "bls_name": "ffxcmaaedge0.bls"
+    },
+    "ffxcmaaedge1": {
+      "stage": "ps",
+      "entry": "cmaa_edge1_ps_main",
+      "perm_count": 1,
+      "bls_name": "ffxcmaaedge1.bls"
+    },
+    "ffxcmaaedgecombine": {
+      "stage": "ps",
+      "entry": "cmaa_edge_combine_ps_main",
+      "perm_count": 1,
+      "bls_name": "ffxcmaaedgecombine.bls"
+    },
+    "ffxcmaaprocessandapply": {
+      "stage": "ps",
+      "entry": "cmaa_process_apply_ps_main",
+      "perm_count": 1,
+      "bls_name": "ffxcmaaprocessandapply.bls"
+    },
+    "bloomextract": {
+      "stage": "ps",
+      "entry": "bloom_extract_ps_main",
+      "perm_count": 1,
+      "bls_name": "bloomextract.bls"
+    },
+    "bloomcombine": {
+      "stage": "ps",
+      "entry": "bloom_combine_ps_main",
+      "perm_count": 2,
+      "bls_name": "bloomcombine.bls"
     }
   }
 }

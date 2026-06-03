@@ -782,6 +782,45 @@ def map_imgui_ps(idx: int) -> PermSpec:
     )
 
 
+def map_cmaa_edge0_ps(idx: int) -> PermSpec:
+    # Single permutation — CMAA edge-detection pass has no feature axes.
+    return PermSpec(entry="cmaa_edge0_ps_main", types=[], label="(only)")
+
+
+def map_cmaa_edge1_ps(idx: int) -> PermSpec:
+    # Single permutation — CMAA local-contrast pass has no feature axes.
+    return PermSpec(entry="cmaa_edge1_ps_main", types=[], label="(only)")
+
+
+def map_cmaa_edge_combine_ps(idx: int) -> PermSpec:
+    # Single permutation — CMAA edge-combine pass has no feature axes.
+    return PermSpec(entry="cmaa_edge_combine_ps_main", types=[], label="(only)")
+
+
+def map_cmaa_process_apply_ps(idx: int) -> PermSpec:
+    # Single permutation — CMAA process-and-apply pass has no feature axes.
+    return PermSpec(entry="cmaa_process_apply_ps_main", types=[], label="(only)")
+
+
+def map_bloom_extract_ps(idx: int) -> PermSpec:
+    # Single permutation — bloom bright-pass has no feature axes.
+    return PermSpec(entry="bloom_extract_ps_main", types=[], label="(only)")
+
+
+def map_bloom_combine_ps(idx: int) -> PermSpec:
+    # 2 perms driven by 1 compile-time bool: CLAMP_OUTPUT. The two shipped
+    # variants differ by exactly one instruction (final combine mad vs
+    # mad_sat):
+    #   perm_000  CLAMP_OUTPUT=false  (mad,     unclamped)
+    #   perm_001  CLAMP_OUTPUT=true   (mad_sat, clamped)
+    clamp = "true" if (idx & 1) else "false"
+    return PermSpec(
+        entry="bloom_combine_ps_main",
+        types=[clamp],
+        label=f"CLAMP={clamp}",
+    )
+
+
 def map_terrain_vs(idx: int) -> PermSpec:
     # 8 perms = 3 raw bits, but only 4 functionally distinct outputs:
     #   bit 0 — SHADOW_PASS      (caster pass; suppresses cascade output)
@@ -1146,6 +1185,12 @@ MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "distortion_ps":  map_distortion_ps,
     "imgui_vs":       map_imgui_vs,
     "imgui_ps":       map_imgui_ps,
+    "ffxcmaaedge0":            map_cmaa_edge0_ps,
+    "ffxcmaaedge1":            map_cmaa_edge1_ps,
+    "ffxcmaaedgecombine":      map_cmaa_edge_combine_ps,
+    "ffxcmaaprocessandapply":  map_cmaa_process_apply_ps,
+    "bloomextract":            map_bloom_extract_ps,
+    "bloomcombine":            map_bloom_combine_ps,
 }
 
 # Fail fast if the config and the mapper set drift — every family listed

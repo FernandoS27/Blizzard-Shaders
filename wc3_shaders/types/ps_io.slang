@@ -314,3 +314,28 @@ public struct PopcornPSOutput
     public float4 materialRT : SV_Target2;
 #endif
 };
+
+// CMAA pixel shader input. All four passes are full-screen and consume only
+// the pixel position (SV_Position.xy → integer texel coord); svPosition is
+// declared so the ISGN matches the shipped shaders, whose signature lists
+// SV_POSITION with only xy used.
+public struct CmaaPSInput
+{
+    public float4 svPosition : SV_Position;
+};
+
+// edge0 output: the packed per-texel edge bytes for the 2x2 quad (uint4
+// render target) plus a depth/stencil marker set to 1.0 when the quad
+// contains any edge (lets later passes early-reject flat regions).
+public struct CmaaEdge0PSOutput
+{
+    public uint4 edges : SV_Target0;
+    public float depth : SV_Depth;
+};
+
+// edge-combine output: only the depth/stencil marker (1.0 where a shape
+// candidate exists). The combined masks are scattered through a UAV.
+public struct CmaaDepthOnlyPSOutput
+{
+    public float depth : SV_Depth;
+};

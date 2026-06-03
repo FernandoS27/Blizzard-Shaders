@@ -740,3 +740,115 @@ public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_distortion
 
 public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_distortionScene : register(s0);
 public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_distortionMap   : register(s1);
+
+// ---------------------------------------------------------------------------
+// CMAA (Conservative Morphological Anti-Aliasing) post-process passes.
+//
+// Four single-permutation full-screen pixel shaders that together implement
+// Intel's CMAA over the engine's resolved scene colour. Each pass is its own
+// pipeline object, so the bindings below alias the shared t0/t3/s0/s3/b0 slot
+// numbers — slangc only emits the bindings the active entry point references,
+// so they coexist with the HD material aliases above. UAVs claim descriptor
+// set 3 (no other family binds UAVs); their register(uN) slots are what the
+// D3D11 / D3D12 BLS targets actually use.
+//
+// Pipeline data flow:
+//   edge0   : reads t_cmaaColor, writes packed edges (SV_Target uint4) and
+//             copies edge-adjacent source colours into u_cmaaWorkColor.
+//   edge1   : reads packed edges (t_cmaaEdgesPacked, uint4), writes the
+//             local-contrast-pruned edges into u_cmaaEdgesRefined (unorm8).
+//   combine : reads refined edges (t_cmaaEdges, via Gather), writes the
+//             combined 4-direction masks into u_cmaaCombined (unorm8).
+//   process : reads combined masks (t_cmaaEdges) + source colour (t_cmaaColor)
+//             and writes the anti-aliased colour into u_cmaaColor.
+//
+// Per-pass uniform: the inverse target size used to turn integer texel coords
+// into Gather UVs. Matches `float4 cb0[1]` in the shipped DXBC (only .xy read).
+public struct CmaaPSPerDraw
+{
+    public float2 invTargetSize;   // 1 / textureSize
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    public float  _p0_x;
+    public float  _p0_y;
+#else
+    public float2 _p0;
+#endif
+};
+
+public [[vk::binding(PsCbBindingOffset + 0, 0)]] ConstantBuffer<CmaaPSPerDraw> cmaaPsCB0 : register(b0);
+
+// Sampled inputs. edge1 reads the packed edges as an integer texture (t3);
+// combine / process read float-typed edges (t3) and the scene colour (t0).
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_cmaaColor       : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<uint4>  t_cmaaEdgesPacked : register(t3);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4> t_cmaaEdges       : register(t3);
+
+// Point sampler (s3) for integer edge gathers; linear sampler (s0) for the
+// sub-texel colour re-sample along a traced edge in the process pass.
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_cmaaPoint  : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_cmaaLinear : register(s0);
+
+// UAV outputs (descriptor set 3). edge0's working colour buffer and process's
+// AA output share the typed-float4 u1 slot; the two intermediate edge buffers
+// are unorm8.
+public [[vk::binding(1, 3)]] RWTexture2D<float4>            u_cmaaColor         : register(u1);
+public [[vk::binding(0, 3)]] RWTexture2D<unorm float4>      u_cmaaEdgesRefined  : register(u0);
+public [[vk::binding(2, 3)]] RWTexture2D<unorm float4>      u_cmaaCombined      : register(u2);
+
+// ---------------------------------------------------------------------------
+// Bloom post-process passes.
+//
+// Two single-/dual-permutation full-screen pixel shaders that bracket the
+// (engine-driven) separable blur: `bloomextract` isolates the bright
+// highlights of the scene, and `bloomcombine` grades and screen-composites
+// the blurred highlights back over the scene. Each is its own pipeline
+// object, so the bindings below alias the shared t0/t1/s0/s1/b1 slot numbers
+// — slangc only emits the bindings the active entry point references, so they
+// coexist with the HD material aliases above (same pattern as tonemap / cmaa).
+//
+// The two CBs both bind b1 and most likely view slices of one engine-side
+// "bloom params" upload; each shader names only the lanes it reads:
+//   bloomextract reads cb1[0].x         → CB1[1]
+//   bloomcombine reads cb1[0].zw,1[1].xy → CB1[2]
+
+// Per-draw constants for the bloom bright-pass (b1). Only the .x luminance
+// cutoff is consumed; the rest pads out to `float4 cb1[1]`.
+public struct BloomExtractPSPerDraw
+{
+    public float  threshold;        // cb1[0].x — luminance cutoff
+#if defined(WGSL_TARGET) || defined(METAL_TARGET)
+    // See PSPerDraw for the layout rationale behind the scalar split.
+    public float  _p0_x;            public float _p0_y;
+    public float  _p0_z;
+#else
+    public float3 _p0;              // cb1[0].yzw
+#endif
+};
+
+// Per-draw constants for the bloom composite (b1). Two float4 slots holding
+// the per-layer intensity (cb1[0].zw) and saturation (cb1[1].xy) knobs. All
+// fields are float/float2 so the layout is identical across every target
+// without the float3-alignment split the structs above need.
+public struct BloomCombinePSPerDraw
+{
+    public float2 _p0_xy;           // cb1[0].xy — unused
+    public float  intensityBloom;   // cb1[0].z  — gain for the blurred layer
+    public float  intensityScene;   // cb1[0].w  — gain for the scene layer
+    public float  saturationBloom;  // cb1[1].x  — saturation for the blur
+    public float  saturationScene;  // cb1[1].y  — saturation for the scene
+    public float2 _p1_zw;           // cb1[1].zw — unused
+};
+
+public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<BloomExtractPSPerDraw> bloomExtractPsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<BloomCombinePSPerDraw> bloomCombinePsCB1 : register(b1);
+
+// Bloom bright-pass input: the resolved scene colour (t0).
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_bloomSource : register(t0);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_bloomSource : register(s0);
+
+// Bloom composite inputs: the scene colour (t0, also the output alpha source)
+// and the blurred bright-pass result (t1).
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_bloomScene : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_bloomBlur  : register(t1);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_bloomScene : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState   s_bloomBlur  : register(s1);
