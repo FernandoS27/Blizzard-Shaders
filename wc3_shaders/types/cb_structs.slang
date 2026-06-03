@@ -852,3 +852,29 @@ public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_bloomScene
 public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_bloomBlur  : register(t1);
 public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_bloomScene : register(s0);
 public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState   s_bloomBlur  : register(s1);
+
+// ---------------------------------------------------------------------------
+// Gaussian blur post-process pass.
+//
+// Single-permutation full-screen separable blur (gaussianblur.bls). The engine
+// runs the one shader for both the horizontal and the vertical pass, uploading
+// a different tap set each pass: up to 15 taps in `float4 cb1[15]`, where tap i
+// carries its UV offset in .xy and its weight in .z. The active tap count is
+// packed into cb1[0].w (read once, truncated to int, before the loop).
+//
+// `taps` is a raw float4[15] rather than a named-field struct so each element
+// occupies exactly one 16-byte slot on every target — matching the shipped
+// `float4 cb1[15]` register packing — and the loop's dynamic index lowers to a
+// single cb1[i] load (same rationale as the imgui / popcorn indexed CBs above).
+public struct GaussianBlurPSPerDraw
+{
+    public float4 taps[15];   // [i].xy = UV offset, [i].z = weight; [0].w = tap count
+};
+
+public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<GaussianBlurPSPerDraw> gaussianBlurPsCB1 : register(b1);
+
+// Gaussian blur input: the image being blurred (t0). Aliases the shared t0/s0
+// slots like the other post-process passes; slangc only emits the binding the
+// active entry references.
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_gaussianSource : register(t0);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_gaussianSource : register(s0);

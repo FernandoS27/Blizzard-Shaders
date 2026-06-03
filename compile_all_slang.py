@@ -821,6 +821,12 @@ def map_bloom_combine_ps(idx: int) -> PermSpec:
     )
 
 
+def map_gaussian_blur_ps(idx: int) -> PermSpec:
+    # Single permutation — separable Gaussian blur has no feature axes
+    # (the kernel lives entirely in the uploaded tap constant buffer).
+    return PermSpec(entry="gaussian_blur_ps_main", types=[], label="(only)")
+
+
 def map_terrain_vs(idx: int) -> PermSpec:
     # 8 perms = 3 raw bits, but only 4 functionally distinct outputs:
     #   bit 0 — SHADOW_PASS      (caster pass; suppresses cascade output)
@@ -1191,6 +1197,7 @@ MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "ffxcmaaprocessandapply":  map_cmaa_process_apply_ps,
     "bloomextract":            map_bloom_extract_ps,
     "bloomcombine":            map_bloom_combine_ps,
+    "gaussianblur":            map_gaussian_blur_ps,
 }
 
 # Fail fast if the config and the mapper set drift — every family listed

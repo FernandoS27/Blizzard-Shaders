@@ -149,3 +149,6 @@ __include "cmaa_process_apply_ps";
 // Bloom post-process passes (bright-pass extract + composite).
 __include "bloomextract_ps";
 __include "bloomcombine_ps";
+
+// Separable Gaussian blur (shared by both blur axes; bridges the bloom passes).
+__include "gaussianblur_ps";

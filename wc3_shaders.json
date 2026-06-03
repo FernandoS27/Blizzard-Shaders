@@ -162,6 +162,12 @@
       "entry": "bloom_combine_ps_main",
       "perm_count": 2,
       "bls_name": "bloomcombine.bls"
+    },
+    "gaussianblur": {
+      "stage": "ps",
+      "entry": "gaussian_blur_ps_main",
+      "perm_count": 1,
+      "bls_name": "gaussianblur.bls"
     }
   }
 }
