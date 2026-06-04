@@ -43,6 +43,7 @@ Usage:
 
 import argparse
 import hashlib
+import json
 import os
 import struct
 import sys
@@ -358,7 +359,7 @@ def _parse_isgn_entries(dxbc):
     return []
 
 
-def strip_dxil_unused_input_signature(dxil, template_dxbc):
+def strip_dxil_unused_input_signature(dxil, template_isgn):
     """Trim a DXIL container's ISG1 to match the shipped template's ISGN.
 
     Same motivation as strip_unused_input_signature for SM5: slangc's
@@ -372,8 +373,13 @@ def strip_dxil_unused_input_signature(dxil, template_dxbc):
     register numbers untouched and just drop ISG1 entries the template
     doesn't have. The container is rebuilt with packed chunk offsets
     and the FXC-style hash is recomputed by the caller.
+
+    ``template_isgn`` is the parsed ISGN entry list (as produced by
+    ``_parse_isgn_entries`` / loaded from wc3_bls_templates.json), not a raw
+    DXBC blob — the shipped program body is never needed here, only its
+    input-signature descriptors.
     """
-    if dxil[:4] != b'DXBC' or template_dxbc is None:
+    if dxil[:4] != b'DXBC' or template_isgn is None:
         return dxil
 
     chunks = list(dxbc_chunks(dxil))
@@ -382,7 +388,7 @@ def strip_dxil_unused_input_signature(dxil, template_dxbc):
     if isg1_idx is None:
         return dxil
 
-    tmpl_keys = {(n, si) for (n, si, *_) in _parse_isgn_entries(template_dxbc)}
+    tmpl_keys = {(n, si) for (n, si, *_) in template_isgn}
     if not tmpl_keys:
         return dxil
 
@@ -459,7 +465,7 @@ def strip_dxil_unused_input_signature(dxil, template_dxbc):
     return bytes(out)
 
 
-def strip_unused_input_signature(dxbc, template_dxbc=None):
+def strip_unused_input_signature(dxbc, template_isgn=None):
     """Align a compiled shader's ISGN and input-register numbering with
     the shipped template.
 
@@ -473,7 +479,7 @@ def strip_unused_input_signature(dxbc, template_dxbc=None):
     when TEXCOORD4..6 aren't declared) and the engine rejects any
     layout that doesn't match the shipped ISGN.
 
-    When ``template_dxbc`` is provided we use its ISGN as the
+    When ``template_isgn`` is provided we use its entries as the
     authoritative set of entries + register numbers — an entry is kept
     whenever the template has a matching (semantic, semantic-index),
     regardless of whether the specialised body happens to read it. The
@@ -482,6 +488,11 @@ def strip_unused_input_signature(dxbc, template_dxbc=None):
     back to the legacy heuristic (keep only registers the SHEX actually
     declares, renumber contiguous from 0), which works when the compiled
     body's declarations match shipped but over-prunes otherwise.
+
+    ``template_isgn`` is the parsed ISGN entry list (as produced by
+    ``_parse_isgn_entries`` / loaded from wc3_bls_templates.json), not a raw
+    DXBC blob — the shipped program body is never needed here, only its
+    input-signature descriptors.
     """
     if dxbc[:4] != b'DXBC':
         return dxbc
@@ -504,10 +515,10 @@ def strip_unused_input_signature(dxbc, template_dxbc=None):
     # gets injected into the rebuilt ISGN downstream.
     template_overrides = {}
     extra_isgn_entries = []
-    if template_dxbc is not None:
+    if template_isgn is not None:
         # Key by (name, sem_idx) so we can pull the template's metadata
         # regardless of the slangc-side numbering.
-        tmpl_entries = _parse_isgn_entries(template_dxbc)
+        tmpl_entries = template_isgn
         tmpl_map = {(n, si): (sv, ct, r, mr)
                     for (n, si, sv, ct, r, mr) in tmpl_entries}
         my_isgn = _parse_isgn_entries(dxbc)
@@ -754,7 +765,16 @@ def dxbc_hash(body):
 # ============================================================
 
 def read_template(bls_path):
-    """Parse the shipped BLS and return per-perm middle-chunk bytes + header fields."""
+    """Parse the shipped BLS and return per-perm template metadata.
+
+    Returns the same dict shape as ``load_template_from_json`` so the two
+    are interchangeable downstream: ``num_perms`` plus per-perm
+    ``middle_chunks`` (44-byte resource-binding blobs), ``stages``, and
+    ``isgns`` (parsed input-signature entry lists). The shipped DXBC
+    program body is parsed only to extract its ISGN — it is never carried
+    out of this function, which is what lets the build run from the
+    extracted JSON alone.
+    """
     with open(bls_path, 'rb') as fp:
         data = fp.read()
 
@@ -772,29 +792,81 @@ def read_template(bls_path):
 
     middle_chunks = []
     stages = []
-    dxbcs = []
+    isgns = []
     prev = 0
     for i, end in enumerate(cum):
         size = end - prev
         if size == 0:
             middle_chunks.append(None)
             stages.append(None)
-            dxbcs.append(None)
+            isgns.append(None)
         else:
             start = off_data + prev
             middle_chunks.append(bytes(data[start + 0x1C:start + 0x48]))
             stages.append(struct.unpack_from('<I', data, start + 0x18)[0])
             dxbc_size = struct.unpack_from('<I', data, start + 0x48)[0]
             dxbc_start = start + PERM_INNER_HEADER_SIZE
-            dxbcs.append(bytes(data[dxbc_start:dxbc_start + dxbc_size]))
+            dxbc = bytes(data[dxbc_start:dxbc_start + dxbc_size])
+            isgns.append(_parse_isgn_entries(dxbc))
         prev = end
 
     return {
         'num_perms': num_perms,
         'middle_chunks': middle_chunks,
         'stages': stages,
-        'dxbcs': dxbcs,
+        'isgns': isgns,
     }
+
+
+def _isgn_entries_from_json(entries):
+    """Convert JSON ISGN rows back to the bytes-keyed tuples that
+    ``_parse_isgn_entries`` produces (name as uppercased bytes)."""
+    return [(e[0].encode('ascii').upper(), e[1], e[2], e[3], e[4], e[5])
+            for e in entries]
+
+
+def load_template_from_json(fam_entry):
+    """Reconstruct a DX template dict (same shape as ``read_template``)
+    from a single family entry of wc3_bls_templates.json. Returns None when
+    the entry carries no DX section.
+
+    The per-perm tables are dedup'd in the JSON (``middle_chunks`` and
+    ``isgns`` are distinct-value pools; each perm references them by
+    index), so we expand them back into the dense per-perm lists the
+    packers expect. A ``null`` perm entry expands to None in every list.
+    """
+    dx = fam_entry.get('dx')
+    if not dx:
+        return None
+    mid_pool = [bytes.fromhex(h) for h in dx['middle_chunks']]
+    isgn_pool = [_isgn_entries_from_json(s) for s in dx['isgns']]
+
+    middle_chunks, stages, isgns = [], [], []
+    for p in dx['perms']:
+        if p is None:
+            middle_chunks.append(None)
+            stages.append(None)
+            isgns.append(None)
+        else:
+            middle_chunks.append(mid_pool[p['m']])
+            stages.append(p['stage'])
+            isgns.append(isgn_pool[p['s']])
+
+    return {
+        'num_perms': fam_entry['num_perms'],
+        'middle_chunks': middle_chunks,
+        'stages': stages,
+        'isgns': isgns,
+    }
+
+
+def metal_nulls_from_json(fam_entry):
+    """Return the Metal null-perm pattern (list[bool]) for a family entry,
+    or None when the entry carries no Metal section."""
+    metal = fam_entry.get('metal')
+    if not metal:
+        return None
+    return list(metal['nulls'])
 
 
 def pack_perm(middle_chunk, stage, dxbc):
@@ -812,21 +884,23 @@ def pack_perm(middle_chunk, stage, dxbc):
     return bytes(buf)
 
 
-def prepare_dx_perms(template_path, slang_dir, num_perms, strip=False):
-    """Read template + slangc DXBC blobs and produce per-perm finalised DXBC.
+def prepare_dx_perms(tmpl, slang_dir, num_perms, strip=False):
+    """Process slangc DXBC blobs against a template dict into finalised DXBC.
 
-    Returns ``(template_dict, dxbcs)`` where ``dxbcs[i]`` is the processed
-    DXBC bytes ready to pack (signature-fixed, ISGN aligned to the
-    template, optionally chunk-stripped, hash recomputed) — or ``b''``
-    when the template marks this perm as null. The same ``dxbcs`` list is
-    consumed by both the v1.8 (template-faithful) and v1.14 (zero-filled
-    resource binding) packers below; the per-perm DXBC processing is
-    identical between formats so doing it once avoids re-parsing.
+    ``tmpl`` is a template dict from ``read_template`` (BLS-backed) or
+    ``load_template_from_json`` (JSON-backed) — both carry per-perm
+    ``middle_chunks`` and ``isgns``; the shipped program body is not
+    needed. Returns ``dxbcs`` where ``dxbcs[i]`` is the processed DXBC
+    bytes ready to pack (signature-fixed, ISGN aligned to the template,
+    optionally chunk-stripped, hash recomputed) — or ``b''`` when the
+    template marks this perm as null. The same list is consumed by both
+    the v1.8 (template-faithful) and v1.14 (zero-filled resource binding)
+    packers below; the per-perm DXBC processing is identical between
+    formats so doing it once avoids re-parsing.
     """
-    tmpl = read_template(template_path)
     if tmpl['num_perms'] != num_perms:
         raise ValueError(
-            f'{template_path}: template has {tmpl["num_perms"]} perms, expected {num_perms}')
+            f'template has {tmpl["num_perms"]} perms, expected {num_perms}')
 
     dxbcs = []
     for i in range(num_perms):
@@ -841,7 +915,7 @@ def prepare_dx_perms(template_path, slang_dir, num_perms, strip=False):
             dxbc = fp.read()
 
         dxbc = fix_dxbc_signatures(dxbc)
-        dxbc = strip_unused_input_signature(dxbc, tmpl['dxbcs'][i])
+        dxbc = strip_unused_input_signature(dxbc, tmpl['isgns'][i])
         if strip:
             dxbc = strip_dxbc_chunks(dxbc, {b'RDEF', b'STAT'})
         else:
@@ -850,7 +924,7 @@ def prepare_dx_perms(template_path, slang_dir, num_perms, strip=False):
             dxbc = bytes(dxbc)
 
         dxbcs.append(dxbc)
-    return tmpl, dxbcs
+    return dxbcs
 
 
 def assemble_dx_v18_bls(tmpl, dxbcs, num_perms, verbose=False, label=None):
@@ -976,21 +1050,23 @@ def pack_blob_perm(blob):
     return bytes(buf)
 
 
-def prepare_metal_perms(template_path, slang_dir, num_perms):
+def prepare_metal_perms(nulls, slang_dir, num_perms):
     """Load metallibs for one family, mirroring the shipped null-perm pattern.
 
     Returns a list of length `num_perms`; each entry is the metallib bytes
-    for that perm or `b''` for null. `template_path` is optional — when
-    missing every present .metallib becomes a live perm and every missing
-    one becomes null.
+    for that perm or `b''` for null. `nulls` is the template's null-perm
+    pattern (list[bool], from ``read_metal_template_nulls`` or
+    wc3_bls_templates.json) — or None, in which case every present .metallib
+    becomes a live perm and every missing one becomes null.
 
     Shared front-half for the v1.8 (template-faithful Metal §3.5 inner)
     and v1.14 (44-byte opaque-blob inner) Metal packers below.
     """
-    if template_path and os.path.isfile(template_path):
-        nulls = read_metal_template_nulls(template_path, num_perms)
-    else:
+    if nulls is None:
         nulls = [False] * num_perms
+    elif len(nulls) != num_perms:
+        raise ValueError(
+            f'metal null pattern has {len(nulls)} perms, expected {num_perms}')
 
     metallibs = []
     for i in range(num_perms):
@@ -1326,7 +1402,7 @@ def fix_spirv_output_locations(spv_bytes):
 
 
 def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
-                        *, dx_inner=False, nulls=None, template_dxbcs=None,
+                        *, dx_inner=False, nulls=None, template_isgns=None,
                         verbose=False):
     """Return the bytes of a rebuilt v1.14 BLS for an extra/d3d12 backend.
 
@@ -1377,9 +1453,9 @@ def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
             # against the layout, and rejects the bytecode with
             # E_INVALIDARG if either is stale.
             blob = fix_dxbc_signatures(blob)
-            if template_dxbcs is not None and template_dxbcs[i] is not None:
+            if template_isgns is not None and template_isgns[i] is not None:
                 blob = strip_dxil_unused_input_signature(blob,
-                                                         template_dxbcs[i])
+                                                         template_isgns[i])
             blob = bytearray(blob)
             blob[4:20] = dxbc_hash(bytes(blob[20:]))
             inner_perms.append(pack_v14_dx_perm(bytes(blob)))
@@ -1416,9 +1492,19 @@ def main():
                          f'.metallib blobs (optional) from <slang-out>/{METAL_TARGET_SUBDIR}/<family>/; '
                          f'.dxil from <slang-out>/{DXIL_TARGET_SUBDIR}/<family>/; '
                          f'extras from <slang-out>/{{opengl,vulkan,webgpu}}/<family>/.')
-    ap.add_argument('--templates', required=True,
-                    help='directory containing ps/*.bls, vs/*.bls (required) and '
-                         'mtlfs/*.bls, mtlvs/*.bls (used when rebuilding Metal BLS)')
+    ap.add_argument('--templates',
+                    help='directory containing ps/*.bls, vs/*.bls and '
+                         'mtlfs/*.bls, mtlvs/*.bls. Optional — when omitted, '
+                         'the extracted wc3_bls_templates.json (see --templates-json) '
+                         'supplies the per-perm layout metadata, so the build '
+                         'needs no shipped shader binaries at all.')
+    ap.add_argument('--templates-json',
+                    default=str(REPO_ROOT / 'wc3_bls_templates.json'),
+                    help='JSON of extracted template layout metadata produced by '
+                         'extract_templates.py (default: %(default)s). Used as the '
+                         'template source when --templates is not given, or for any '
+                         'family the --templates directory lacks. Generate it with '
+                         '`python extract_templates.py --templates war3.w3mod/shaders`.')
     ap.add_argument('--output', required=True,
                     help='output directory base. Two trees are written:\n'
                          '  <output>_1_8/{ps,vs,mtlfs,mtlvs}/*.bls — the\n'
@@ -1439,6 +1525,47 @@ def main():
     args = ap.parse_args()
 
     family_names = args.family or list(FAMILIES)
+
+    # Template source: the extracted JSON (default) and/or a --templates
+    # directory of shipped BLS files. At least one must be usable. When
+    # both are present the JSON wins per family — it's the byte-for-byte
+    # equivalent of the BLS metadata and keeps pipelines independent of
+    # the shipped binaries; the directory then only fills families the
+    # JSON lacks.
+    json_templates = None
+    if args.templates_json and os.path.isfile(args.templates_json):
+        with open(args.templates_json) as fp:
+            json_templates = json.load(fp).get('families', {})
+    if json_templates is None and not args.templates:
+        ap.error(
+            'no template source: pass --templates DIR, or generate '
+            f'{args.templates_json} with extract_templates.py')
+
+    def get_dx_template(fam, cfg):
+        """DX template dict for a family, JSON-first then --templates dir."""
+        if json_templates is not None and fam in json_templates:
+            t = load_template_from_json(json_templates[fam])
+            if t is not None:
+                return t
+        if args.templates:
+            path = os.path.join(args.templates, cfg.dx_dir,
+                                cfg.effective_template)
+            if os.path.isfile(path):
+                return read_template(path)
+        return None
+
+    def get_metal_nulls(fam, cfg, num_perms):
+        """Metal null-perm pattern for a family, JSON-first then dir."""
+        if json_templates is not None and fam in json_templates:
+            nulls = metal_nulls_from_json(json_templates[fam])
+            if nulls is not None and len(nulls) == num_perms:
+                return nulls
+        if args.templates:
+            path = os.path.join(args.templates, cfg.metal_dir,
+                                cfg.effective_template)
+            if os.path.isfile(path):
+                return read_metal_template_nulls(path, num_perms)
+        return None
 
     out_18 = args.output + '_1_8'
     out_14 = args.output + '_1_14'
@@ -1468,6 +1595,8 @@ def main():
         os.path.join(repo_root, 'wc3_shaders.json'),
         os.path.join(repo_root, 'custom_shaders.json'),
     ]
+    if args.templates_json and os.path.isfile(args.templates_json):
+        script_inputs.append(args.templates_json)
     def _mtime_max(paths):
         newest = 0.0
         for p in paths:
@@ -1536,7 +1665,12 @@ def main():
         template_name = cfg.effective_template
 
         # ---------- DX (D3D11 SM5) ----------
-        template  = os.path.join(args.templates, cfg.dx_dir, template_name)
+        # `template` is only the freshness mtime probe below; the actual
+        # metadata comes from get_dx_template (JSON-first). When building
+        # purely from JSON there is no per-family BLS path, so fall back
+        # to '' (skipped by the isfile check inside _family_is_fresh).
+        template  = (os.path.join(args.templates, cfg.dx_dir, template_name)
+                     if args.templates else '')
         slang_dir = os.path.join(dxbc_root, fam)
 
         family_slang_dirs = [
@@ -1562,21 +1696,25 @@ def main():
         dxbcs    = None
         tmpl     = None
 
-        if not os.path.isfile(template):
-            print(f'SKIP {fam}: template missing ({template})', file=sys.stderr)
+        dx_tmpl = get_dx_template(fam, cfg)
+        if dx_tmpl is None:
+            print(f'SKIP {fam}: no DX template — need --templates {cfg.dx_dir}/'
+                  f'{template_name} or a "{fam}" entry in '
+                  f'{os.path.basename(args.templates_json)}', file=sys.stderr)
         elif not os.path.isdir(slang_dir):
             print(f'SKIP {fam}: slang dir missing ({slang_dir}). '
                   f'Run compile_all_slang.py --target d3d11 first.', file=sys.stderr)
         else:
             try:
-                tmpl, dxbcs = prepare_dx_perms(template, slang_dir, num_perms,
-                                               strip=args.strip)
-                dx_nulls = [mc is None for mc in tmpl['middle_chunks']]
+                dxbcs = prepare_dx_perms(dx_tmpl, slang_dir, num_perms,
+                                         strip=args.strip)
+                dx_nulls = [mc is None for mc in dx_tmpl['middle_chunks']]
+                tmpl = dx_tmpl   # mark DX success for the d3d12 path below
 
                 # v1.8 — template-faithful, what Wc3 ships and loads.
                 v18_blob = assemble_dx_v18_bls(tmpl, dxbcs, num_perms,
                                                verbose=args.verbose,
-                                               label=os.path.basename(template))
+                                               label=cfg.bls_name)
                 _write_bundle(os.path.join(out_18, cfg.dx_dir, cfg.bls_name),
                               v18_blob, num_perms)
 
@@ -1591,14 +1729,14 @@ def main():
         # ---------- Metal — only if metallibs were emitted ----------
         m_slang_dir = os.path.join(metal_root, fam)
         if has_metallibs(m_slang_dir):
-            m_template = os.path.join(args.templates, cfg.metal_dir, template_name)
+            metal_nulls = get_metal_nulls(fam, cfg, num_perms)
             try:
-                metallibs = prepare_metal_perms(m_template, m_slang_dir, num_perms)
+                metallibs = prepare_metal_perms(metal_nulls, m_slang_dir, num_perms)
 
                 # v1.8 — what Wc3 ships and loads.
                 v18_blob = assemble_metal_v18_bls(
                     metallibs, num_perms, verbose=args.verbose,
-                    label=os.path.basename(m_template) if os.path.isfile(m_template)
+                    label=cfg.bls_name if metal_nulls is not None
                           else '<no template>')
                 _write_bundle(os.path.join(out_18, cfg.metal_dir, cfg.bls_name),
                               v18_blob, num_perms)
@@ -1622,7 +1760,7 @@ def main():
                 blob = build_extra_v14_bls(d_slang_dir, 'dxil', num_perms,
                                            PLATFORM_TAG_DX6, FLAGS_DX6,
                                            dx_inner=True, nulls=dx_nulls,
-                                           template_dxbcs=(tmpl['dxbcs']
+                                           template_isgns=(tmpl['isgns']
                                                if tmpl is not None else None),
                                            verbose=args.verbose)
                 _write_bundle(v14_out(cfg.stage, 'dx_6_0', cfg.bls_name),

@@ -1236,7 +1236,9 @@ def main() -> int:
     parser.add_argument("--family", action="append",
                         choices=(*FAMILIES, "all"),
                         help="Limit compilation to one or more families "
-                             "(repeat the flag). Default: every family.")
+                             "(repeat the flag). Default: core wc3 families "
+                             "only — custom variant families (custom_shaders.json) "
+                             "build only when named explicitly or via --family all.")
     parser.add_argument("--target", choices=(*TARGETS.keys(), "all"),
                         default="d3d11",
                         help="Graphics API target (default: d3d11).")
@@ -1318,12 +1320,18 @@ def main() -> int:
     if sys.platform == "darwin" and "metal" not in active_targets:
         active_targets.append("metal")
 
-    # `args.family` is None when the flag isn't passed (→ every family),
-    # a list of names when passed one or more times, or `["all"]` for
-    # the explicit catch-all keyword.
+    # Family selection:
+    #   --family NAME...  → exactly those families (may be custom).
+    #   --family all      → every family, core + custom (selected=None).
+    #   (flag omitted)    → core wc3 families only; custom variant
+    #                       families (module=="custom") are skipped unless
+    #                       named explicitly or via `--family all`.
     selected_families = None
     if args.family and "all" not in args.family:
         selected_families = set(args.family)
+    elif not args.family:
+        selected_families = {name for name, cfg in FAMILY_CONFIGS.items()
+                             if cfg.module == "wc3"}
 
     # Parse `--slangc-for FAMILY=PATH` repeatables into a {family: path} map.
     # Used to override the default slangc on a per-family basis (e.g. when
