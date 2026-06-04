@@ -152,3 +152,6 @@ __include "bloomcombine_ps";
 
 // Separable Gaussian blur (shared by both blur axes; bridges the bloom passes).
 __include "gaussianblur_ps";
+
+// Bokeh depth of field (single-pass golden-angle spiral gather).
+__include "depthoffield_ps";

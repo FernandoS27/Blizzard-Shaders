@@ -878,3 +878,39 @@ public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<GaussianBlurPSPe
 // active entry references.
 public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_gaussianSource : register(t0);
 public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_gaussianSource : register(s0);
+
+// ---------------------------------------------------------------------------
+// Depth of field post-process pass.
+//
+// Single-permutation full-screen bokeh DoF (depthoffield.bls). Three float4
+// constant slots drive a golden-angle spiral gather over the scene colour,
+// with the circle of confusion derived from a depth texture. cb1[0].xy and
+// cb1[2].xyz are unused by the shipped shader.
+//
+// As with BloomCombinePSPerDraw, every field is float/float2 so the byte
+// layout is identical on every target without a float3-alignment split.
+public struct DepthOfFieldPSPerDraw
+{
+    public float2 _p0_xy;          // cb1[0].xy — unused
+    public float2 invResolution;   // cb1[0].zw — texel size (1 / render-target resolution)
+
+    public float  maxBlurSize;     // cb1[1].x  — max bokeh radius in pixels; also the loop bound
+    public float  radiusScale;     // cb1[1].y  — spiral radius step / sample-density control
+    public float  focusDistance;   // cb1[1].z  — linear depth of the focus plane
+    public float  focusScale;      // cb1[1].w  — CoC strength (aperture / f-number term)
+
+    public float  _p2_x;           // cb1[2].x  — unused
+    public float  _p2_y;           // cb1[2].y  — unused
+    public float  _p2_z;           // cb1[2].z  — unused
+    public float  farFieldOnly;    // cb1[2].w  — 1.0 clamps CoC >= MIN_COC (no foreground blur)
+};
+
+public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<DepthOfFieldPSPerDraw> depthOfFieldPsCB1 : register(b1);
+
+// Depth of field inputs: scene colour (t0) and scene depth (t1). Aliases the
+// shared t0/t1 slots like the other post-process passes; slangc only emits the
+// binding the active entry references.
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_dofColor : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_dofDepth : register(t1);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_dofColor : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState   s_dofDepth : register(s1);

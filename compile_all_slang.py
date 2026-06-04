@@ -827,6 +827,13 @@ def map_gaussian_blur_ps(idx: int) -> PermSpec:
     return PermSpec(entry="gaussian_blur_ps_main", types=[], label="(only)")
 
 
+def map_depth_of_field_ps(idx: int) -> PermSpec:
+    # Single permutation — bokeh DoF has no feature axes (the golden-angle
+    # spiral parameters all live in the uploaded constant buffer; the
+    # far-field-only path is a runtime branch on cb1[2].w, not a perm).
+    return PermSpec(entry="depth_of_field_ps_main", types=[], label="(only)")
+
+
 def map_terrain_vs(idx: int) -> PermSpec:
     # 8 perms = 3 raw bits, but only 4 functionally distinct outputs:
     #   bit 0 — SHADOW_PASS      (caster pass; suppresses cascade output)
@@ -1198,6 +1205,7 @@ MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "bloomextract":            map_bloom_extract_ps,
     "bloomcombine":            map_bloom_combine_ps,
     "gaussianblur":            map_gaussian_blur_ps,
+    "depthoffield":            map_depth_of_field_ps,
 }
 
 # Fail fast if the config and the mapper set drift — every family listed

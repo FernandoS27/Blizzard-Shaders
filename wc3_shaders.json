@@ -168,6 +168,12 @@
       "entry": "gaussian_blur_ps_main",
       "perm_count": 1,
       "bls_name": "gaussianblur.bls"
+    },
+    "depthoffield": {
+      "stage": "ps",
+      "entry": "depth_of_field_ps_main",
+      "perm_count": 1,
+      "bls_name": "depthoffield.bls"
     }
   }
 }
