@@ -1,0 +1,109 @@
+name: Build Metal BLS
+
+# Two-stage Metal build, split to minimise (expensive) macOS minutes:
+#
+#   1. compile  (ubuntu)  — slangc emits per-perm .metal SOURCE for every
+#                           core wc3_shaders permutation; uploaded as an
+#                           artifact. No Apple toolchain needed here.
+#   2. pack     (macos)   — downloads the .metal sources, links them to
+#                           .metallib with `xcrun metal`/`metallib`, then
+#                           repacks the Warcraft III Metal BLS bundles
+#                           (v1.8 mtlfs/mtlvs + v1.14 mtl_1_1) and uploads
+#                           them. No slangc on macOS — just Xcode + Python.
+#
+# BLS layout metadata comes from the committed wc3_bls_templates.json, so
+# no shipped game shaders are needed. Only core wc3 families build by
+# default (compile_all_slang.py skips custom_shaders.json variants).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      macos_min:
+        description: "Metal deployment target (macOS min version → metallib container)"
+        default: "11"
+
+permissions:
+  contents: read
+
+env:
+  # shader-slang/slang release for the compile stage. Bump to pick up a
+  # newer slangc; clear to use the latest release. The setup-slang action
+  # falls back to latest if this tag's asset is missing.
+  SLANG_VERSION: "2026.9.3"
+  MACOS_MIN: "11"
+
+jobs:
+  compile:
+    name: Compile .metal (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup slangc
+        uses: ./.github/actions/setup-slang
+        with:
+          version: ${{ env.SLANG_VERSION }}
+          token: ${{ github.token }}
+
+      - name: Compile Metal source
+        run: python3 compile_all_slang.py --target metal --slangc "$SLANGC"
+
+      - name: Upload .metal sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: metal-sources
+          path: slang_out/metal
+          if-no-files-found: error
+
+  pack:
+    name: Link .metallib + pack BLS (macOS)
+    needs: compile
+    # Apple-Silicon image: full Xcode + Metal toolchain.
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download .metal sources
+        uses: actions/download-artifact@v4
+        with:
+          name: metal-sources
+          path: slang_out/metal
+
+      - name: Ensure Metal toolchain
+        run: |
+          set -euo pipefail
+          if ! xcrun -f metal >/dev/null 2>&1; then
+            echo "Metal toolchain missing — downloading"
+            xcodebuild -downloadComponent MetalToolchain || true
+          fi
+          xcrun metal --version
+          xcrun metallib --version
+
+      - name: Link .metal -> .metallib
+        run: |
+          min="${{ github.event.inputs.macos_min || env.MACOS_MIN }}"
+          python3 tools/metal_compile_libs.py --macos-min "$min"
+
+      - name: Pack Metal BLS
+        run: python3 build_bls.py --output bls_out --verbose
+
+      - name: Upload BLS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc3-metal-bls
+          # Only Metal output exists, so these trees hold just the v1.8
+          # mtlfs/mtlvs and v1.14 shaders/**/mtl_1_1 bundles.
+          path: |
+            bls_out_1_8/
+            bls_out_1_14/
+          if-no-files-found: error

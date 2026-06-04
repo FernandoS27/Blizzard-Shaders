@@ -1,0 +1,63 @@
+name: Setup Slang
+description: >
+  Download a shader-slang/slang release for the current OS/arch and put
+  slangc on PATH (exports SLANGC + prepends its bin/ so the rpath'd dylibs
+  resolve). Pins to `version`; falls back to the latest release if the pin
+  is empty or its asset is missing.
+
+inputs:
+  version:
+    description: "slang version without leading 'v' (empty = latest release)"
+    required: false
+    default: ""
+  token:
+    description: "GitHub token, used only to avoid API rate limits when resolving latest"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SLANG_VERSION: ${{ inputs.version }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        case "$(uname -s)" in
+          Linux)  plat=linux ;;
+          Darwin) plat=macos ;;
+          *) echo "::error::unsupported OS $(uname -s)"; exit 1 ;;
+        esac
+        case "$(uname -m)" in
+          x86_64|amd64)  a=x86_64 ;;
+          arm64|aarch64) a=aarch64 ;;
+          *) echo "::error::unsupported arch $(uname -m)"; exit 1 ;;
+        esac
+        asset_arch="${plat}-${a}"
+
+        fetch() {  # $1 = version without leading 'v'
+          local url="https://github.com/shader-slang/slang/releases/download/v$1/slang-$1-${asset_arch}.zip"
+          echo "Trying $url"
+          curl -fsSL "$url" -o "$RUNNER_TEMP/slang.zip"
+        }
+
+        ver="${SLANG_VERSION}"
+        if [ -z "$ver" ] || ! fetch "$ver"; then
+          echo "Pinned slang '${SLANG_VERSION:-<unset>}' unavailable — resolving latest release"
+          if [ -n "$GH_TOKEN" ]; then
+            ver=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+                    https://api.github.com/repos/shader-slang/slang/releases/latest \
+                  | python3 -c "import sys,json;print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+          else
+            ver=$(curl -fsSL https://api.github.com/repos/shader-slang/slang/releases/latest \
+                  | python3 -c "import sys,json;print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+          fi
+          fetch "$ver"
+        fi
+        echo "Using slang $ver ($asset_arch)"
+
+        unzip -q "$RUNNER_TEMP/slang.zip" -d "$RUNNER_TEMP/slang"
+        echo "SLANGC=$RUNNER_TEMP/slang/bin/slangc" >> "$GITHUB_ENV"
+        echo "$RUNNER_TEMP/slang/bin" >> "$GITHUB_PATH"

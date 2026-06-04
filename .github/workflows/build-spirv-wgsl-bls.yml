@@ -1,0 +1,59 @@
+name: Build SPIR-V + WGSL BLS
+
+# Compiles every core wc3_shaders permutation to SPIR-V (Vulkan) and WGSL
+# (WebGPU) and repacks the v1.14 BLS bundles
+# (shaders/<stage>/{spv_<X_Y>,wgsl_1_0}/*.bls), then uploads them.
+#
+# Both backends are fully Linux-buildable — slangc emits SPIR-V and WGSL
+# without any platform toolchain — so this runs entirely on ubuntu (no
+# macOS minutes). build_bls.py applies the SPIR-V output-location fixup at
+# pack time; the WGSL entry-rename / depth-texture fixups run in slangc at
+# compile time. Layout metadata comes from the committed
+# wc3_bls_templates.json. Only core wc3 families build by default.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # shader-slang/slang release; see setup-slang action for fallback behaviour.
+  SLANG_VERSION: "2026.9.3"
+
+jobs:
+  build:
+    name: Compile + pack (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup slangc
+        uses: ./.github/actions/setup-slang
+        with:
+          version: ${{ env.SLANG_VERSION }}
+          token: ${{ github.token }}
+
+      - name: Compile SPIR-V
+        run: python3 compile_all_slang.py --target vulkan --slangc "$SLANGC"
+
+      - name: Compile WGSL
+        run: python3 compile_all_slang.py --target webgpu --slangc "$SLANGC"
+
+      - name: Pack BLS
+        run: python3 build_bls.py --output bls_out --verbose
+
+      - name: Upload BLS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc3-spirv-wgsl-bls
+          # Only SPIR-V + WGSL compiled, so the v1.14 tree holds just the
+          # spv_<X_Y> and wgsl_1_0 bundles (no v1.8 for these backends).
+          path: bls_out_1_14/
+          if-no-files-found: error
