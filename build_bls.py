@@ -1441,24 +1441,22 @@ def build_extra_v14_bls(slang_dir, ext, num_perms, platform_tag, flags,
         if ext == 'spv':
             blob = fix_spirv_output_locations(blob)
         if dx_inner:
-            # Slangc's HLSL emit shifts every numeric semantic suffix one
-            # decimal place (ATTR3 → ATTR30, etc.) and declares the full
-            # input struct even when the specialised entry point reads
-            # only a subset. The v1.8 DX path runs fix_dxbc_signatures +
-            # strip_unused_input_signature against the shipped template,
-            # then recomputes the FXC-style hash at bytes 4..20. The
-            # §3.2 DX v1.14 path ships the same DXBC-shaped container
-            # with DXIL inside, so all three steps apply here too:
-            # D3D12 verifies the hash, validates the input signature
-            # against the layout, and rejects the bytecode with
-            # E_INVALIDARG if either is stale.
-            blob = fix_dxbc_signatures(blob)
-            if template_isgns is not None and template_isgns[i] is not None:
-                blob = strip_dxil_unused_input_signature(blob,
-                                                         template_isgns[i])
-            blob = bytearray(blob)
-            blob[4:20] = dxbc_hash(bytes(blob[20:]))
-            inner_perms.append(pack_v14_dx_perm(bytes(blob)))
+            # DX v1.14 (DXIL / SM6) path. The .dxil here is produced by DXC
+            # from slangc-emitted HLSL whose ATTRn→ATTRn0 semantic bug was
+            # already fixed in source (see compile_all_slang.py's
+            # patch_hlsl_attr_semantics). DXC therefore signs a fully
+            # self-consistent container (ISG1 / OSG1 / PSV0 / HASH / DXIL
+            # metadata all agree, correct ATTR0..7 register indices), so we
+            # pack it verbatim. We do NOT byte-patch it: editing a signed DXIL
+            # container's signature chunks leaves PSV0 / HASH / metadata stale
+            # and D3D12 rejects it with E_INVALIDARG ("Input Signature could
+            # not be parsed / shader is corrupt") — which is exactly the bug
+            # the old fix_dxbc_signatures + strip_dxil_unused_input_signature
+            # path caused. The full ATTR0..7 input signature is matched by the
+            # WhiteoutFlakes D3D12 backend's full input layout. (The DXBC /
+            # dx_5_0 path is separate and still trims to the shipped game
+            # layout — safe for SM5, which has no PSV0.)
+            inner_perms.append(pack_v14_dx_perm(blob))
         else:
             inner_perms.append(pack_blob_perm(blob))
 

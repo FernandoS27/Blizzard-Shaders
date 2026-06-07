@@ -214,10 +214,24 @@ def invoke_slangc(entry: str, target: str, profile: str,
     # METALLIB_MAC_MIN docstring for why we don't let slangc do it itself.
     metal_via_xcrun = (target == "metal" and METALLIB_MAC_MIN is not None
                        and str(out_path).endswith(".metallib"))
-    slangc_out = out_path.with_suffix(".metal") if metal_via_xcrun else out_path
+    # DXIL via HLSL: slangc's HLSL/DX backend mis-emits vertex input semantics
+    # (ATTR3 → ATTR30 — every numeric suffix gains a trailing 0). Patching the
+    # *compiled* DXIL container to fix this corrupts the signed DXIL (its PSV0 /
+    # HASH / metadata go stale and D3D12 rejects it). Instead we emit HLSL,
+    # text-patch the semantics, and let DXC compile + sign a consistent
+    # container. Only the DX12/DXIL path takes this route; SPIR-V / Metal /
+    # WGSL go straight from slangc to their target and never see HLSL.
+    dxil_via_hlsl = (target == "dxil")
+    emit_target = "hlsl" if dxil_via_hlsl else target
+    if dxil_via_hlsl:
+        slangc_out = out_path.with_suffix(".hlsl")
+    elif metal_via_xcrun:
+        slangc_out = out_path.with_suffix(".metal")
+    else:
+        slangc_out = out_path
     args += [
         "-profile", profile,
-        "-target", target,
+        "-target", emit_target,
         "-o", str(slangc_out),
         "-warnings-disable", "39001",
     ]
@@ -249,7 +263,25 @@ def invoke_slangc(entry: str, target: str, profile: str,
         err_path = out_path.with_suffix(out_path.suffix + ".err")
         err_path.write_text(proc.stderr or proc.stdout or "(no slangc output)")
         return False
-    if metal_via_xcrun:
+    if dxil_via_hlsl:
+        # slangc_out is the emitted HLSL. Fix the ATTRn → ATTRn0 semantic bug
+        # in source, then DXC compiles + validates + signs a consistent DXIL.
+        if not slangc_out.exists() or slangc_out.stat().st_size == 0:
+            return False
+        patch_hlsl_attr_semantics(slangc_out)
+        dxc = resolve_dxc(slangc_exe)
+        dxc_args = [dxc, "-T", profile, "-E", entry,
+                    str(slangc_out), "-Fo", str(out_path)]
+        if DEBUG_BUILD:
+            dxc_args += ["-Zi", "-Qembed_debug", "-Od"]
+        dxc_proc = subprocess.run(dxc_args, capture_output=True, text=True)
+        slangc_out.unlink(missing_ok=True)
+        if dxc_proc.returncode != 0:
+            err_path = out_path.with_suffix(out_path.suffix + ".err")
+            err_path.write_text("dxc failed:\n" +
+                                (dxc_proc.stderr or dxc_proc.stdout or ""))
+            return False
+    elif metal_via_xcrun:
         if not slangc_out.exists() or slangc_out.stat().st_size == 0:
             return False
         air_path = out_path.with_suffix(".air")
@@ -282,6 +314,50 @@ def invoke_slangc(entry: str, target: str, profile: str,
         fix_wgsl_depth_textures(out_path)
         rename_wgsl_entry_to_main(out_path)
     return out_path.exists() and out_path.stat().st_size > 0
+
+
+# slangc's HLSL/DX backend appends a stray '0' to every numeric vertex-input
+# semantic suffix (ATTR0 → ATTR00, ATTR3 → ATTR30, … ATTR8 → ATTR80), so the
+# declared input register becomes 0/10/20/… instead of 0/1/2/…. Fix it in the
+# emitted HLSL before DXC/FXC compile. Only the input ATTR semantics face the
+# host vertex layout; the interpolated VS→PS semantics (COLOR/TEXCOORD) stay
+# consistently shifted on both sides, so leaving them alone keeps linkage valid.
+_ATTR_SEMANTIC_FIX_RE = re.compile(r'(:\s*ATTR\d)0\b')
+
+
+def patch_hlsl_attr_semantics(hlsl_path: Path) -> None:
+    text = hlsl_path.read_text(encoding="utf-8")
+    fixed = _ATTR_SEMANTIC_FIX_RE.sub(r'\1', text)
+    if fixed != text:
+        hlsl_path.write_text(fixed, encoding="utf-8")
+
+
+_dxc_path: Optional[str] = None
+
+
+def resolve_dxc(slangc_exe: str) -> str:
+    """Locate dxc.exe — used to compile the patched HLSL to signed DXIL.
+    Prefers the dxc sitting next to slangc (same Vulkan SDK Bin)."""
+    global _dxc_path
+    if _dxc_path is not None:
+        return _dxc_path
+    exe = "dxc.exe" if os.name == "nt" else "dxc"
+    sibling = Path(slangc_exe).parent / exe
+    if sibling.is_file():
+        _dxc_path = str(sibling)
+        return _dxc_path
+    found = shutil.which("dxc")
+    if found:
+        _dxc_path = found
+        return _dxc_path
+    if os.name == "nt":
+        matches = sorted(glob.glob(r"C:\VulkanSDK\*\Bin\dxc.exe"))
+        if matches:
+            _dxc_path = matches[-1]
+            return _dxc_path
+    raise RuntimeError(
+        "dxc not found (needed to compile patched HLSL to DXIL). Install the "
+        "Vulkan SDK or put dxc on PATH.")
 
 
 def rename_wgsl_entry_to_main(wgsl_path: Path) -> None:
