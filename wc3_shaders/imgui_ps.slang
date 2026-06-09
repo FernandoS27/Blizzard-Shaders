@@ -6,18 +6,25 @@
 //
 // The ImGui pipeline samples the bound font / texture atlas (t0),
 // modulates by the per-vertex tint (COLOR0), and optionally sRGB-
-// decodes the result before writing. The decode lets the engine drive
-// draws into either a linear-storage or an sRGB-aware render target
-// from the same DrawList without authoring two different shader
-// bytecodes.
+// decodes the VERTEX COLOUR before writing. The decode lets the engine
+// drive draws into an sRGB-aware render target: ImGui's per-vertex tints
+// are authored in sRGB, so they must be linearised to blend correctly,
+// after which the sRGB RTV re-encodes on store.
+//
+// Crucially the decode is applied to the vertex colour ONLY, not to the
+// sampled texel. The bound texture carries its own format (an sRGB SRV
+// is already linearised by the hardware sampler; a UNORM one isn't), so
+// decoding the modulated product would double-decode an sRGB image and
+// render it far too dark. For the font/solid-white atlas the texel is
+// 1.0, so this is identical to the old "decode the product" form; it
+// only differs for textured ImGui::Image draws (e.g. live thumbnails).
 //
 // Specialisation space — one compile-time bool:
-//   HAS_SRGB_DECODE — apply IEC 61966-2-1 sRGB → linear EOTF on RGB.
-//                     Alpha is never touched (matches every other
-//                     gamma-aware path in this module).
+//   HAS_SRGB_DECODE — apply IEC 61966-2-1 sRGB → linear EOTF on the
+//                     vertex-colour RGB. Alpha is never touched.
 //
 // The two resulting permutations match the engine's imgui.bls layout:
-//   perm_000  HAS_SRGB_DECODE=true   sRGB decode on the modulated RGB
+//   perm_000  HAS_SRGB_DECODE=true   sRGB decode on the vertex-colour RGB
 //   perm_001  HAS_SRGB_DECODE=false  passthrough modulate
 
 implementing wc3_shaders;
@@ -26,10 +33,10 @@ implementing wc3_shaders;
 public float4 imgui_ps_main<let HAS_SRGB_DECODE : bool>(
     ImGuiPSInput input) : SV_Target0
 {
-    float4 sample    = t_imgui.Sample(s_imgui, input.uv);
-    float4 modulated = input.vertColor * sample;
+    float4 sample = t_imgui.Sample(s_imgui, input.uv);
 
     if (HAS_SRGB_DECODE)
-        return float4(srgbToLinearIEC(modulated.rgb), modulated.a);
-    return modulated;
+        return float4(srgbToLinearIEC(input.vertColor.rgb) * sample.rgb,
+                      input.vertColor.a * sample.a);
+    return input.vertColor * sample;
 }
