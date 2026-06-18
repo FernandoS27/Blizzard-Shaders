@@ -301,7 +301,7 @@ public float4 psToonIBLBody<
             float3 lightVec = light.position.xyz - input.worldPos.xyz;
             float distSq = dot(lightVec, lightVec);
             float dist = sqrt(distSq);
-            attenuation = pointLightAttenuation(distSq, dist);
+            attenuation = pointLightAttenuation(distSq);
             lightDir = lightVec / dist;
         }
         else

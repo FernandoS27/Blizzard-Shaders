@@ -63,10 +63,12 @@ public PSOutput ps_main<
     if (!HAS_IBL)
         backfaceDiscard(input.worldPos.w);
 
-    // Dispatch to the appropriate lit body.
+    // Dispatch to the appropriate lit body. Only the IBL body produces the
+    // modes 5-7 debug overlay; the others leave it black.
     float4 result;
+    float3 iblDbgOverlay = float3(0, 0, 0);
     if (HAS_IBL)
-        result = psIBLBody<TMat, HAS_EXTRA_VERTS, HAS_DEBUG_VIS>(input, isFrontFace);
+        result = psIBLBody<TMat, HAS_EXTRA_VERTS, HAS_DEBUG_VIS>(input, isFrontFace, iblDbgOverlay);
     else if (TMat.hasMultiLayer)
         result = psMultiLayerBody<HAS_DEBUG_VIS>(input, isFrontFace);
     else
@@ -106,13 +108,14 @@ public PSOutput ps_main<
     if (TFog.hasFog)
         result.w = psCB2.inverseSoftness * result.w;
 
-    result.xyz = TFog.apply(result.xyz, psCB2.fogColor.xyz,
-                            input.worldPos.z, psCB2.fogStart, psCB2.fogEnd, psCB2.fogDensity);
-
     if (!HAS_DEBUG_VIS)
     {
-        // Release: apply the post color-matrix grade and finish the
-        // alpha scale if fog was off.
+        // Release: fog, then the post color-matrix grade, then finish the
+        // alpha scale if fog was off. Fog and the matrix are BOTH skipped
+        // under DEBUG_VIS — the debug overlay emits already-displayable
+        // colours, matching the retail shader (its DBG perms emit no fog).
+        result.xyz = TFog.apply(result.xyz, psCB2.fogColor.xyz,
+                                input.worldPos.z, psCB2.fogStart, psCB2.fogEnd, psCB2.fogDensity);
         result.xyz = applyColorMatrix(result.xyz);
         if (!TFog.hasFog)
             result.w = psCB2.inverseSoftness * result.w;
@@ -137,7 +140,8 @@ public PSOutput ps_main<
         if ((asuint(psCB3.enabledShaders) & 1) != 0)
             effectiveAlbedo = psCB3.overrideAlbedo.xyz;
 
-        result = debugVisualize(result, input, wn, normalLen, effectiveAlbedo);
+        result = debugVisualize(result, input, wn, normalLen, effectiveAlbedo,
+                                iblDbgOverlay, HAS_IBL);
         if (!TFog.hasFog)
             result.w = psCB2.inverseSoftness * result.w;
     }

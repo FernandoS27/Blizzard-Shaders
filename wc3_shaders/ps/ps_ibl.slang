@@ -181,12 +181,15 @@ public float3 lightLoop(
 
         if (light.position.w > 0)
         {
-            // Point light: direction toward the light + inverse-square
-            // attenuation (with the tiny distance bias from POINT_EPS).
+            // Point light: direction toward the light + the retail SD/HD
+            // falloff `1 / (1 + POINT_EPS * distSq)` — bounded at 1 near
+            // the light, NOT the `pointLightAttenuation` inverse-square
+            // form (that helper is for the popcorn path). Matches the
+            // `1.0 + 0.0005 * distSq` denominator in the shipped DXBC.
             float3 lightVec = light.position.xyz - viewPos;
             float distSq = dot(lightVec, lightVec);
             float dist = sqrt(distSq);
-            attenuation = pointLightAttenuation(distSq, dist);
+            attenuation = pointLightAttenuation(distSq);
             lightDir = lightVec / dist;
         }
         else
@@ -241,8 +244,10 @@ public float4 psIBLBody<
     TMat : IMaterialLayer,
     let HAS_EXTRA_VERTS : bool,
     let HAS_DEBUG_VIS : bool>(
-    PSInput input, bool isFrontFace)
+    PSInput input, bool isFrontFace, out float3 dbgOverlay)
 {
+    // Debug overlay (modes 5-7); selected once the lit terms are known.
+    dbgOverlay = float3(0, 0, 0);
     // Base material sampling first — the retail shader emits all four
     // texture fetches (t0/t1/t2/t3) before any shadow-cascade work, so
     // mirror that order here. Multi-layer materials also need the blend
@@ -402,8 +407,21 @@ public float4 psIBLBody<
         indirectSpec += scaledSpec * light0Diffuse;
         indirectSpec *= ibl.specularRadiance;
 
-        accum = ambientResult * lambertianDiffuse + indirectSpec;
+        float3 dbgDiffuse = ambientResult * lambertianDiffuse;
+        accum = dbgDiffuse + indirectSpec;
         firstLightProcessed = 1; // Skip light 0 in the loop below.
+
+        if (HAS_DEBUG_VIS)
+        {
+            // First-light IBL split for debug modes 5-7 (PI-scaled to undo
+            // the INV_PI in lambertianDiffuse). 5 = indirect specular,
+            // 6 = diffuse-ambient, 7 = their sum. Loop lights are excluded,
+            // matching the retail overlay.
+            int dm = asint(psCB3.debugMode);
+            if (dm == 5)      dbgOverlay = PI * indirectSpec;
+            else if (dm == 6) dbgOverlay = PI * dbgDiffuse;
+            else if (dm == 7) dbgOverlay = PI * accum;
+        }
     }
 
     // Analytical loop for remaining lights.
@@ -421,6 +439,13 @@ public float4 psIBLBody<
     // emissive, and modulate by the per-vertex color (which carries AO
     // and hero tints).
     float3 finalColor = PI * accum;
+
+    // Debug mode 8 shows the full lit colour (all lights, pre-emissive/
+    // vertex-colour/fresnel) — distinct from modes 5-7 which are the
+    // first-light-only IBL split captured above.
+    if (HAS_DEBUG_VIS && asint(psCB3.debugMode) == 8)
+        dbgOverlay = finalColor;
+
     finalColor += emissive * psCB2.emissiveGain;
 
     float3 linearVert = srgbToLinear(input.vertColor.xyz);

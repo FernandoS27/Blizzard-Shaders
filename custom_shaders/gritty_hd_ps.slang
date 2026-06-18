@@ -109,7 +109,8 @@ public PSOutput gritty_ps_main<
         if ((asuint(psCB3.enabledShaders) & 1) != 0)
             effectiveAlbedo = psCB3.overrideAlbedo.xyz;
 
-        result = debugVisualize(result, input, wn, normalLen, effectiveAlbedo);
+        result = debugVisualize(result, input, wn, normalLen, effectiveAlbedo,
+                                float3(0, 0, 0), false);
         if (!TFog.hasFog)
             result.w = psCB2.inverseSoftness * result.w;
     }

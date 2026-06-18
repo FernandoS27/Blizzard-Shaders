@@ -13,7 +13,7 @@
 // water-specific and don't apply to other rendering paths:
 //   • `compositeWaterNormal` — 4-sample animated normal-map blend
 //   • `snellRefractTangent` — Snell's law → screen-space refraction 2D
-//   • `waterPointAttenuation` — 1 / (1 + ε·d²) (water's own falloff)
+//   • `pointLightAttenuation ` — 1 / (1 + ε·d²) (water's own falloff)
 //   • `ssrMarch` — 32-step screen-space reflection ray march
 //
 // Where the HD path already has a suitable helper (`decodeNormalMap`,
@@ -141,14 +141,6 @@ float2 snellRefractTangent(float3 viewDirWS, float3 worldN,
     tangent = tirPass ? tangent : 0;
     tangent = tangent + worldPos.xy * invViewDist;
     return tangent;
-}
-
-// Water's soft point-light falloff: 1 / (1 + ε · d²).
-// Intentionally NOT `pointLightAttenuation` (HD) — that helper uses a
-// physical 1/(d² + ε·d) which produces much harsher close-range pools.
-float waterPointAttenuation(float distSq)
-{
-    return 1.0 / (1.0 + WATER_ATTEN_EPS * distSq);
 }
 
 // ============================================================
@@ -296,7 +288,7 @@ WaterIBLSample sampleWaterIBL(
 // ============================================================
 // Analytic light loop (water flavour).
 // Same Cook-Torrance + per-light ambient structure as the HD path, but
-// uses `waterPointAttenuation` and adds per-light-ambient that way too.
+// uses `pointLightAttenuation ` and adds per-light-ambient that way too.
 // Starts at `startLight`; the caller handles light 0 separately when
 // it's directional.
 // ============================================================
@@ -335,7 +327,7 @@ float3 waterLightLoop(
             float3 toLight = light.position.xyz - worldPos;
             float  distSq  = dot(toLight, toLight);
             float  dist    = sqrt(distSq);
-            atten = waterPointAttenuation(distSq);
+            atten = pointLightAttenuation (distSq);
             Ldir  = toLight / dist;
         }
         else

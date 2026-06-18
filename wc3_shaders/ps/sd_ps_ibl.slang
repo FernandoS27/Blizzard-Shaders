@@ -253,7 +253,7 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
             float3 delta = lightPos - input.worldPos.xyz;
             float distSq = dot(delta, delta);
             float dist = sqrt(distSq);
-            atten = 1.0 / (1.0 + POINT_EPS * distSq);
+            atten = pointLightAttenuation(distSq);
             L = delta / dist;
         }
         else

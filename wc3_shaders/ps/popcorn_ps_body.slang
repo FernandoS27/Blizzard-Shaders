@@ -279,7 +279,7 @@ PopcornLightContrib popcornEvalLight(
         lightVec = light.position.xyz - worldPos;
         float d2 = dot(lightVec, lightVec);
         float d  = sqrt(d2);
-        lightAtten = pointLightAttenuation(d2, d);
+        lightAtten = pointLightAttenuation(d2);
         lightVec  /= d;
     }
     else

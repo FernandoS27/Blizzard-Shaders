@@ -108,7 +108,8 @@ public float queryTextureLOD(Texture2D<float4> tex, SamplerState samp, float2 uv
 // that do not apply any override or refraction can simply pass
 // `t_albedo.Sample(...).xyz`.
 public float4 debugVisualize(float4 color, PSInput input,
-    float3 worldNormal, float normalLen, float3 effectiveAlbedo)
+    float3 worldNormal, float normalLen, float3 effectiveAlbedo,
+    float3 iblDebug, bool hasIblDebug)
 {
     float lodVal = queryTextureLOD(t_albedo, s_albedo, input.uv.xy);
     float lodFrac = frac(lodVal);
@@ -183,11 +184,19 @@ public float4 debugVisualize(float4 color, PSInput input,
     }
     else
     {
-        // Reserved debug slots 5..8 emit black; anything else (mode ≥ 9
-        // — undefined in the engine) falls through to the raw lit colour
-        // just like mode 0, matching the original decompiled switch.
+        // Debug slots 5..8. On the IBL path these visualise the IBL split
+        // (5 = indirect specular, 6 = diffuse-ambient, 7 = their sum, all
+        // PI-scaled; 8 = the raw lit colour) — `iblDebug` carries the
+        // mode-5/6/7 term computed in the IBL body. The non-IBL bodies have
+        // no such terms, so those modes go black there (matching the retail
+        // shader, whose standard/ML DBG perms emit black for 5..8). Modes
+        // >= 9 fall through to the raw lit colour like mode 0.
         if (dbgMode >= 5 && dbgMode <= 8)
+        {
+            if (hasIblDebug)
+                return float4(iblDebug, color.w);
             return float4(0, 0, 0, color.w);
+        }
         return color;
     }
 }

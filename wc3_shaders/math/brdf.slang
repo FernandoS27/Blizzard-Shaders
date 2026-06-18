@@ -115,7 +115,7 @@ public float roughnessToMip(float roughness)
 // Inverse-square point-light attenuation with a tiny radial bias so
 // lights don't produce unbounded intensity when a vertex lands exactly
 // on the light position.
-public float pointLightAttenuation(float distSq, float dist)
+public float pointLightAttenuation(float distSq)
 {
-    return 1.0 / (distSq + POINT_EPS * dist);
+    return 1.0 / (1.0 + POINT_EPS * distSq);
 }
