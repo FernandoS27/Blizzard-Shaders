@@ -52,7 +52,9 @@ struct IBLSample
 {
     float3 diffuseIBL;
     float3 specIBL;
-    float  brdfY;   // Y (bias) component of the split-sum LUT.
+    float  brdfY;     // Y (bias) component of the split-sum LUT.
+    float  brdfScale; // X (scale) channel: 1.0 when a probe is bound,
+                      // 0.0 when unbound so the ambient/IBL terms drop out.
 };
 
 // Two-probe IBL sample. Short-circuits to zeros when no probe is
@@ -68,6 +70,7 @@ static IBLSample sampleIBL(
     result.diffuseIBL = float3(0, 0, 0);
     result.specIBL = float3(0, 0, 0);
     result.brdfY = 0;
+    result.brdfScale = 0;
 
     if (envFromMip * envToMip == 0.0)
         return result;
@@ -103,16 +106,23 @@ static IBLSample sampleIBL(
     float3 toSpec = t_iblTo.SampleLevel(s_iblTo, specCoord, envToMip).xyz;
     result.specIBL = lerp(fromSpec, toSpec, envTransitionT);
 
-    // SD only uses the Y (bias) channel; the X (scale) channel is
-    // irrelevant because the SD path has no explicit F0.
+    // SD samples the Y (bias) channel from the LUT; the X (scale)
+    // channel is baked to a constant 1.0 (the SD path has no explicit
+    // F0), so we just flag the probe as bound here. Both feed the
+    // ambient/specular split below.
     result.brdfY = t_brdfLut.Sample(s_brdfLut, float2(NdotV, 1)).y;
+    result.brdfScale = 1.0;
 
     return result;
 }
 
 public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
-    PSInput input, bool isFrontFace)
+    PSInput input, bool isFrontFace, out float3 dbgIBL)
 {
+    // Debug overlay (modes 5-8). Zero unless the first-light IBL combine
+    // runs; assigned its final value once litColor is known below.
+    dbgIBL = float3(0, 0, 0);
+
     // Diffuse albedo + vertex-color modulation happen at the end; for
     // now we only need the texture sample.
     float4 texColor = t_albedo.Sample(s_albedo, input.uv.xy);
@@ -148,6 +158,12 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
     float3 diffAccum = float3(0, 0, 0);
     float3 ambAccum = float3(0, 0, 0);
 
+    // First-light specular (r5) and diffuse/ambient (r8) contributions,
+    // captured before the analytic loop folds the remaining lights in,
+    // for the IBL debug overlays (modes 5-7).
+    float3 dbgSpec = float3(0, 0, 0);
+    float3 dbgDiff = float3(0, 0, 0);
+
     int loopStart = 0;
     if (lightCount > 0 && sdPsCB2.lights[0].position.w == 0.0)
     {
@@ -174,10 +190,13 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         float invMaxAmb = 1.0 / (maxAmb + SAFE_EPS);
 
         // Ambient + IBL combining weight and its scaled-LUT product —
-        // used by both the ambient blend and the specular indirect
-        // term below, so we hoist the computation.
-        float ambPlusLut = maxAmb + ibl.brdfY;
-        float lutContrib = ambPlusLut * ibl.brdfY;
+        // used by both the ambient blend and the specular indirect term
+        // below, so we hoist the computation. The weight uses the LUT
+        // *scale* channel (`brdfScale` == 1.0 when a probe is bound,
+        // 0.0 otherwise so the IBL terms vanish); only `specIBL` below
+        // consumes the sampled *bias* `brdfY`.
+        float ambPlusLut = maxAmb + ibl.brdfScale;
+        float lutContrib = ambPlusLut * ibl.brdfScale;
         float scaledLut = sdPsCB2.lights[0]._pad2.x * lutContrib;
 
         // Hue-separate the IBL diffuse for the ambient mix.
@@ -192,7 +211,8 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         float3 upper = ambDelta * IBL_SPLIT_UPPER + iblNorm;
         upper = upper * maxIBL;
         upper = upper * ambPlusLut - lightDiffuse;
-        upper = ibl.brdfY * upper + lightDiffuse;
+        // Weighted by the LUT scale channel (probe-bound flag), see above.
+        upper = ibl.brdfScale * upper + lightDiffuse;
 
         float3 lower = ambDelta * IBL_SPLIT_LOWER + iblNorm;
         float3 lowerScaled = lower * maxIBL;
@@ -210,6 +230,11 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
         float specIBL = scaledLut * ibl.brdfY;
         diffAccum = combinedSpec * lightDiffuse + specIBL;
         diffAccum = diffAccum * ibl.specIBL;
+
+        // Snapshot the two halves for the debug overlay (the loop below
+        // mutates diffAccum/ambAccum into the combined result).
+        dbgSpec = diffAccum;
+        dbgDiff = diffAlbedo * ambAccum;
 
         loopStart = 1; // Skip light 0 in the generic loop.
     }
@@ -262,6 +287,19 @@ public float4 sdIBLBody<let HAS_EXTRA_VERTS : bool, let HAS_DEBUG_VIS : bool>(
     // Convert back to physical units (undo the INV_PI scale) and
     // modulate by the linearised vertex color (carries AO / tints).
     float3 litColor = PI * diffAccum;
+
+    if (HAS_DEBUG_VIS)
+    {
+        // Modes 5-8 mirror the retail SD-on-HD debug overlay: 5 = the
+        // first-light specular term, 6 = its diffuse/ambient term,
+        // 7 = their sum, 8 = the full lit colour. All PI-scaled to undo
+        // the INV_PI folded into the BRDF terms.
+        int dm = asint(psCB3.debugMode);
+        if (dm == 5)      dbgIBL = PI * dbgSpec;
+        else if (dm == 6) dbgIBL = PI * dbgDiff;
+        else if (dm == 7) dbgIBL = PI * (dbgSpec + dbgDiff);
+        else if (dm == 8) dbgIBL = litColor;
+    }
 
     float3 vcLinear = srgbToLinear(input.vertColor.xyz);
     float3 finalColor = vcLinear * litColor;

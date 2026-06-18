@@ -21,7 +21,8 @@ public float3 sdComputeMRTNormal(PSInput input, bool isFrontFace)
 // HD-specific normal-length mode. Mode 0 passes the final color
 // through unchanged (the SD entry shader has already applied sRGB
 // encoding when needed); modes 1..4 mirror the HD variants.
-public float4 sdDebugVisualize(float4 result, PSInput input, bool isFrontFace)
+public float4 sdDebugVisualize(float4 result, PSInput input, bool isFrontFace,
+    float3 iblDebug)
 {
     float3 normalWS = normalize(input.normalWS.xyz);
     normalWS = isFrontFace ? normalWS : -normalWS;
@@ -83,8 +84,14 @@ public float4 sdDebugVisualize(float4 result, PSInput input, bool isFrontFace)
     }
     else
     {
+        // Modes 5-8: IBL debug overlays (specular / diffuse / sum / lit
+        // colour), computed in the IBL body and passed through here. The
+        // non-IBL standard body leaves `iblDebug` zero, so those modes go
+        // black there — matching the original SD-on-HD shader, whose
+        // 5-8 visualisations only exist on the IBL path. Modes >= 9 fall
+        // through to the raw lit colour.
         if (dbgMode >= 5 && dbgMode <= 8)
-            return float4(0, 0, 0, result.w);
+            return float4(iblDebug, result.w);
         return result;
     }
 }

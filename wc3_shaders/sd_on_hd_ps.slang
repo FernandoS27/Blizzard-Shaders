@@ -44,10 +44,13 @@ public PSOutput sd_on_hd_ps_main<
 #else
     {
 
-    // Dispatch to the IBL body or the cheap standard body.
+    // Dispatch to the IBL body or the cheap standard body. The IBL body
+    // fills `iblDebug` with the modes 5-8 overlay; the standard body has
+    // no IBL terms, so those modes stay black (matches the original).
     float4 result;
+    float3 iblDebug = float3(0, 0, 0);
     if (HAS_IBL)
-        result = sdIBLBody<HAS_EXTRA_VERTS, HAS_DEBUG_VIS>(input, isFrontFace);
+        result = sdIBLBody<HAS_EXTRA_VERTS, HAS_DEBUG_VIS>(input, isFrontFace, iblDebug);
     else
         result = sdStandardBody(input, isFrontFace);
 
@@ -94,7 +97,7 @@ public PSOutput sd_on_hd_ps_main<
 
     if (HAS_DEBUG_VIS)
     {
-        result = sdDebugVisualize(result, input, isFrontFace);
+        result = sdDebugVisualize(result, input, isFrontFace, iblDebug);
     }
 
     output.color = result;

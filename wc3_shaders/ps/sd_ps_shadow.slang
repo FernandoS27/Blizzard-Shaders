@@ -66,31 +66,35 @@ public float sdSampleShadowCascades(
     float4 shadowClip0, float4 shadowClip1, float4 shadowClip2,
     uint numCascades)
 {
-    int cascadeIdx = -1;
-    for (int i = 0; i < (int)numCascades && i < 3; i++)
+    // Scan for the first active cascade that contains the pixel. The
+    // loop variable's terminal value is that cascade's index when found,
+    // or `min(numCascades, 3)` when none of the active cascades match.
+    int cascadeIdx = 0;
+    for (; cascadeIdx < (int)numCascades && cascadeIdx < 3; cascadeIdx++)
     {
         float3 clip;
-        if (i == 0) clip = shadowClip0.xyz;
-        else if (i == 1) clip = shadowClip1.xyz;
+        if (cascadeIdx == 0) clip = shadowClip0.xyz;
+        else if (cascadeIdx == 1) clip = shadowClip1.xyz;
         else clip = shadowClip2.xyz;
 
         if (isInShadowFrustum(clip))
-        {
-            cascadeIdx = i;
             break;
-        }
     }
 
-    // Outside every cascade: assume no shadow contribution.
-    if (cascadeIdx < 0)
-        return 1.0;
-
-    // Sample the chosen cascade. The three branches compile into a
-    // straightforward data-dependent load on modern GPUs.
-    if (cascadeIdx == 0)
+    // The retail shader dispatches on that terminal index and *re-tests*
+    // the chosen slot's frustum before sampling. For the "none found"
+    // case the index aliases cascade[numCascades]; when that's a real
+    // slot (numCascades < 3) and the pixel lands inside it, the original
+    // samples it anyway — so we reproduce that rather than short-circuit
+    // to fully-lit. numCascades == 3 with no hit lands on index 3 (no
+    // slot) and falls through to 1.0.
+    if (cascadeIdx == 0 && isInShadowFrustum(shadowClip0.xyz))
         return samplePCF2x2(sd_t_shadow0, sd_s_shadow0, shadowClip0.xyz);
-    else if (cascadeIdx == 1)
+    else if (cascadeIdx == 1 && isInShadowFrustum(shadowClip1.xyz))
         return samplePCF2x2(sd_t_shadow1, sd_s_shadow1, shadowClip1.xyz);
-    else
+    else if (cascadeIdx == 2 && isInShadowFrustum(shadowClip2.xyz))
         return samplePCF2x2(sd_t_shadow2, sd_s_shadow2, shadowClip2.xyz);
+
+    // Outside every reachable cascade: fully lit.
+    return 1.0;
 }
