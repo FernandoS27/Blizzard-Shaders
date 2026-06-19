@@ -86,7 +86,7 @@ public PopcornPSOutput popcorn_ps_main<
 #if WC3_POPCORN_HAS_GBUFFER
     {
         output.depthRT    = float4(input.worldPos.z, 0.0, 0.0, 1.0);
-        output.materialRT = float4(GBUFFER_DEFAULT_MAT, shaded.gbufferAlpha);
+        output.materialRT = float4(shaded.gbufferMat, shaded.gbufferAlpha);
     }
 #endif
 

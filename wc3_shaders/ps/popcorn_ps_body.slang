@@ -249,7 +249,10 @@ float3 popcornComposeIBLTint(
     diffCube        *= invDiffMax;
     float3 envTint   = baseMat * invMatMax - diffCube;
     diffCube         = envTint * IBL_TONAL_MIX_T + diffCube;
-    diffCube         = diffCube * iblWeight;
+    // Re-apply the diffuse-cube magnitude that the hue-normalisation above
+    // divided out (matches the retail DXBC and the HD `upper *= maxDiffIBL`
+    // step) — NOT `iblWeight`, which would square the ambient weight.
+    diffCube         = diffCube * diffMax;
     diffCube         = diffCube * iblScale + ambient;
 
     float3 F            = popcornSplitSumBRDF(F0, ibl.brdfLUT);
@@ -314,7 +317,8 @@ PopcornLightContrib popcornEvalLight(
 // normalWS/tangentWS). All call sites are wrapped in the same `#if`.
 #if POPCORN_HAS_NT
 public float3 popcornLitBody(PopcornPSInput input, PopcornUV uv,
-                             bool isFrontFace, float3 albedoRGB)
+                             bool isFrontFace, float3 albedoRGB,
+                             out float3 worldNOut)
 {
     // Tangent-space normal from the packed map. With no UV stream
     // the maps are still bound and sampled at (0, 0) — effectively
@@ -327,6 +331,7 @@ public float3 popcornLitBody(PopcornPSInput input, PopcornUV uv,
     float3 worldN    = tangentToWorld(tsNormal, input.tangentWS.xyz,
                                       input.normalWS, input.tangentWS.w);
     worldN           = orientNormal(worldN, isFrontFace);
+    worldNOut        = worldN;   // forwarded to the deferred g-buffer (RT2.xyz)
 
     // Specular-AA: widen the BRDF on aliased high-frequency normals.
     // cb2[20].w toggles between the smoothed value and the raw map
@@ -401,6 +406,7 @@ public struct PopcornColorOut
 {
     public float4 color;            // RT0 — final RGBA
     public float  gbufferAlpha;     // RT2.w — pre-SP / pre-fog alpha
+    public float3 gbufferMat;       // RT2.xyz — encoded world normal (LIT) or default material
 };
 
 public PopcornColorOut popcornColorPassBody<
@@ -451,10 +457,18 @@ public PopcornColorOut popcornColorPassBody<
 #endif
 
     // ---- Lighting ----
+    // The deferred g-buffer (RT2.xyz) carries the encoded world normal for
+    // lit particles and a flat default-material slot otherwise — matching
+    // the retail `mad o2.xyz, worldN, 0.5, 0.5` vs constant write.
     float3 colorRGB;
+    float3 gbufferMat = GBUFFER_DEFAULT_MAT;
 #if POPCORN_HAS_NT
     if (HAS_LIT)
-        colorRGB = popcornLitBody(input, uv, isFrontFace, albedo.xyz);
+    {
+        float3 worldN;
+        colorRGB   = popcornLitBody(input, uv, isFrontFace, albedo.xyz, worldN);
+        gbufferMat = worldN * 0.5 + 0.5;
+    }
     else
 #endif
         colorRGB = albedo.xyz;
@@ -486,6 +500,7 @@ public PopcornColorOut popcornColorPassBody<
     PopcornColorOut out_;
     out_.color        = float4(colorRGB, colorAlpha);
     out_.gbufferAlpha = gbufferAlpha;
+    out_.gbufferMat   = gbufferMat;
     return out_;
 }
 
@@ -543,7 +558,10 @@ public float4 popcornMotionPassBody<
 #if POPCORN_HAS_VC
     if (HAS_VC)
     {
-        motion      *= input.vertColor.xy;
+        // The motion vector is premultiplied by the vertex-colour alpha as
+        // well as tinted by vc.xy (matches the retail `motion *= vc.xy`
+        // followed by `motion *= vc.w`); vc.w also drives the output alpha.
+        motion      *= input.vertColor.xy * input.vertColor.w;
         motionAlpha  = input.vertColor.w;
     }
 #endif
