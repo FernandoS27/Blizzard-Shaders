@@ -21,9 +21,14 @@
 
 implementing wc3_shaders;
 
-public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
-    PSInput input, bool isFrontFace)
+public float4 crystalIBLBody<
+    TMat : IMaterialLayer,
+    let HAS_EXTRA_VERTS : bool,
+    let HAS_DEBUG_VIS : bool>(
+    PSInput input, bool isFrontFace, out float3 dbgOverlay)
 {
+    // Debug overlay (modes 5-7); assigned once the lit terms are known.
+    dbgOverlay = float3(0, 0, 0);
     // --- Texture sampling ---
     // Crystal packs (refract, roughness, metalness, blendWeight) into the
     // ORM slot. Read all four channels for the IBL path — the non-IBL
@@ -44,10 +49,12 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
         metalness   = psCB3.overrideOrm.z;
     }
 
-    // Refracted albedo (centre.w preserved for downstream alpha).
-    float4 albedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask);
-    if (HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 1) != 0)
-        albedo.xyz = psCB3.overrideAlbedo.xyz;
+    // Refracted albedo (centre.w preserved for downstream alpha). The
+    // DEBUG_VIS bit-0 override applies to the centre sample inside the
+    // refraction blend, not the blended result.
+    bool ovrAlbedo = HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 1) != 0;
+    float4 albedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask,
+                                        ovrAlbedo, psCB3.overrideAlbedo.xyz);
 
     float3 normalSample = t_normal.Sample(s_normal, input.uv.xy).xyw;
     float3 emissive = t_emissive.Sample(s_emissive, input.uv.xy).xyz;
@@ -65,6 +72,20 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
         albedo.xyz = ml.albedo;
         emissive   = ml.emissive;
     }
+
+    // --- Shadow cascade attenuation ---
+    // 3-cascade PCF, applied to the first directional light's direct term
+    // only (same as the HD path). Skipped when the VS didn't pass the
+    // cascade clip coords (HAS_EXTRA_VERTS=false).
+    float shadowAtten = 1.0;
+#if WC3_HAS_SHADOWS
+    if (HAS_EXTRA_VERTS)
+    {
+        shadowAtten = sdSampleShadowCascades(
+            input.shadowClip0, input.shadowClip1, input.shadowClip2,
+            asuint(sdPsCB1.numCascades));
+    }
+#endif
 
     // --- World-space normal + roughness specular-AA ---
     float3 tsNormal = decodeNormalMap(normalSample);
@@ -105,6 +126,11 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
         float3 spec = D * F * V;
         float  clampedNdotL = max(0.0, NdotL);
 
+        // Shadow attenuates only the main directional light's direct
+        // contribution (ambient blend + direct specular), not the indirect
+        // IBL terms — matching the HD path and the retail DXBC.
+        float  litNdotL = HAS_EXTRA_VERTS ? (clampedNdotL * shadowAtten) : clampedNdotL;
+
         IBLSampleResult ibl = sampleIBL(
             input.worldPos.xyz, worldNormal, roughnessAA,
             psCB2.view,
@@ -115,11 +141,11 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
 
         float3 ambientResult = blizzardAmbientBlend(
             psCB2.lights[0].diffuse.xyz, ibl.diffuseIrradiance,
-            clampedNdotL, maxDiffuse, ibl.isActive, ambientWeight);
+            litNdotL, maxDiffuse, ibl.isActive, ambientWeight);
         ambientResult += psCB2.lights[0].ambient.xyz;
 
         float totalWeight = maxDiffuse + ibl.isActive;
-        float3 scaledSpec = spec * totalWeight * clampedNdotL;
+        float3 scaledSpec = spec * totalWeight * litNdotL;
 
         float3 indirectSpec = F0 * ibl.brdfLUT.x + ibl.brdfLUT.y;
         float  ambientIBLWeight = totalWeight * ibl.isActive * ambientWeight;
@@ -127,8 +153,18 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
         indirectSpec += scaledSpec * psCB2.lights[0].diffuse.xyz;
         indirectSpec *= ibl.specularRadiance;
 
-        accum = ambientResult * lambertianDiffuse + indirectSpec;
+        float3 dbgDiffuse = ambientResult * lambertianDiffuse;
+        accum = dbgDiffuse + indirectSpec;
         firstLightProcessed = 1;
+
+        if (HAS_DEBUG_VIS)
+        {
+            // First-light IBL split for debug modes 5-7 (PI-scaled).
+            int dm = asint(psCB3.debugMode);
+            if (dm == 5)      dbgOverlay = PI * indirectSpec;
+            else if (dm == 6) dbgOverlay = PI * dbgDiffuse;
+            else if (dm == 7) dbgOverlay = PI * accum;
+        }
     }
 
     // --- Remaining analytical lights ---
@@ -142,6 +178,11 @@ public float4 crystalIBLBody<TMat : IMaterialLayer, let HAS_DEBUG_VIS : bool>(
 
     // --- Assemble lit colour ---
     float3 finalColor = PI * accum;
+
+    // Debug mode 8 = full lit colour (all lights, pre-emissive/vert/fresnel).
+    if (HAS_DEBUG_VIS && asint(psCB3.debugMode) == 8)
+        dbgOverlay = finalColor;
+
     finalColor += emissive * psCB2.emissiveGain;
     float3 linearVert = srgbToLinear(input.vertColor.xyz);
     finalColor *= linearVert;

@@ -663,23 +663,24 @@ def map_gritty_hd_ps(idx: int) -> PermSpec:
 
 
 def map_crystal_ps(idx: int) -> PermSpec:
-    # Crystal shares hd_ps's 9-bit encoding for most features. Bit 2 /
-    # EXTRA_VERTS is unused on crystal's PS signature (crystal doesn't
-    # expose a shadow-cascade path yet), so we drop it from the
-    # specialisation tuple. IS_DEPTH_PREPASS / IS_MRT migrated to
-    # preprocessor defines (see map_hd_ps).
+    # Crystal shares hd_ps's 9-bit encoding. Bit 2 / EXTRA_VERTS gates the
+    # 3-cascade PCF shadow path, which crystal now implements (mirroring the
+    # HD IBL body). IS_DEPTH_PREPASS / IS_MRT migrated to preprocessor
+    # defines (see map_hd_ps).
     b = _hd_ps_bits(idx)
-    fog, alpha, mat, iblS, _evS, dpS, mrtS, dbgS = _hd_ps_types(b)
+    fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS = _hd_ps_types(b)
     defines: List[str] = []
     if b["dp"]:
         defines.append("WC3_IS_DEPTH_PREPASS=1")
     if b["mrt"]:
         defines.append("WC3_IS_MRT=1")
+    if b["ev"]:
+        defines.append("WC3_HAS_SHADOWS=1")
     return PermSpec(
         entry="crystal_ps_main",
-        types=[fog, alpha, mat, iblS, dbgS],
+        types=[fog, alpha, mat, iblS, evS, dbgS],
         defines=defines,
-        label=f"{fog}+{alpha}+{mat}+IBL={iblS}+DP={dpS}+MRT={mrtS}+DBG={dbgS}",
+        label=f"{fog}+{alpha}+{mat}+IBL={iblS}+EV={evS}+DP={dpS}+MRT={mrtS}+DBG={dbgS}",
     )
 
 

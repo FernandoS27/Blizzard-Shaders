@@ -31,6 +31,7 @@ public PSOutput crystal_ps_main<
     TAlpha   : IAlphaTest,
     TMat     : IMaterialLayer,
     let HAS_IBL            : bool,
+    let HAS_EXTRA_VERTS    : bool,
     let HAS_DEBUG_VIS      : bool
 >(PSInput input, uint frontFace : SV_IsFrontFace)
 {
@@ -53,10 +54,12 @@ public PSOutput crystal_ps_main<
     if (!HAS_IBL)
         backfaceDiscard(input.worldPos.w);
 
-    // Dispatch to the appropriate lit body.
+    // Dispatch to the appropriate lit body. Only the IBL body produces the
+    // modes 5-7 debug overlay; the others leave it black.
     float4 result;
+    float3 iblDbgOverlay = float3(0, 0, 0);
     if (HAS_IBL)
-        result = crystalIBLBody<TMat, HAS_DEBUG_VIS>(input, isFrontFace);
+        result = crystalIBLBody<TMat, HAS_EXTRA_VERTS, HAS_DEBUG_VIS>(input, isFrontFace, iblDbgOverlay);
     else if (TMat.hasMultiLayer)
         result = crystalMultiLayerBody<HAS_DEBUG_VIS>(input, isFrontFace);
     else
@@ -87,15 +90,17 @@ public PSOutput crystal_ps_main<
     if (TFog.hasFog)
         result.w = psCB2.inverseSoftness * result.w;
 
-    result.xyz = TFog.apply(result.xyz, psCB2.fogColor.xyz,
-                            input.worldPos.z, psCB2.fogStart, psCB2.fogEnd, psCB2.fogDensity);
-
     // IBL deferred backface discard.
     if (HAS_IBL)
         backfaceDiscard(input.worldPos.w);
 
     if (!HAS_DEBUG_VIS)
     {
+        // Fog and the colour matrix are BOTH skipped under DEBUG_VIS — the
+        // debug overlay emits already-displayable colours, matching the
+        // retail shader (its DBG perms emit no fog).
+        result.xyz = TFog.apply(result.xyz, psCB2.fogColor.xyz,
+                                input.worldPos.z, psCB2.fogStart, psCB2.fogEnd, psCB2.fogDensity);
         result.xyz = applyColorMatrix(result.xyz);
         if (!TFog.hasFog)
             result.w = psCB2.inverseSoftness * result.w;
@@ -119,12 +124,12 @@ public PSOutput crystal_ps_main<
         float  refractMask = t_orm.Sample(s_orm, input.uv.xy).x;
         if ((asuint(psCB3.enabledShaders) & 2) != 0)
             refractMask = psCB3.overrideOrm.x;
-        float3 effectiveAlbedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask).xyz;
-        if ((asuint(psCB3.enabledShaders) & 1) != 0)
-            effectiveAlbedo = psCB3.overrideAlbedo.xyz;
+        bool ovrAlbedo = (asuint(psCB3.enabledShaders) & 1) != 0;
+        float3 effectiveAlbedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask,
+                                                     ovrAlbedo, psCB3.overrideAlbedo.xyz).xyz;
 
         result = debugVisualize(result, input, wn, normalLen, effectiveAlbedo,
-                                float3(0, 0, 0), false);
+                                iblDbgOverlay, HAS_IBL);
         if (!TFog.hasFog)
             result.w = psCB2.inverseSoftness * result.w;
     }

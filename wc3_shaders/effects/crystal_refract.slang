@@ -50,9 +50,17 @@ public static const float CRYSTAL_FRESNEL_NOREFRACT = 0.200000003;
 // substituted by the DEBUG_VIS override) — taken as a parameter rather
 // than resampled so a single fetch can be reused for both the albedo
 // blend and the downstream Fresnel modulation.
-public float4 sampleCrystalAlbedo(float2 uv, float3 normalWS, float refractMask)
+public float4 sampleCrystalAlbedo(float2 uv, float3 normalWS, float refractMask,
+                                  bool overrideCentre, float3 overrideCentreRgb)
 {
     float4 centre = t_albedo.Sample(s_albedo, uv);
+
+    // DEBUG_VIS albedo override applies to the *centre* sample only, before
+    // the refraction blend — so the override still refracts toward the
+    // offset sample (matches the retail DXBC, which overrides r1=centre
+    // then lerps with the un-overridden offset). NOT a full replacement.
+    if (overrideCentre)
+        centre.xyz = overrideCentreRgb;
 
     // Project the world normal into view space by flipping z, then form
     // the UV offset. `abs()` on z keeps the sample direction consistent

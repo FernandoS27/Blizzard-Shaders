@@ -32,9 +32,9 @@ public float4 crystalStandardBody<let HAS_DEBUG_VIS : bool>(PSInput input, bool 
     // Refracted albedo — `.w` comes from the centre sample only, so the
     // downstream cloak / Fresnel alpha behaviour is unchanged by the
     // refraction (refraction only affects colour, never opacity shape).
-    float4 albedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask);
-    if (HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 1) != 0)
-        albedo.xyz = psCB3.overrideAlbedo.xyz;
+    bool ovrAlbedo = HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 1) != 0;
+    float4 albedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask,
+                                        ovrAlbedo, psCB3.overrideAlbedo.xyz);
 
     float3 emissive = t_emissive.Sample(s_emissive, input.uv.xy).xyz;
 
@@ -84,9 +84,9 @@ public float4 crystalMultiLayerBody<let HAS_DEBUG_VIS : bool>(PSInput input, boo
     if (HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 2) != 0)
         refractMask = psCB3.overrideOrm.x;
 
-    float4 albedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask);
-    if (HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 1) != 0)
-        albedo.xyz = psCB3.overrideAlbedo.xyz;
+    bool ovrAlbedo = HAS_DEBUG_VIS && (asuint(psCB3.enabledShaders) & 1) != 0;
+    float4 albedo = sampleCrystalAlbedo(input.uv.xy, input.normalWS.xyz, refractMask,
+                                        ovrAlbedo, psCB3.overrideAlbedo.xyz);
 
     float3 teamAlbedo = t_teamColor.Sample(s_teamColor, input.uv.xy).xyz;
     float3 emissive   = t_emissive.Sample(s_emissive, input.uv.xy).xyz;
