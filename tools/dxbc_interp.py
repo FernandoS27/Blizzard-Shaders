@@ -1,0 +1,765 @@
+"""A small bit-accurate interpreter for disassembled D3D shader bytecode.
+
+It executes the *text* disassembly that 3Dmigoto's ``cmd_Decompiler -d``
+emits (``ps_5_0`` / ``vs_5_0`` … assembly) one invocation at a time, with
+every register modelled as four 32-bit lanes. The point is **differential
+testing**: run a hand-written (slang-compiled) shader and the retail shader
+it reimplements on the *same* random inputs and check the outputs agree to a
+floating-point tolerance — far stronger evidence of equivalence than eyeballing
+two assembly listings, and it pinpoints which input/branch diverges.
+
+What it does NOT model (single-invocation limits — treat residuals here as
+harness noise, not bugs):
+  * Real texture contents. ``TextureModel`` returns a smooth, deterministic,
+    Lipschitz stand-in so that *both* shaders sampling the same coord get the
+    same texel; channel ordering / swizzles are honoured so genuine
+    channel-mixups still surface.
+  * Screen-space derivatives (``deriv_*`` / ``sample`` LOD). A single pixel has
+    no neighbours; we emit a smooth deterministic stand-in so both shaders stay
+    in lockstep. Anything that depends on the *real* gradient (specular-AA) will
+    show a residual — that is a limit, not a divergence.
+
+Scope: Shader Model 4/5 (``ps_4_0`` … ``ps_5_0`` / ``vs_*``). Covers scalar /
+vector ALU, flow control (if/else, loop, switch, break[c], discard), int/uint
+ops, two-destination ops (``imul``, ``sincos``), and the texture ops the
+Warcraft-III Reforged shader set uses. NOT covered (these raise, so a shader
+that needs them fails loudly rather than miscomputing): UAV / typed-load /
+gather / bitfield-heavy compute ops (``ld``, ``gather4``, ``bfi``, ``store_uav``,
+``countbits``) and legacy SM1-3 mnemonics (``texld``, ``texkill``, ``lrp``,
+``cmp``). Run ``python tools/dxbc_interp.py`` to execute the built-in self-test.
+
+Typical use (see ``tools/shader_diff.py`` for the batteries-included harness)::
+
+    from dxbc_interp import Program, execute
+    prog = Program.from_file("perm_0192.asm")
+    out  = execute(prog, inputs={1: [..4 uints..]}, cbufs={2: [[..],..]})
+    rgba = [out.f(0, k) for k in range(4)]   # SV_Target0 as floats
+"""
+
+import math
+import re
+import struct
+from collections import defaultdict
+
+# --------------------------------------------------------------------------
+# bit helpers — registers are stored as raw uint32 lanes; reinterpret per op
+# --------------------------------------------------------------------------
+
+def f2b(f):
+    """float -> uint32 bit pattern (saturating to +/-inf on overflow)."""
+    try:
+        return struct.unpack('<I', struct.pack('<f', f))[0]
+    except (OverflowError, struct.error):
+        return 0x7F800000 if f > 0 else 0xFF800000
+
+def b2f(b):
+    """uint32 bit pattern -> float."""
+    return struct.unpack('<f', struct.pack('<I', b & 0xFFFFFFFF))[0]
+
+def b2i(b):
+    """uint32 bit pattern -> signed int32."""
+    b &= 0xFFFFFFFF
+    return b - 0x100000000 if b >= 0x80000000 else b
+
+def i2b(i):
+    """signed/unsigned int -> uint32 bit pattern."""
+    return i & 0xFFFFFFFF
+
+_SW = {'x': 0, 'y': 1, 'z': 2, 'w': 3}
+
+# --------------------------------------------------------------------------
+# operand parsing
+# --------------------------------------------------------------------------
+
+def _parse_lit(t):
+    """Parse an ``l(a, b, c, d)`` immediate into four uint32 lanes."""
+    nums = t[2:t.rindex(')')].split(',')
+    bits = []
+    for n in nums:
+        n = n.strip()
+        if ('.' in n) or ('e' in n) or ('E' in n) and 'x' not in n:
+            bits.append(f2b(float(n)))
+        elif n.startswith('0x') or n.startswith('-0x'):
+            bits.append(int(n, 16) & 0xFFFFFFFF)
+        else:
+            bits.append(i2b(int(n)))
+    while len(bits) < 4:
+        bits.append(bits[-1] if bits else 0)
+    return bits[:4]
+
+def _parse_index(idx):
+    """Parse a ``[..]`` register index: constant, or dynamic ``r#.c (+ off)``."""
+    if idx is None:
+        return None
+    e = idx[1:-1].strip()
+    mm = re.match(r"^r(\d+)\.([xyzw])\s*\+\s*(\d+)$", e)
+    if mm:
+        return ('dyn', int(mm.group(1)), _SW[mm.group(2)], int(mm.group(3)))
+    mm = re.match(r"^r(\d+)\.([xyzw])$", e)
+    if mm:
+        return ('dyn', int(mm.group(1)), _SW[mm.group(2)], 0)
+    return ('const', int(e))
+
+def _parse_operand(t):
+    """Parse a source operand -> tagged tuple (literal or register reference)."""
+    neg = absf = False
+    if t.startswith('-'):
+        neg = True; t = t[1:]
+    if t.startswith('|') and t.endswith('|'):
+        absf = True; t = t[1:-1]
+    if t.startswith('l('):
+        return ('lit', _parse_lit(t), neg, absf)
+    m = re.match(r"^([a-z_]+)(\d*)(\[[^\]]+\])?(?:\.([xyzw]+))?$", t)
+    base, num, idx, sw = m.group(1), m.group(2), m.group(3), m.group(4)
+    swz = [_SW[c] for c in sw] if sw else [0, 1, 2, 3]
+    return ('reg', base, int(num) if num else 0, _parse_index(idx), swz, neg, absf)
+
+def _parse_dest(t):
+    """Parse a destination operand -> (base, num, index, written-component-list)."""
+    m = re.match(r"^([a-z_]+)(\d*)(\[[^\]]+\])?(?:\.([xyzw]+))?$", t)
+    base, num, idx, sw = m.group(1), m.group(2), m.group(3), m.group(4)
+    comps = [_SW[c] for c in sw] if sw else [0, 1, 2, 3]
+    return (base, int(num) if num else 0, _parse_index(idx), comps)
+
+def _split_operands(s):
+    """Split an operand list on top-level commas (ignoring those inside ()/[])."""
+    out = []; depth = 0; cur = ""
+    for ch in s:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == ',' and depth == 0:
+            out.append(cur.strip()); cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur.strip())
+    return out
+
+# --------------------------------------------------------------------------
+# Program — parse a disassembly file into a signature + flat instruction list
+# + a nested control-flow AST ready to execute.
+# --------------------------------------------------------------------------
+
+_MODEL_RE = re.compile(r"^(ps|vs|gs|hs|ds|cs)_\d_\d$")
+_SIG_RE   = re.compile(r"//\s+(\w+)\s+(\d+)\s+(\S+)\s+(\d+)\s+")
+
+class Program:
+    """A parsed shader: signatures, system-value inputs, temps, and AST.
+
+    Attributes:
+        model:        e.g. ``"ps_5_0"``.
+        input_sig:    list of ``(semantic_name, index, mask, register)``.
+        output_sig:   same shape, for outputs.
+        sysval_regs:  ``{name: register}`` for ``dcl_input_ps_sgv`` (e.g.
+                      ``{"is_front_face": 1}``) — set these from the harness.
+        num_temps:    ``dcl_temps`` count.
+        insns:        flat ``[(op, operand_string), ...]``.
+        ast:          nested control-flow tree (see ``execute``).
+    """
+
+    def __init__(self):
+        self.model = None
+        self.input_sig = []
+        self.output_sig = []
+        self.sysval_regs = {}
+        self.num_temps = 12
+        self.insns = []
+        self.ast = []
+
+    @classmethod
+    def from_file(cls, path):
+        with open(path, encoding='utf-8', errors='replace') as fh:
+            return cls.from_text(fh.read())
+
+    @classmethod
+    def from_text(cls, text):
+        p = cls()
+        p._parse(text.splitlines())
+        p.ast, _ = _build_ast(p.insns, 0, frozenset())
+        return p
+
+    def _parse(self, lines):
+        started = False
+        section = None   # 'in' | 'out' | None
+        for raw in lines:
+            line = raw.rstrip()
+            s = line.strip()
+            if not started:
+                if s.startswith("// Input signature"):
+                    section = 'in'; continue
+                if s.startswith("// Output signature"):
+                    section = 'out'; continue
+                if section and s.startswith("//"):
+                    m = _SIG_RE.match(line)
+                    if m:
+                        entry = (m.group(1), int(m.group(2)), m.group(3), int(m.group(4)))
+                        (self.input_sig if section == 'in' else self.output_sig).append(entry)
+                    continue
+                if _MODEL_RE.match(s):
+                    self.model = s; started = True
+                    section = None
+                continue
+            # --- shader body ---
+            if s.startswith("//") or s == "":
+                continue
+            if s.startswith("dcl_temps"):
+                self.num_temps = int(s.split()[1]); continue
+            if s.startswith("dcl_input") and "_sgv" in s:
+                mm = re.search(r"v(\d+)", s)
+                name = s.split(',')[-1].strip() if ',' in s else 'sgv'
+                if mm:
+                    self.sysval_regs[name] = int(mm.group(1))
+                continue
+            if s.startswith("dcl_"):
+                continue
+            if s == "ret":
+                break
+            sp = s.split(None, 1)
+            self.insns.append((sp[0], sp[1] if len(sp) > 1 else ""))
+
+
+def _build_ast(insns, i, terms):
+    """Turn the flat instruction list into a nested control-flow tree.
+
+    Node shapes: ``('op', op, dest, srcs, raw_ops)``, ``('if', want_nz, cond,
+    then, else)``, ``('loop', body)``, ``('switch', sel, [(val|None, body)])``,
+    ``('break',)``, ``('breakcz', cond, want_zero)``, ``('discard', cond)``.
+    """
+    nodes = []
+    while i < len(insns):
+        op, rest = insns[i]
+        if op in terms:
+            return nodes, i
+        if op in ('if_nz', 'if_z'):
+            cond = _parse_operand(rest)
+            then_n, j = _build_ast(insns, i + 1, frozenset({'else', 'endif'}))
+            else_n = []
+            if insns[j][0] == 'else':
+                else_n, j = _build_ast(insns, j + 1, frozenset({'endif'}))
+            nodes.append(('if', op == 'if_nz', cond, then_n, else_n)); i = j + 1
+        elif op == 'loop':
+            body, j = _build_ast(insns, i + 1, frozenset({'endloop'}))
+            nodes.append(('loop', body)); i = j + 1
+        elif op == 'switch':
+            sel = _parse_operand(rest); j = i + 1; cases = []
+            while insns[j][0] != 'endswitch':
+                cop, crest = insns[j]
+                if cop == 'case':
+                    val = _parse_lit(crest if crest.startswith('l(') else 'l(%s)' % crest)[0]; j += 1
+                elif cop == 'default':
+                    val = None; j += 1
+                else:
+                    j += 1; continue
+                body, j = _build_ast(insns, j, frozenset({'case', 'default', 'endswitch'}))
+                cases.append((val, body))
+            nodes.append(('switch', sel, cases)); i = j + 1
+        elif op == 'break':
+            nodes.append(('break',)); i += 1
+        elif op == 'breakc_z':
+            nodes.append(('breakcz', _parse_operand(rest), True)); i += 1
+        elif op == 'breakc_nz':
+            nodes.append(('breakcz', _parse_operand(rest), False)); i += 1
+        elif op == 'discard_nz':
+            nodes.append(('discard', _parse_operand(rest), True)); i += 1
+        elif op == 'discard_z':
+            nodes.append(('discard', _parse_operand(rest), False)); i += 1
+        else:
+            ops = _split_operands(rest)
+            dest = _parse_dest(ops[0]) if ops else None
+            srcs = [_parse_operand(o) for o in ops[1:]] if dest else []
+            nodes.append(('op', op, dest, srcs, ops)); i += 1
+    return nodes, i
+
+# --------------------------------------------------------------------------
+# texture model — smooth deterministic stand-in for real texture contents
+# --------------------------------------------------------------------------
+
+class TextureModel:
+    """Coordinate -> texel stand-in. Override ``sample`` for custom contents.
+
+    Must be a *function of the coordinate only* (and the slot), so that two
+    shaders sampling the same slot at the same coord get the same texel. The
+    default is a smooth (Lipschitz) field, which keeps floating-point error
+    well-behaved and makes channel-ordering bugs visible.
+    """
+
+    #: reported by ``resinfo`` (width, height, depth, mip-count).
+    dims = (1024, 1024, 0, 11)
+
+    def sample(self, slot, coords):
+        out = []
+        for c in range(4):
+            s = slot * 0.71 + c * 1.31
+            v = 0.0
+            for j, co in enumerate(coords):
+                v += math.sin(co * (0.45 + 0.11 * c + 0.07 * j) + s + j * 0.5)
+            out.append(0.5 + 0.4 * math.sin(v + s))
+        return out
+
+    def sample_lod(self, slot, coords, lod):
+        # Fold the LOD into the coord so distinct mips read distinct texels.
+        return self.sample(slot, [coords[0], coords[1], coords[2], coords[3] + lod * 0.01])
+
+    def sample_compare(self, slot, coords, ref):
+        # PCF result is a single scalar broadcast to all channels.
+        return self.sample(slot, [coords[0], coords[1], ref, 0.0])[0]
+
+    def lod(self, slot, coords):
+        v = sum(math.sin(co * 0.3 + slot + j) for j, co in enumerate(coords))
+        return 2.5 + 2.0 * math.sin(v)   # smooth, ~[0.5, 4.5]
+
+
+# --------------------------------------------------------------------------
+# execution
+# --------------------------------------------------------------------------
+
+class _Break(Exception):
+    pass
+
+class Outputs:
+    """Result of ``execute``: output registers plus the discard flag."""
+
+    def __init__(self, regs, discarded):
+        self.regs = regs            # {register_number: [4 uint32 lanes]}
+        self.discarded = discarded
+
+    def bits(self, reg, lane):
+        return self.regs.get(reg, [0, 0, 0, 0])[lane]
+
+    def f(self, reg, lane):
+        return b2f(self.bits(reg, lane))
+
+    def i(self, reg, lane):
+        return b2i(self.bits(reg, lane))
+
+
+class _VM:
+    def __init__(self, program, cbufs, inputs, texture, deriv_scale):
+        self.r = [[0, 0, 0, 0] for _ in range(max(program.num_temps, 12))]
+        self.cb = cbufs
+        self.v = inputs
+        self.x = {}
+        self.o = defaultdict(lambda: [0, 0, 0, 0])
+        self.tex = texture
+        self.deriv_scale = deriv_scale
+        self.discarded = False
+
+    # operand resolution ----------------------------------------------------
+    def _idx(self, spec):
+        return spec[1] if spec[0] == 'const' else b2i(self.r[spec[1]][spec[2]]) + spec[3]
+
+    def _base(self, base, num, spec):
+        if base == 'r':
+            return self.r[num]
+        if base == 'v':
+            return self.v.get(num, [0, 0, 0, 0])
+        if base == 'o':
+            return self.o[num]
+        if base == 'x':
+            if num not in self.x:
+                self.x[num] = [[0, 0, 0, 0] for _ in range(64)]
+            return self.x[num][self._idx(spec)]
+        if base == 'cb':
+            return self.cb[num][self._idx(spec)]
+        if base == 'null':
+            return None
+        raise NotImplementedError("operand base " + base)
+
+    def _raw(self, opd):
+        if opd[0] == 'lit':
+            return opd[1][:]
+        _, base, num, spec, swz, _, _ = opd
+        arr = self._base(base, num, spec)
+        return [arr[swz[k] if k < len(swz) else swz[-1]] for k in range(4)]
+
+    def fread(self, opd):
+        vals = [b2f(x) for x in self._raw(opd)]
+        neg, absf = (opd[2], opd[3]) if opd[0] == 'lit' else (opd[5], opd[6])
+        if absf:
+            vals = [abs(x) for x in vals]
+        if neg:
+            vals = [-x for x in vals]
+        return vals
+
+    def iread(self, opd):
+        vals = [b2i(x) for x in self._raw(opd)]
+        neg = opd[2] if opd[0] == 'lit' else opd[5]
+        return [-x for x in vals] if neg else vals
+
+    def uread(self, opd):
+        return [x & 0xFFFFFFFF for x in self._raw(opd)]
+
+    # writeback (channel-aligned: dest channel c <- ALU lane c) --------------
+    def write_bits(self, dest, lane_bits, sat=False):
+        base, num, spec, comps = dest
+        if base == 'null':
+            return
+        arr = self._base(base, num, spec)
+        for c in comps:
+            b = lane_bits[c]
+            if sat:
+                b = f2b(min(1.0, max(0.0, b2f(b))))
+            arr[c] = b & 0xFFFFFFFF
+
+    def write_f(self, dest, fvals, sat=False):
+        if sat:
+            fvals = [min(1.0, max(0.0, x)) for x in fvals]
+        self.write_bits(dest, [f2b(x) for x in fvals], False)
+
+    def write_i(self, dest, ivals):
+        self.write_bits(dest, [i2b(x) for x in ivals], False)
+
+
+def _cond_lane(opd):
+    """Scalar-condition lane: a literal uses lane 0, a register its 1st swizzle."""
+    return 0 if opd[0] == 'lit' else opd[4][0]
+
+
+def execute(program, inputs=None, cbufs=None, *, texture=None, deriv_scale=1.0,
+            max_loop=1 << 16):
+    """Run ``program`` once.
+
+    Args:
+        program:  a :class:`Program`.
+        inputs:   ``{register: [4 uint32 lanes]}`` for ``v#`` input registers.
+        cbufs:    ``{slot: [[4 uint32 lanes], ...]}`` for ``cb#`` constant buffers.
+        texture:  a :class:`TextureModel` (defaults to the smooth stand-in).
+        deriv_scale: multiplier on the synthetic screen-space derivative.
+        max_loop: per-loop iteration cap. Exceeding it raises ``RuntimeError``
+                  rather than hanging — almost always means a constant buffer
+                  feeding a loop count (e.g. light count) was left as garbage
+                  random bits instead of being driven to a sane integer.
+
+    Returns:
+        :class:`Outputs`.
+    """
+    vm = _VM(program, cbufs or {}, inputs or {}, texture or TextureModel(), deriv_scale)
+
+    def run(nodes):
+        for n in nodes:
+            t = n[0]
+            if t == 'op':
+                _do_op(vm, n)
+            elif t == 'if':
+                _, want_nz, cond, then_n, else_n = n
+                c = vm.uread(cond)[_cond_lane(cond)]
+                run(then_n if ((c != 0) == want_nz) else else_n)
+            elif t == 'loop':
+                it = 0
+                while True:
+                    try:
+                        run(n[1])
+                    except _Break:
+                        break
+                    it += 1
+                    if it > max_loop:
+                        raise RuntimeError(
+                            f"loop exceeded {max_loop} iterations -- is a loop-count "
+                            "constant buffer undriven (garbage random bits)?")
+            elif t == 'switch':
+                _, sel, cases = n
+                sv = b2i(vm._raw(sel)[_cond_lane(sel)])
+                start = next((k for k, (val, _) in enumerate(cases) if val == sv), None)
+                if start is None:
+                    start = next((k for k, (val, _) in enumerate(cases) if val is None), None)
+                if start is not None:
+                    try:
+                        for k in range(start, len(cases)):
+                            run(cases[k][1])
+                    except _Break:
+                        pass
+            elif t == 'break':
+                raise _Break()
+            elif t == 'breakcz':
+                if (vm.uread(n[1])[_cond_lane(n[1])] == 0) == n[2]:
+                    raise _Break()
+            elif t == 'discard':
+                if (vm.uread(n[1])[_cond_lane(n[1])] != 0) == n[2]:
+                    vm.discarded = True
+
+    run(program.ast)
+    return Outputs(dict(vm.o), vm.discarded)
+
+
+def _texslot(tok):
+    return int(re.match(r"t(\d+)", tok).group(1))
+
+def _apply_swz(texel, swz):
+    """Reorder a sampled texel by the resource operand's swizzle (e.g. t13.wxyz)."""
+    return [texel[swz[k] if k < len(swz) else swz[-1]] for k in range(4)]
+
+
+def _operand_as_dest(opd):
+    """Reinterpret a parsed source operand as a destination (for two-dest ops).
+
+    Two-destination instructions (``imul``, ``sincos``, …) print as
+    ``op dstA, dstB, src...``; the generic parser keeps ``dstA`` as the node's
+    dest and ``dstB`` lands in ``srcs[0]`` — convert it back to a write target.
+    """
+    # ('reg', base, num, index, swizzle, neg, abs) -> (base, num, index, comps)
+    return (opd[1], opd[2], opd[3], opd[4])
+
+
+def _do_op(vm, node):
+    _, op, dest, srcs, raw = node
+    sat = op.endswith('_sat')
+    base = op[:-4] if sat else op
+
+    # ---- two-destination ops (operand list is [dstA, dstB, src...]) ----
+    if base == 'imul':
+        # imul destHI, destLO, src0, src1 (destHI is usually null). 64-bit
+        # product split into high/low halves.
+        lo = _operand_as_dest(srcs[0]); a = vm.iread(srcs[1]); b = vm.iread(srcs[2])
+        prod = [a[k] * b[k] for k in range(4)]
+        vm.write_bits(lo, [p & 0xFFFFFFFF for p in prod], False)
+        vm.write_bits(dest, [(p >> 32) & 0xFFFFFFFF for p in prod], False)   # destHI
+        return
+    if base == 'sincos':
+        # sincos destSin, destCos, src (either dest may be null)
+        cos = _operand_as_dest(srcs[0]); a = vm.fread(srcs[1])
+        vm.write_f(dest, [math.sin(x) for x in a], sat)
+        vm.write_f(cos, [math.cos(x) for x in a], sat)
+        return
+
+    # ---- texture ops ----
+    if base.startswith('sample_c'):       # sample_c / sample_c_lz (PCF compare)
+        coord = vm.fread(srcs[0]); slot = srcs[1][2]; ref = vm.fread(srcs[3])[0]
+        val = vm.tex.sample_compare(slot, coord, ref)
+        vm.write_f(dest, [val] * 4, False); return
+    if base.startswith('sample_l'):       # explicit-LOD sample
+        coord = vm.fread(srcs[0]); slot = srcs[1][2]; swz = srcs[1][4]; lod = vm.fread(srcs[3])[0]
+        vm.write_f(dest, _apply_swz(vm.tex.sample_lod(slot, coord, lod), swz), False); return
+    if base.startswith('sample'):         # plain sample (incl. sample_indexable)
+        coord = vm.fread(srcs[0]); slot = srcs[1][2]; swz = srcs[1][4]
+        vm.write_f(dest, _apply_swz(vm.tex.sample(slot, coord), swz), False); return
+    if base.startswith('resinfo'):
+        swz = srcs[1][4]
+        vm.write_bits(dest, [i2b(vm.tex.dims[swz[k]]) for k in range(4)], False); return
+    if base == 'lod':
+        coord = vm.fread(srcs[0]); slot = _texslot(raw[2])
+        vm.write_f(dest, [vm.tex.lod(slot, coord)] * 4, False); return
+
+    # ---- float ALU ----
+    if base == 'mov':
+        vm.write_bits(dest, vm._raw(srcs[0]), sat); return
+    if base == 'movc':
+        c = vm.uread(srcs[0]); a = vm._raw(srcs[1]); b = vm._raw(srcs[2])
+        vm.write_bits(dest, [a[k] if c[k] != 0 else b[k] for k in range(4)], sat); return
+    if base == 'dp2':
+        a = vm.fread(srcs[0]); b = vm.fread(srcs[1])
+        vm.write_f(dest, [a[0] * b[0] + a[1] * b[1]] * 4, sat); return
+    if base == 'dp3':
+        a = vm.fread(srcs[0]); b = vm.fread(srcs[1])
+        vm.write_f(dest, [sum(a[k] * b[k] for k in range(3))] * 4, sat); return
+    if base == 'dp4':
+        a = vm.fread(srcs[0]); b = vm.fread(srcs[1])
+        vm.write_f(dest, [sum(a[k] * b[k] for k in range(4))] * 4, sat); return
+    if base in ('add', 'mul', 'mad', 'div', 'min', 'max',
+                'sqrt', 'rsq', 'exp', 'log', 'frc', 'round_ni', 'round_z', 'rcp'):
+        a = vm.fread(srcs[0])
+        if base == 'add':
+            b = vm.fread(srcs[1]); r = [a[k] + b[k] for k in range(4)]
+        elif base == 'mul':
+            b = vm.fread(srcs[1]); r = [a[k] * b[k] for k in range(4)]
+        elif base == 'mad':
+            b = vm.fread(srcs[1]); c = vm.fread(srcs[2]); r = [a[k] * b[k] + c[k] for k in range(4)]
+        elif base == 'div':
+            b = vm.fread(srcs[1]); r = [_fdiv(a[k], b[k]) for k in range(4)]
+        elif base == 'min':
+            b = vm.fread(srcs[1]); r = [min(a[k], b[k]) for k in range(4)]
+        elif base == 'max':
+            b = vm.fread(srcs[1]); r = [max(a[k], b[k]) for k in range(4)]
+        elif base == 'sqrt':
+            r = [math.sqrt(x) if x >= 0 else float('nan') for x in a]
+        elif base == 'rsq':
+            r = [(1.0 / math.sqrt(x) if x > 0 else float('inf')) for x in a]
+        elif base == 'rcp':
+            r = [_fdiv(1.0, x) for x in a]
+        elif base == 'exp':
+            r = [2.0 ** x for x in a]
+        elif base == 'log':
+            r = [(math.log2(x) if x > 0 else -float('inf')) for x in a]
+        elif base == 'frc':
+            r = [x - math.floor(x) for x in a]
+        elif base == 'round_ni':
+            r = [math.floor(x) for x in a]
+        elif base == 'round_z':
+            r = [math.trunc(x) for x in a]
+        vm.write_f(dest, r, sat); return
+    if base in ('lt', 'ge', 'eq', 'ne'):
+        a = vm.fread(srcs[0]); b = vm.fread(srcs[1])
+        cmp = {'lt': lambda x, y: x < y, 'ge': lambda x, y: x >= y,
+               'eq': lambda x, y: x == y, 'ne': lambda x, y: x != y}[base]
+        vm.write_bits(dest, [0xFFFFFFFF if cmp(a[k], b[k]) else 0 for k in range(4)], False); return
+
+    # ---- integer / bitwise ----
+    # (imul/sincos are two-destination ops, handled above before the
+    #  generic source list is interpreted.)
+    if base in ('iadd', 'imad', 'ishl', 'ishr', 'imax', 'imin', 'ieq', 'ige', 'ilt', 'ine', 'ineg'):
+        a = vm.iread(srcs[0])
+        if base == 'ineg':
+            vm.write_i(dest, [-x for x in a]); return
+        b = vm.iread(srcs[1])
+        if base == 'iadd':
+            vm.write_i(dest, [a[k] + b[k] for k in range(4)])
+        elif base == 'imad':
+            c = vm.iread(srcs[2]); vm.write_i(dest, [a[k] * b[k] + c[k] for k in range(4)])
+        elif base == 'ishl':
+            vm.write_i(dest, [a[k] << (b[k] & 31) for k in range(4)])
+        elif base == 'ishr':
+            vm.write_i(dest, [a[k] >> (b[k] & 31) for k in range(4)])
+        elif base == 'imax':
+            vm.write_i(dest, [max(a[k], b[k]) for k in range(4)])
+        elif base == 'imin':
+            vm.write_i(dest, [min(a[k], b[k]) for k in range(4)])
+        else:
+            cmp = {'ieq': lambda x, y: x == y, 'ige': lambda x, y: x >= y,
+                   'ilt': lambda x, y: x < y, 'ine': lambda x, y: x != y}[base]
+            vm.write_bits(dest, [0xFFFFFFFF if cmp(a[k], b[k]) else 0 for k in range(4)], False)
+        return
+    if base in ('ult', 'uge', 'ushr', 'umin', 'umax'):
+        a = vm.uread(srcs[0]); b = vm.uread(srcs[1])
+        if base == 'ult':
+            vm.write_bits(dest, [0xFFFFFFFF if a[k] < b[k] else 0 for k in range(4)], False)
+        elif base == 'uge':
+            vm.write_bits(dest, [0xFFFFFFFF if a[k] >= b[k] else 0 for k in range(4)], False)
+        elif base == 'ushr':
+            vm.write_bits(dest, [a[k] >> (b[k] & 31) for k in range(4)], False)
+        elif base == 'umin':
+            vm.write_bits(dest, [min(a[k], b[k]) for k in range(4)], False)
+        elif base == 'umax':
+            vm.write_bits(dest, [max(a[k], b[k]) for k in range(4)], False)
+        return
+    if base in ('and', 'or', 'xor'):
+        a = vm._raw(srcs[0]); b = vm._raw(srcs[1])
+        fn = {'and': lambda x, y: x & y, 'or': lambda x, y: x | y, 'xor': lambda x, y: x ^ y}[base]
+        vm.write_bits(dest, [fn(a[k], b[k]) & 0xFFFFFFFF for k in range(4)], False); return
+    if base == 'not':
+        a = vm._raw(srcs[0]); vm.write_bits(dest, [(~a[k]) & 0xFFFFFFFF for k in range(4)], False); return
+    if base == 'bfrev':
+        a = vm.uread(srcs[0])
+        vm.write_bits(dest, [int('{:032b}'.format(x)[::-1], 2) for x in a], False); return
+
+    # ---- conversions ----
+    if base == 'ftoi':
+        a = vm.fread(srcs[0]); vm.write_i(dest, [int(x) if math.isfinite(x) else 0 for x in a]); return
+    if base == 'ftou':
+        a = vm.fread(srcs[0])
+        vm.write_bits(dest, [int(x) & 0xFFFFFFFF if math.isfinite(x) and x > 0 else 0 for x in a], False); return
+    if base == 'itof':
+        a = vm.iread(srcs[0]); vm.write_f(dest, [float(x) for x in a], False); return
+    if base == 'utof':
+        a = vm.uread(srcs[0]); vm.write_f(dest, [float(x) for x in a], False); return
+
+    # ---- bitfield ----
+    if base == 'ubfe':
+        width = vm.uread(srcs[0]); off = vm.uread(srcs[1]); val = vm.uread(srcs[2])
+        out = []
+        for k in range(4):
+            w = width[k] & 31; o = off[k] & 31
+            out.append(0 if w == 0 else (val[k] >> o) & ((1 << w) - 1))
+        vm.write_bits(dest, out, False); return
+    if base == 'ibfe':
+        width = vm.uread(srcs[0]); off = vm.uread(srcs[1]); val = vm.iread(srcs[2])
+        out = []
+        for k in range(4):
+            w = width[k] & 31; o = off[k] & 31
+            if w == 0:
+                out.append(0)
+            else:
+                x = (val[k] >> o) & ((1 << w) - 1)
+                if x & (1 << (w - 1)):
+                    x -= (1 << w)
+                out.append(i2b(x))
+        vm.write_bits(dest, out, False); return
+
+    # ---- screen-space derivatives (single-pixel stand-in; see module docstring) ----
+    if base in ('deriv_rtx', 'deriv_rty', 'deriv_rtx_coarse', 'deriv_rty_coarse',
+                'deriv_rtx_fine', 'deriv_rty_fine'):
+        a = vm.fread(srcs[0]); ph = 0.7 if 'rtx' in base else 2.1
+        vm.write_f(dest, [vm.deriv_scale * 0.03 * math.sin(3.1 * a[k] + 1.3 * k + ph) for k in range(4)], False); return
+
+    raise NotImplementedError("opcode " + op)
+
+
+def _fdiv(a, b):
+    if b != 0:
+        return a / b
+    return math.inf * (1 if a > 0 else -1 if a < 0 else 0)
+
+
+# --------------------------------------------------------------------------
+# self-test — `python tools/dxbc_interp.py`
+# --------------------------------------------------------------------------
+
+def _selftest():
+    def run(body):
+        return execute(Program.from_text("ps_5_0\ndcl_temps 8\n" + body + "\nret\n"))
+
+    cases = []
+    def check(name, got, want):
+        cases.append((name, got, want, got == want))
+
+    # channel-aligned masked write: dest.yz <- lanes 1,2; x,w untouched
+    o = run("mov r0.xyzw, l(10,20,30,40)\nadd r1.yz, r0.zzzz, r0.wwww\nmov o0.xyzw, r1.xyzw")
+    check("masked .yz write", [o.i(0, k) for k in range(4)], [0, 70, 70, 0])
+    # source swizzle shorter than 4 replicates its last component
+    o = run("mov r0.xyzw, l(10,20,30,40)\nmov r2.xyzw, r0.xy\nmov o0.xyzw, r2.xyzw")
+    check("src .xy replicate", [o.i(0, k) for k in range(4)], [10, 20, 20, 20])
+    # per-lane movc: c ? src1 : src2
+    o = run("mov r0.xyzw, l(0,1,0,1)\nmovc o0.xyzw, r0.xyzw, l(5,5,5,5), l(9,9,9,9)")
+    check("movc per-lane", [o.i(0, k) for k in range(4)], [9, 5, 9, 5])
+    # saturate clamps to [0,1]
+    o = run("mov r0.xyzw, l(-2.0,0.5,3.0,1.0)\nmov_sat o0.xyzw, r0.xyzw")
+    check("mov_sat", [round(o.f(0, k), 3) for k in range(4)], [0.0, 0.5, 1.0, 1.0])
+    # abs / neg source modifiers
+    o = run("mov r0.x, l(-3.0)\nadd r1.x, |r0.x|, l(1.0)\nadd r1.y, -r0.x, l(0.0)\nmov o0.xy, r1.xy")
+    check("abs/neg modifiers", [round(o.f(0, k), 3) for k in range(2)], [4.0, 3.0])
+    # imul: low / high halves, signed
+    o = run("mov r0.xyzw, l(7,3,65536,0)\nimul null, r1.x, r0.x, r0.y\n"
+            "imul r2.x, r2.y, r0.z, r0.z\nmov o0.x, r1.x\nmov o0.y, r2.y\nmov o0.z, r2.x")
+    check("imul low/high", [o.i(0, k) for k in range(3)], [21, 0, 1])
+    o = run("mov r0.xy, l(-3,3,0,0)\nimul null, r1.x, r0.x, r0.y\nmov o0.x, r1.x")
+    check("imul signed low", o.bits(0, 0) & 0xFFFFFFFF, 0xFFFFFFF7)  # -9
+    # imad: a*b+c (integer)
+    o = run("mov r0.xyz, l(7,3,5,0)\nimad r1.x, r0.x, r0.y, r0.z\nmov o0.x, r1.x")
+    check("imad", o.i(0, 0), 26)
+    # sincos: two destinations
+    o = run("mov r0.w, l(1.0)\nsincos r2.x, r2.y, r0.w\nmov o0.x, r2.x\nmov o0.y, r2.y")
+    check("sincos", [round(o.f(0, 0), 4), round(o.f(0, 1), 4)],
+          [round(math.sin(1), 4), round(math.cos(1), 4)])
+    # dp4 broadcasts to all lanes
+    o = run("mov r0.xyzw, l(1.0,2.0,3.0,4.0)\ndp4 r1.x, r0.xyzw, r0.xyzw\nmov o0.x, r1.x")
+    check("dp4", round(o.f(0, 0), 3), 30.0)
+    # ishr is arithmetic, ushr is logical
+    o = run("mov r0.x, l(0x80000000)\nishr r1.x, r0.x, l(4)\nushr r1.y, r0.x, l(4)\nmov o0.xy, r1.xy")
+    check("ishr arithmetic", o.bits(0, 0) & 0xFFFFFFFF, 0xF8000000)
+    check("ushr logical", o.bits(0, 1) & 0xFFFFFFFF, 0x08000000)
+    # if/else flow + loop with break
+    o = run("mov r0.x, l(0)\nmov r1.x, l(5)\nloop\n  iadd r0.x, r0.x, l(1)\n"
+            "  ieq r2.x, r0.x, r1.x\n  breakc_nz r2.x\nendloop\nmov o0.x, r0.x")
+    check("loop+breakc", o.i(0, 0), 5)
+    o = run("mov r0.x, l(1)\nif_nz r0.x\n  mov o0.x, l(11)\nelse\n  mov o0.x, l(22)\nendif")
+    check("if_nz taken", o.i(0, 0), 11)
+    # unsupported opcode must raise, not miscompute
+    try:
+        run("texkill r0.x")
+        check("unsupported raises", False, True)
+    except NotImplementedError:
+        check("unsupported raises", True, True)
+
+    ok = True
+    for name, got, want, passed in cases:
+        if not passed:
+            ok = False
+            print(f"  FAIL {name}: got {got!r}, want {want!r}")
+    print(f"dxbc_interp self-test: {sum(c[3] for c in cases)}/{len(cases)} passed"
+          + ("" if ok else "  <-- FAILURES"))
+    return ok
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(0 if _selftest() else 1)
