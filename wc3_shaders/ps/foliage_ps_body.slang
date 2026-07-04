@@ -138,31 +138,33 @@ public FoliageShadeResult foliagePSBody<
     float ao = 1.0 - occRaw;
     lit = lit * ao;
 
-    // ---- Optional fog ----
-    // TFog.apply runs the policy's fog blend toward `psCB2.fogColor`
-    // using `viewPos.z` as the depth scalar. Wraps the same Hermite-
-    // smoothed falloff curve used by the HD path.
-    lit = TFog.apply(lit, psCB2.fogColor.xyz,
-                     viewPos.z, psCB2.fogStart, psCB2.fogEnd, psCB2.fogDensity);
-
     // ---- Output ----
+    // Fog is applied ONLY on the non-debug path: the debug-viz router emits
+    // raw dev buffers, so the engine skips fog under TINT_OVERRIDE (retail
+    // dedups FOG+TINT perms down to the TINT-only shader). Same fog-under-
+    // debug rule as the HD/crystal paths.
     if (HAS_TINT)
     {
         // Debug-viz router. Mode 0 returns the lit colour; modes 1..8
-        // emit one of the engine's dev-mode buffers. Reuses the
-        // terrain debug helper — modes / palette / dispatch are
-        // identical, the only minor difference is that mode 1 is
-        // engine-undefined in both shaders so a fixed value is fine.
-        // LOD for mode 3 comes from the foliage albedo. (`queryTextureLOD`
-        // in ps/ps_post.slang already handles WGSL fallback.)
+        // emit one of the engine's dev-mode buffers. Reuses the terrain
+        // debug helper — dispatch/palette are identical EXCEPT mode 1:
+        // retail foliage returns the (tint-overridden) base albedo here
+        // (`mov o0.xyz, r0`), whereas terrain leaves it black. LOD for
+        // mode 3 comes from the foliage albedo (`queryTextureLOD` in
+        // ps/ps_post.slang handles the WGSL fallback).
         float lodRaw = queryTextureLOD(t_foliageAlbedo, s_foliageAlbedo,
                                        input.texCoord.xy);
-        out_.color = terrainDebugVisualize(
-            lit, PI.xxx * totalLit, worldN, lodRaw,
-            dom.domAmbient, dom.domSpec);
+        if (asuint(psCB3.debugMode) == 1)
+            out_.color = albedo.xyz;
+        else
+            out_.color = terrainDebugVisualize(
+                lit, PI.xxx * totalLit, worldN, lodRaw,
+                dom.domAmbient, dom.domSpec);
     }
     else
     {
+        lit = TFog.apply(lit, psCB2.fogColor.xyz,
+                         viewPos.z, psCB2.fogStart, psCB2.fogEnd, psCB2.fogDensity);
         out_.color = lit;
     }
 

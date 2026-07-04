@@ -188,8 +188,13 @@ SSRResult ssrMarch(float3 worldPos, float3 reflectDirWS,
         float2 ndcUV    = ndc * 0.5 + 0.5;
         float2 sampleUV = viewport.xy * float2(ndcUV.x, 1 - ndcUV.y) + viewport.zw;
 
+        // Depth test is against the ray point's WORLD-space Z, not the
+        // projected clip value. Retail preserves it through the projection
+        // (writes only clip .xyw, leaving r6.z = samplePos.z) and compares
+        // `-sampledDepth + samplePos.z`; using clipXYW.z (= clip.w) here
+        // would test the perspective-divide denominator instead.
         float probedDepth = t_waterDepth.SampleLevel(s_waterDepth, sampleUV, 0).x;
-        float zDelta      = clipXYW.z - probedDepth;
+        float zDelta      = samplePos.z - probedDepth;
         bool  withinSlab  = (zDelta < SSR_HIT_THICKNESS);
         bool  inFront     = (zDelta > 0);
 

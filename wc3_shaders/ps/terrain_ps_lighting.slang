@@ -27,9 +27,11 @@ implementing wc3_shaders;
 // The PS uses this for the dominant light's reflection sampling.
 float3 worldToProbeBasis(float3 v)
 {
-    float3 r = v.y * psCB2.view[1].xzy;
-    r = v.x * psCB2.view[0].xzy + r;
-    r = v.z * psCB2.view[2].xzy + r;
+    // `view` is column-major (the retail CB stores the rotation as rows at
+    // cb2[7/8/9]), so `mul((float3x3)view, v)` yields `Σ v[j]·cb2[7+j]` — the
+    // retail `v.x*cb2[7].xzy + v.y*cb2[8].xzy + v.z*cb2[9].xzy`. Indexing
+    // `view[i]` by hand instead reads across the columns and transposes it.
+    float3 r = mul((float3x3)psCB2.view, v).xzy;
     return r * rsqrt(dot(r, r));
 }
 
@@ -255,7 +257,10 @@ public float3 evaluateAdditionalLights(
             float3 lightVec = light.position.xyz - viewPos;
             float  distSq = dot(lightVec, lightVec);
             float  dist = sqrt(distSq);
-            attenuation = 1.0 / (distSq + POINT_EPS * dist);
+            // Bounded radial falloff `1 / (1 + POINT_EPS * distSq)` (matches the
+            // shipped DXBC `dp2 [1, 0.0005], [1, distSq]` then reciprocal) — NOT
+            // `1/(distSq + POINT_EPS*dist)`, which drops the constant 1 term.
+            attenuation = 1.0 / (1.0 + POINT_EPS * distSq);
             lightDir    = lightVec / dist;
         }
         else

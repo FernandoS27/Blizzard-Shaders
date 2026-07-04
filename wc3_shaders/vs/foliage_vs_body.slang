@@ -73,10 +73,11 @@ float2 sampleWindGradient(float2 uv, float texelU)
                         float2(uv.x - texelU, vFlipped), 0).x;
     float dx      = vMinus - center;
 
-    // -1 texel in U: sample at uv.x - texelU but with the original
-    // vFlipped + texelU mapping the engine uses.
+    // +1 texel in V for the Y gradient: in flipped space that is
+    // `vFlipped - texelU` (retail `-uv.y + (1 - texelU)`), NOT
+    // `vFlipped + texelU` — the latter flips the sign of dh/dy.
     float uMinus  = t_foliageWind.SampleLevel(s_foliageWind,
-                        float2(uv.x, 1.0 - (uv.y - texelU)), 0).x;
+                        float2(uv.x, vFlipped - texelU), 0).x;
     float dy      = uMinus - center;
 
     // Engine clamps the gradient to [-1, 1] in both axes.
@@ -112,20 +113,24 @@ float2 applyWindDisplacement(float2 inputXY, float vertWeight,
     // Recover the wind direction gradient via three texture samples.
     float2 gradient = sampleWindGradient(areaUV, texel);
 
-    // Pre-displacement: 10 · |tangent.w| · gradient, applied to the
-    // input XY before the cos/sin swing.
-    float2 preDisp = inputXY + 10.0 * abs(tangentW) * gradient;
+    // Pre-displacement: strength · 10 · |tangent.w| · gradient (retail
+    // `mul r0.y, strength, |tangentW|` then ·10), applied to the input XY
+    // before the swing gate.
+    float2 preDisp = inputXY + strength * 10.0 * abs(tangentW) * gradient;
 
     // Phase = 2π · (frac(time) + preDisp), one component per axis.
     float2 phase = (frac(foliageVsCB2.effectTime) + preDisp) * TWO_PI;
 
-    // Swing on top of the pre-displacement, gated by whether the
-    // gradient is non-zero (no wind anywhere → keep preDisp).
+    // Swing gate (matches the retail `movc r0.w ? swing : preDisp`): the
+    // cos/sin swing is added ONLY when the gradient is exactly zero in both
+    // axes — a flat wind field gets a uniform oscillation, whereas a vertex
+    // sitting on a real gradient just bends via the pre-displacement. (The
+    // engine's condition is `gateX && gateY`, not its negation.)
     bool gateX = gradient.x == 0.0;
     bool gateY = gradient.y == 0.0;
-    bool windActive = !(gateX && gateY);
+    bool flatField = gateX && gateY;
     float2 swing = float2(cos(phase.x), sin(phase.y)) * strength;
-    return windActive ? (preDisp + swing) : preDisp;
+    return flatField ? (preDisp + swing) : preDisp;
 }
 
 // Tangent-handedness stencil: sign(tangent.w) ∈ {-1, 0, +1}. HLSL's

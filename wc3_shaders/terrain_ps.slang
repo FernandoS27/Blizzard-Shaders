@@ -64,19 +64,10 @@ public TerrainPSOutput terrain_ps_main<
         // payload.
         output.depthFeed = float4(shaded.viewZ, 0, 0, 1);
 
-        if (HAS_TINT)
-        {
-            // Engine quirk: in TINT_OVERRIDE / debug-viz mode the
-            // normal MRT is intentionally left uninitialised; only .w
-            // gets a constant write so the depth-feedback resolver
-            // still sees a valid alpha.
-            output.normalEnc = float4(0, 0, 0, 1);
-        }
-        else
-        {
-            // Encoded world normal: (n + 1) · 0.5 in RGB, .w = 1.
-            output.normalEnc = float4(shaded.worldNormal * 0.5 + 0.5, 1.0);
-        }
+        // Encoded world normal: (n + 1) · 0.5 in RGB, .w = 1. The shipped
+        // DXBC writes this on *every* MRT perm (`mad o2.xyz, normal, 0.5, 0.5`)
+        // including the TINT/debug ones — there is no "leave it black" quirk.
+        output.normalEnc = float4(shaded.worldNormal * 0.5 + 0.5, 1.0);
     }
 #endif
 

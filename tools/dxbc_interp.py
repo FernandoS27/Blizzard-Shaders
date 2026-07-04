@@ -261,6 +261,12 @@ def _build_ast(insns, i, terms):
             nodes.append(('breakcz', _parse_operand(rest), True)); i += 1
         elif op == 'breakc_nz':
             nodes.append(('breakcz', _parse_operand(rest), False)); i += 1
+        elif op == 'continue':
+            nodes.append(('continue',)); i += 1
+        elif op == 'continuec_z':
+            nodes.append(('continuecz', _parse_operand(rest), True)); i += 1
+        elif op == 'continuec_nz':
+            nodes.append(('continuecz', _parse_operand(rest), False)); i += 1
         elif op == 'discard_nz':
             nodes.append(('discard', _parse_operand(rest), True)); i += 1
         elif op == 'discard_z':
@@ -316,6 +322,9 @@ class TextureModel:
 # --------------------------------------------------------------------------
 
 class _Break(Exception):
+    pass
+
+class _Continue(Exception):
     pass
 
 class Outputs:
@@ -453,6 +462,8 @@ def execute(program, inputs=None, cbufs=None, *, texture=None, deriv_scale=1.0,
                         run(n[1])
                     except _Break:
                         break
+                    except _Continue:
+                        pass    # skip rest of body, fall through to next iteration
                     it += 1
                     if it > max_loop:
                         raise RuntimeError(
@@ -475,6 +486,11 @@ def execute(program, inputs=None, cbufs=None, *, texture=None, deriv_scale=1.0,
             elif t == 'breakcz':
                 if (vm.uread(n[1])[_cond_lane(n[1])] == 0) == n[2]:
                     raise _Break()
+            elif t == 'continue':
+                raise _Continue()
+            elif t == 'continuecz':
+                if (vm.uread(n[1])[_cond_lane(n[1])] == 0) == n[2]:
+                    raise _Continue()
             elif t == 'discard':
                 if (vm.uread(n[1])[_cond_lane(n[1])] != 0) == n[2]:
                     vm.discarded = True
@@ -743,6 +759,11 @@ def _selftest():
     check("loop+breakc", o.i(0, 0), 5)
     o = run("mov r0.x, l(1)\nif_nz r0.x\n  mov o0.x, l(11)\nelse\n  mov o0.x, l(22)\nendif")
     check("if_nz taken", o.i(0, 0), 11)
+    # loop with continue: sum only even counters 0..9 -> skip odds via continue
+    o = run("mov r0.x, l(0)\nmov r1.x, l(0)\nloop\n  ige r2.x, r0.x, l(10)\n  breakc_nz r2.x\n"
+            "  and r2.x, r0.x, l(1)\n  iadd r0.x, r0.x, l(1)\n  continuec_nz r2.x\n"
+            "  iadd r1.x, r1.x, r0.x\nendloop\nmov o0.x, r1.x")
+    check("loop+continue", o.i(0, 0), 1 + 3 + 5 + 7 + 9)   # counter incremented before the add
     # unsupported opcode must raise, not miscompute
     try:
         run("texkill r0.x")
