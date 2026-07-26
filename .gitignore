@@ -5,3 +5,5 @@ docs
 bls_out*
 __pycache__
 mods/
+*.fx
+tools/sc2_dxbc*
