@@ -1,0 +1,16 @@
+{
+"family": "Simple",
+"stage": "vs",
+"count": 1,
+"stage_index": 16,
+"decoded": true,
+"perms": [
+{
+"slot": 0,
+"key": "0b000000030bff04157466fb76ff030000000000001f00",
+"dedup": 0,
+"bv": {},
+"live": []
+}
+]
+}

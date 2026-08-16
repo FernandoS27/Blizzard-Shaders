@@ -1,0 +1,63 @@
+{
+"family": "Simple",
+"stage": "ps",
+"count": 6,
+"stage_index": 16,
+"decoded": true,
+"perms": [
+{
+"slot": 0,
+"key": "0b000000030bff04157466fb76ff030100000000001f00",
+"dedup": 0,
+"bv": {
+"b_iAlphaTest": 0
+},
+"live": []
+},
+{
+"slot": 1,
+"key": "0c000000030bff04157466fb76002c800100000000001f00",
+"dedup": 0,
+"bv": {
+"b_iAlphaTest": 1
+},
+"live": []
+},
+{
+"slot": 2,
+"key": "0c000000030bff04157466fb760050800100000000001f00",
+"dedup": 1,
+"bv": {
+"b_iAlphaTest": 1
+},
+"live": []
+},
+{
+"slot": 3,
+"key": "0c000000030bff04157466fb76ff02800100000000001f00",
+"dedup": 1,
+"bv": {
+"b_iAlphaTest": 1
+},
+"live": []
+},
+{
+"slot": 4,
+"key": "0d000000030bff04157466fb76002cff010100000000001f00",
+"dedup": 1,
+"bv": {
+"b_iAlphaTest": 0
+},
+"live": []
+},
+{
+"slot": 5,
+"key": "0d000000030bff04157466fb760050ff010100000000001f00",
+"dedup": 1,
+"bv": {
+"b_iAlphaTest": 0
+},
+"live": []
+}
+]
+}

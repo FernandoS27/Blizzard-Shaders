@@ -50,11 +50,18 @@ class RemapTex(di.TextureModel):
     def sample(self, slot, coords):
         return super().sample(self._id(slot), coords)
 
-    def sample_lod(self, slot, coords, lod):
-        return super().sample_lod(self._id(slot), coords, lod)
-
+    # NOTE: TextureModel.sample_compare / sample_lod are implemented in terms of
+    # self.sample(...), so delegating to super() with an already-remapped id would
+    # remap it a SECOND time (via this class's sample()) and read the wrong texture
+    # field.  Remap ONCE here and drive the base field function directly.
     def sample_compare(self, slot, coords, ref):
-        return super().sample_compare(self._id(slot), coords, ref)
+        return di.TextureModel.sample(
+            self, self._id(slot), [coords[0], coords[1], ref, 0.0])[0]
+
+    def sample_lod(self, slot, coords, lod):
+        return di.TextureModel.sample(
+            self, self._id(slot),
+            [coords[0], coords[1], coords[2], coords[3] + lod * 0.01])
 
     def lod(self, slot, coords):
         return super().lod(self._id(slot), coords)
@@ -62,6 +69,133 @@ class RemapTex(di.TextureModel):
 
 def _sat(x):
     return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+
+
+# ---------------------------------------------------------------------------
+# slang-aware reflection: slangc's DXBC RDEF names differ systematically from
+# fxc's — every cbuffer field / resource gets a `_<n>` disambiguation suffix
+# (`p_mProjection_0`), cbuffers are wrapped in a `SLANG_ParameterGroup` struct,
+# and matrices are wrapped in a `_MatrixStorage_*` struct (`float4 data_N[4]`).
+# fxc emits flat `type name; // Offset: N Size: M`.  These helpers normalise
+# BOTH toolchains to the same logical (canon) names so the comparator can align
+# a value by name regardless of which compiler produced the blob.
+# ---------------------------------------------------------------------------
+_SLANG_SUFFIX = re.compile(r"_\d+$")
+
+
+def _uni_canon(name):
+    """Logical name shared by fxc + slangc reflections: drop slangc's `_<n>`
+    disambiguation suffix, then apply the shared p_/vp_/_t/_sampler canon."""
+    return bm.canon(_SLANG_SUFFIX.sub("", name))
+
+
+def _parse_cb_slang(asm):
+    """Parse a slangc-emitted cbuffer reflection into the same
+    [(canon_name, byte_offset, byte_size)] shape bm.parse_cb yields for fxc.
+
+    slangc nests fields: the ConstantBuffer<struct> members live inside the
+    `..._natural`/`SLANG_ParameterGroup` struct, and each matrix or struct(-array)
+    member is wrapped in a FURTHER inner struct (a `_MatrixStorage` holding
+    `data_N[]`, or a `DirectionalLight`/`PointLight` holding its fields).  We track
+    brace depth and keep only the OUTERMOST field level (the minimum member depth
+    within each cbuffer), so a `_MatrixStorage` matrix or a `p_directionalLights[3]`
+    light array is captured as ONE opaque byte-region by its instance name — never
+    split into its inner `data_N` / `vDirection` / `cColor` fields (splitting them
+    would double-write and corrupt the array's random bytes on the candidate leg).
+    A member's byte size is its span to the next outermost member (the last spans
+    to the group instance's Size)."""
+    out = []
+
+    def flush(entries, group_size):
+        if not entries:
+            return
+        top = min(d for _, _, d in entries)
+        members = sorted(((n, o) for n, o, d in entries if d == top),
+                         key=lambda x: x[1])
+        for i, (name, off) in enumerate(members):
+            if i + 1 < len(members):
+                size = members[i + 1][1] - off
+            elif group_size is not None:
+                size = group_size - off
+            else:
+                size = 16
+            out.append((_uni_canon(name), off, size))
+
+    entries = []            # (name, offset, brace_depth)
+    group_size = None
+    depth = 0
+    in_cb = False
+    for line in asm.splitlines():
+        if re.match(r"^//\s*cbuffer\b", line):
+            flush(entries, group_size)
+            entries, group_size, depth, in_cb = [], None, 0, True
+            continue
+        if not in_cb:
+            continue
+        opens = line.count("{")
+        closes = line.count("}")
+        new_depth = depth + opens - closes
+        m = re.search(r"(\w+)\s*(?:\[\d+\])?;\s*//\s*Offset:\s*(\d+)"
+                      r"(?:\s*Size:\s*(\d+))?", line)
+        if m:
+            name, off, sz = m.group(1), int(m.group(2)), m.group(3)
+            if sz is not None:          # outermost group/struct instance (has Size)
+                group_size = int(sz)
+            else:
+                # a struct-instance close ("} name[3];") is declared at the depth
+                # AFTER its brace closes; a plain field line at the current depth.
+                entries.append((name, off, new_depth if closes else depth))
+        depth = new_depth
+        if depth <= 0:                  # closed out of the cbuffer
+            flush(entries, group_size)
+            entries, group_size, in_cb = [], None, False
+    flush(entries, group_size)
+    return out
+
+
+# fxc keeps a cbuffer struct(-array) as one variable whose declaration is the
+# struct's closing brace: "} p_directionalLights[3];  // Offset: 448 Size: 96".
+# bm.parse_cb only matches "<type> <name>; // Offset Size", so it misses these;
+# the inner fields carry Offset but no Size, so bm.parse_cb already skips them
+# (no double count).  This recovers the struct instance as one opaque region.
+_FXC_STRUCT_CLOSE = re.compile(
+    r"^//\s+}\s+(?:_\d+_)?(\w+)(?:\[\d+\])?;\s*//\s*Offset:\s*(\d+)\s+Size:\s*(\d+)",
+    re.M)
+
+
+def _struct_consts_fxc(asm):
+    return [(bm.canon(m.group(1)), int(m.group(2)), int(m.group(3)))
+            for m in _FXC_STRUCT_CLOSE.finditer(asm)]
+
+
+def _cb(asm):
+    """cbuffer fields as [(canon, offset, size)], auto-detecting fxc vs slangc.
+
+    slangc reflections are recognised by their `_<n>`-suffixed cbuffer instance
+    name (`cbuffer psGlobals_0`) — true of both the raw-`cbuffer` and the
+    `ConstantBuffer<struct>` forms — plus the SLANG_ParameterGroup / _MatrixStorage
+    wrappers.  fxc names cbuffers `$Globals` / plain, gives every scalar field a
+    `Size:` (bm.parse_cb path), and declares struct(-array) constants via their
+    closing brace (recovered by _struct_consts_fxc)."""
+    if ("SLANG_ParameterGroup" in asm or "_MatrixStorage" in asm
+            or re.search(r"cbuffer \w+_\d+\b", asm)):
+        return _parse_cb_slang(asm)
+    return bm.parse_cb(asm) + _struct_consts_fxc(asm)
+
+
+def _res(asm):
+    """(texture, sampler) canon-name -> slot, auto-normalising slangc suffixes.
+    Mirrors bm.parse_resources but through _uni_canon so a slangc `p_sTexture_t_0`
+    and an fxc `p_sTexture_t` both canonicalise to `sTexture`."""
+    tex, smp = {}, {}
+    blk = re.search(r"Resource Bindings:(.*?)//\s*\n//\s*\n", asm, re.S)
+    if not blk:
+        return tex, smp
+    for m in re.finditer(r"//\s+(\S+)\s+(texture|sampler)\s+\S+\s+\S+\s+[a-z]+(\d+)",
+                         blk.group(1)):
+        (tex if m.group(2) == "texture" else smp)[_uni_canon(m.group(1))] = \
+            int(m.group(3))
+    return tex, smp
 
 
 # ---------------------------------------------------------------------------
@@ -129,8 +263,13 @@ def _target_regs(asm):
     return out
 
 
-def _in_keys(asm):
-    """input reg -> a stable cross-shader key ('HPos', 'FRONTFACE', or (sem,idx))."""
+def _in_keys(asm, slangc=False):
+    """input reg -> a stable cross-shader key ('HPos', 'FRONTFACE', or (sem,idx)).
+
+    Interpolant indices are normalised through _norm_idx so a slangc candidate's
+    ×10-inflated TEXCOORD index (scalar TEXCOORD1 -> TEXCOORD10, array element
+    sc2UV[1] at base TEXCOORD5 -> TEXCOORD51) aligns with the fxc reference's
+    logical slot.  Pass slangc=True for the candidate leg only."""
     out = {}
     for reg, (sem, idx) in bm.parse_insig(asm).items():
         if sem in ("SV_Position", "SV_POSITION"):
@@ -138,13 +277,13 @@ def _in_keys(asm):
         elif sem in ("SV_IsFrontFace", "SV_ISFRONTFACE"):
             out[reg] = "FRONTFACE"
         else:
-            out[reg] = (sem, idx)
+            out[reg] = (sem, _norm_idx(idx, slangc))
     return out
 
 
 def _texmap(ref_asm, cand_asm):
-    r_tex, _ = bm.parse_resources(ref_asm)
-    c_tex, _ = bm.parse_resources(cand_asm)
+    r_tex, _ = _res(ref_asm)
+    c_tex, _ = _res(cand_asm)
     names = sorted(set(r_tex) | set(c_tex))
     ids = {n: i for i, n in enumerate(names)}
     return (RemapTex({slot: ids[n] for n, slot in r_tex.items()}),
@@ -165,8 +304,8 @@ def compare_d3d11(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
     rp = di.Program.from_text(ref_asm)
     cp = di.Program.from_text(cand_asm)
 
-    r_in, c_in = _in_keys(ref_asm), _in_keys(cand_asm)
-    r_cb, c_cb = bm.parse_cb(ref_asm), bm.parse_cb(cand_asm)
+    r_in, c_in = _in_keys(ref_asm), _in_keys(cand_asm, slangc=True)
+    r_cb, c_cb = _cb(ref_asm), _cb(cand_asm)
     r_tgt, c_tgt = _target_regs(ref_asm), _target_regs(cand_asm)
     r_by_t = {t: reg for reg, t in r_tgt.items()}
     c_by_t = {t: reg for reg, t in c_tgt.items()}
@@ -233,6 +372,121 @@ def compare_d3d11(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
                 else:
                     d = 0.0
                 diffs[t] = max(diffs[t], d)
+    return diffs, None
+
+
+# ---------------------------------------------------------------------------
+# VS comparator: align OUTPUT registers by output-signature semantic
+# ---------------------------------------------------------------------------
+def _norm_idx(idx, slangc=False):
+    """Undo slangc's ×10 TEXCOORD-index inflation on the CANDIDATE leg only.
+
+    slangc emits a scalar interpolant declared TEXCOORDn as TEXCOORD(n*10), and an
+    array element e of a base-TEXCOORDb array as TEXCOORD(b*10 + e) — e.g. sc2UV[2]
+    at TEXCOORD5 becomes TEXCOORD50, TEXCOORD51.  Both recover to the reference's
+    logical register index via idx//10 + idx%10 (n*10 -> n; b*10+e -> b+e, e<10).
+    The fxc reference keeps its real register indices unchanged — those are the true
+    slots and can legitimately exceed 9 on interpolant-heavy perms, so the reference
+    leg must NOT be un-inflated (that would collapse its TEXCOORD10+ onto lower
+    slots)."""
+    return (idx // 10 + idx % 10) if slangc else idx
+
+
+def _out_keys(asm, slangc=False):
+    """output reg -> stable cross-shader key.  SV_Position/POSITION -> 'HPos';
+    every interpolant -> (semantic, normalized-index).  Pass slangc=True for the
+    candidate leg (un-inflates slangc's ×10 TEXCOORD indices)."""
+    out = {}
+    for reg, (sem, idx) in bm.parse_outsig(asm).items():
+        if sem in ("SV_Position", "SV_POSITION", "POSITION"):
+            out[reg] = "HPos"
+        else:
+            out[reg] = (sem, _norm_idx(idx, slangc))
+    return out
+
+
+def compare_vs(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
+    """Per-VS-output max abs diff between the fxc reference and slangc candidate.
+
+    Mirrors compare_d3d11's constant(by name)/input(by signature)/texture(by
+    name) alignment, but compares the *vertex outputs* — SV_Position and the
+    TEXCOORD/COLOR interpolants — matched by output-signature semantic, over the
+    components each side actually writes.  Both legs are D3D-native (no OpenGL
+    clip-space convention), so positions compare directly.  Returns
+    ({output_key: worst_abs_diff}, None) or (None, error_string)."""
+    nm = name_map or {}
+
+    def cn(n):
+        return nm.get(n, n)
+
+    rp = di.Program.from_text(ref_asm)
+    cp = di.Program.from_text(cand_asm)
+
+    r_in, c_in = _in_keys(ref_asm), _in_keys(cand_asm)
+    r_cb, c_cb = _cb(ref_asm), _cb(cand_asm)
+    r_out, c_out = _out_keys(ref_asm), _out_keys(cand_asm, slangc=True)
+    r_by_k = {k: reg for reg, k in r_out.items()}
+    c_by_k = {k: reg for reg, k in c_out.items()}
+    shared = sorted(set(r_by_k) & set(c_by_k), key=lambda k: str(k))
+    if not shared:
+        return None, "no shared VS output"
+    r_nc, c_nc = bm.out_ncomp(ref_asm), bm.out_ncomp(cand_asm)
+    r_tex, c_tex = _texmap(ref_asm, cand_asm)
+    rng = random.Random(seed)
+    diffs = {k: 0.0 for k in shared}
+
+    for _ in range(trials):
+        keys = set(r_in.values()) | set(c_in.values())
+        vals = {}
+        for k in keys:
+            if k == "FRONTFACE":
+                vals[k] = None
+            else:
+                vals[k] = [rng.uniform(-1, 1) for _ in range(4)]
+        cbvals = {}
+        for n, o, s in r_cb:
+            cbvals.setdefault(n, [rng.uniform(-1, 1) for _ in range(max(1, s // 4))])
+        for n, o, s in c_cb:
+            cbvals.setdefault(cn(n), [rng.uniform(-1, 1) for _ in range(max(1, s // 4))])
+
+        def mk_in(regmap):
+            out = {}
+            for reg, k in regmap.items():
+                if k == "FRONTFACE":
+                    out[reg] = [0xFFFFFFFF] * 4
+                else:
+                    out[reg] = [bm._f2b(x) for x in vals[k]]
+            return out
+
+        def mk_cb(cb_list, asm, rename):
+            cb = [[0, 0, 0, 0] for _ in range(bm.cb_rows(asm))]
+            for n, o, s in cb_list:
+                key = rename(n)
+                if key in cbvals:
+                    bm.cb_write(cb, o, cbvals[key])
+            return cb
+
+        r_i, c_i = mk_in(r_in), mk_in(c_in)
+        r_cbv = mk_cb(r_cb, ref_asm, lambda n: n)
+        c_cbv = mk_cb(c_cb, cand_asm, cn)
+        try:
+            ro = di.execute(rp, r_i, {0: r_cbv}, texture=r_tex, max_loop=4096)
+            co = di.execute(cp, c_i, {0: c_cbv}, texture=c_tex, max_loop=4096)
+        except Exception as e:
+            return None, "exec: " + str(e)[:160]
+        for k in shared:
+            rr, cr = r_by_k[k], c_by_k[k]
+            nc = min(r_nc.get(rr, 4), c_nc.get(cr, 4))
+            for l in range(nc):
+                a, b = ro.f(rr, l), co.f(cr, l)
+                an, bn = (a == a), (b == b)
+                if an and bn:
+                    d = abs(a - b)
+                elif an != bn:
+                    d = 1.0
+                else:
+                    d = 0.0
+                diffs[k] = max(diffs[k], d)
     return diffs, None
 
 

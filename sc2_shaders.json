@@ -1,0 +1,30 @@
+{
+  "_comment": "SC2 shader families backed by sc2_shaders/sc2_shaders.slang. Each family shares one original .fx across both stages (unlike wc3_shaders' per-stage entries). `vs`/`ps` map the fx entry point + slang entry point + the BLS bundle basename. The per-stage permutation set (and its decoded b_* axes) comes from sc2_perms/<Family>_<stage>.json (the cache-order manifest), not from perm_count here — perm_count is a cross-check. See docs/SC2_SHADERS_MODULE_DESIGN.md / SC2_SHADERS_IMPLEMENTATION.md.",
+  "families": {
+    "Simple": {
+      "fx": "simple.fx",
+      "vs": {
+        "fx_entry": "SimpleVertexMain",
+        "slang_entry": "simple_vs_main",
+        "perm_count": 1,
+        "bls_name": "simple.bls"
+      },
+      "ps": {
+        "fx_entry": "SimplePixelMain",
+        "slang_entry": "simple_ps_main",
+        "perm_count": 6,
+        "bls_name": "simple.bls"
+      }
+    },
+    "Model": {
+      "fx": "model.fx",
+      "_comment_ps": "DefaultPixelMain shared by Model/Particle/Ribbon/Foliage; M1 covers the standard shading mode incrementally. perm_count is the retail PS set from the manifest.",
+      "ps": {
+        "fx_entry": "DefaultPixelMain",
+        "slang_entry": "model_ps_main",
+        "perm_count": 50322,
+        "bls_name": "model.bls"
+      }
+    }
+  }
+}
