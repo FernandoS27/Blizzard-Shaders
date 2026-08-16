@@ -71,6 +71,20 @@ _SW = {'x': 0, 'y': 1, 'z': 2, 'w': 3}
 # operand parsing
 # --------------------------------------------------------------------------
 
+def _win_float(n):
+    """float() that also accepts MSVC/fxc special printouts (1.#INF, -1.#IND, #QNAN)."""
+    try:
+        return float(n)
+    except ValueError:
+        low = n.lower()
+        sign = -1.0 if low.startswith('-') else 1.0
+        if '#inf' in low:
+            return sign * float('inf')
+        if '#ind' in low or '#qnan' in low or '#snan' in low or '#nan' in low:
+            return float('nan')
+        raise
+
+
 def _parse_lit(t):
     """Parse an ``l(a, b, c, d)`` immediate into four uint32 lanes."""
     nums = t[2:t.rindex(')')].split(',')
@@ -78,7 +92,7 @@ def _parse_lit(t):
     for n in nums:
         n = n.strip()
         if ('.' in n) or ('e' in n) or ('E' in n) and 'x' not in n:
-            bits.append(f2b(float(n)))
+            bits.append(f2b(_win_float(n)))
         elif n.startswith('0x') or n.startswith('-0x'):
             bits.append(int(n, 16) & 0xFFFFFFFF)
         else:
