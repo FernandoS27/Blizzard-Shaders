@@ -27,6 +27,13 @@
 
 implementing sc2_shaders;
 
+// vspostprocess.fx sizes p_vBlurOffsets as `[b_iSampleCount + 1]`; vsGlobals must
+// match so both legs give the array the same byte span.  Slang gives each
+// `__include`d file its own preprocessor state, hence the local default.
+#ifndef b_iSampleCount
+#define b_iSampleCount 0
+#endif
+
 // The compile-time axis defaults + the .fx enums live in a preprocessor header:
 // `__include` merges declarations but NOT #defines, so every VS translation unit
 // includes the same block (see vs/model_vs_defines.slangh).
@@ -453,6 +460,19 @@ public struct DefaultVSGlobalsT
     // 16-byte element stride, matching the reference's `float p_f...[32]`.
     float fRibbonBatchIndexRemappingTable[MAX_BATCH_INDEX_REMAPPING_TABLE_SIZE];
 
+    // ---- M4 self-contained families ----------------------------------------
+    // Same argument as the foliage block above: every vertex root shares this one
+    // b0 buffer, so the small own-IO families' uniforms live here and are inert
+    // (layout only) for every other entry.
+    float3             vSize;              // p_vSize         (renderplane.fx)
+    float3             vOffset;            // p_vOffset       (renderplane.fx)
+    row_major float4x4 mWorldViewProj;     // p_mWorldViewProj(renderplane.fx)
+    row_major float4x4 mTransform;         // p_mTransform    (minimapterrain.fx, flash.fx)
+    float4             mTexgen0;           // p_mTexgen0..3   (flash.fx; float4 rows,
+    float4             mTexgen1;           //   dotted against the position, not matrices)
+    float4             mTexgen2;
+    float4             mTexgen3;
+
     // particle.fx — per-batch instancing, flipbook atlas and billboard basis.
     VS_MATROWS(mParticleInstanceTransform, MAX_BATCHED_PARTICLES, 4);
     float3 vBillboardRight;
@@ -461,5 +481,18 @@ public struct DefaultVSGlobalsT
     float3 fFlipbookFrames[MAX_BATCHED_PARTICLES];
     float2 vFlipbookCellSize[MAX_BATCHED_PARTICLES];
     float fParticleBatchIndexRemappingTable[MAX_BATCH_INDEX_REMAPPING_TABLE_SIZE];
+
+    // deferredlight.fx — the light volume's world-view-projection.  (Its
+    // p_mWVTransform / p_mWorldTransform are declared but never read, so they are
+    // omitted: both legs DCE them.)
+    row_major float4x4 mWVPTransform;      // p_mWVPTransform
+
+    // postprocessquad.fx + vspostprocess.fx.  Its `p_mTransform` is the SAME name
+    // and type as minimapterrain/flash/image's, so it reuses `mTransform` above —
+    // the comparator aligns constants by name, so a family-specific alias would be
+    // fed a different random value on each leg and break every b_useTransform perm.
+    float2 vCameraSize;                        // p_vCameraSize
+    float2 vSrcSize;                           // p_vSrcSize (vspostprocess.fx)
+    float2 vBlurOffsets[b_iSampleCount + 1];   // p_vBlurOffsets (vspostprocess.fx)
 };
 ConstantBuffer<DefaultVSGlobalsT> vsGlobals : register(b0);

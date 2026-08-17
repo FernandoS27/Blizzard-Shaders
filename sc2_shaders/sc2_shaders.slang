@@ -39,6 +39,8 @@ __include "vs/model_vs_lighting";
 __include "vs/ribbon_particle_common";
 
 // --- Pixel-shader body stack (Model/DefaultPixelMain families) --------------
+// pscommon.fx depth-prepass decode shared by the screen-space roots.
+__include "ps/ps_common";
 __include "ps/model_material";
 __include "ps/model_layers";
 __include "ps/model_normal";
@@ -99,3 +101,36 @@ __include "ribbon_vs";
 // Particle family (particle.fx : ParticleVertexMain) — point-to-quad expansion
 // with 11 instance orientations, flipbook UVs and procedural motion (M4).
 __include "particle_vs";
+
+// ---------------------------------------------------------------------------
+// M4 - self-contained families (own IO structs, own small key schemas).
+// ---------------------------------------------------------------------------
+// RenderPlane (renderplane.fx) - the FOW black-mask plane.
+__include "renderplane";
+
+// MinimapTerrain (minimapterrain.fx) - minimap terrain/water/creep/FOW composite.
+__include "minimapterrain";
+
+// LensFlare (lensflare.fx) - screen-space flare sprites + dirty lens.
+__include "lensflare";
+
+// Flash (flash.fx) - the Scaleform UI backend; 5 vertex layouts x 14 colour modes.
+__include "flash";
+
+// HDR (hdr.fx + pstonemap.fx) - the tonemap resolve; 5 tone curves + 3D LUT grade.
+__include "hdr";
+
+// Image (image.fx) - the UI compositor; up to 4 premultiplied layers + 5 adjust modes.
+__include "image";
+
+// Bokeh (bokeh.fx + psbokeh*.fx) - the 7-pass bokeh depth-of-field chain.
+__include "bokeh";
+
+// DeferredLight (deferredlight.fx) - the deferred point/spot light volume pass.
+// Own root, but it rides the SHARED interpolant transport.
+__include "deferredlight";
+
+// PostProcessQuad (postprocessquad.fx + pspostprocess/psdof/psssao/psantialiasing/
+// pshalo) - the full-screen post-process quad; 15 modes behind 36 own axes.  Also an
+// own root on the SHARED transport (and the only user of GaussianBlurSample).
+__include "postprocessquad";

@@ -233,6 +233,57 @@ def _decode_section_at(vec, name, base):
     return out
 
 
+# ---------------------------------------------------------------------------
+# THE KEY LAYOUT RULE  (PermSchema_FinalizeLayout @0x102b8c430)
+# ---------------------------------------------------------------------------
+# A family's permutation key is:
+#
+#     [ 104-bit header ][ the family's OWN axes ][ pad to a byte ][ sub-sections ]
+#
+# and each linked sub-section likewise starts on a byte boundary:
+#
+#     next_base = ceil((base + section_width) / 8) * 8
+#
+# `PermFamily_LinkSharedSubSections` @0x102b5a950 appends the eleven SHARED
+# sub-sections in one FIXED order (below); a family may instead link its own
+# subset, in its own order, straight into the +776 list — and that list order IS
+# the key layout order.
+#
+# This rule is not a heuristic.  Applied to Model's link list it reproduces ALL
+# THIRTEEN of `sc2_model_key_decode.SECTION_BASE`'s bases — Common 112, Material
+# 136, Lighting 888, Displacement 920, VectorUI 1008, Volume 1016, MRT 1152,
+# TerrainDoodad 1168, FOW 1224, Reflection 1232, Cloaking 1360, MainShading 1608,
+# VertexWarp 1688 — every one of which had previously been anchored empirically,
+# one section at a time.  It also reproduces Water's independently-derived
+# subset (Common 112, Lighting 136, MRT 168, FOW 184).  `_self_check` asserts both.
+SHARED_LINK_ORDER = ("Common", "Material", "Lighting", "Displacement", "VectorUI",
+                     "Volume", "MRT", "TerrainDoodad", "FOW", "Reflection",
+                     "Cloaking")
+
+
+def section_width(name):
+    """Total bit width of a sub-section's axis list."""
+    import sc2_model_key_decode as K
+    import sc2_ps_decode as dec
+    if name == "Material":
+        return (sum(w for _, w in dec.MAT_GLOBALS)
+                + len(dec.LAYERS) * sum(w for _, w in dec.PROPS))
+    return sum(w for _, w in K._AXES_BY_NAME[name])
+
+
+def section_bases(links, own_bits):
+    """{section: absolute MSB-first bit base} for a family's linked sub-sections.
+
+    `links` is the family's +776 list in order; `own_bits` the width of its own
+    axis block (which starts at FAMILY_OWN_AXIS_BASE and is padded to a byte)."""
+    g = FAMILY_OWN_AXIS_BASE + ((own_bits + 7) // 8) * 8
+    out = {}
+    for name in links:
+        out[name] = g
+        g = ((g + section_width(name) + 7) // 8) * 8
+    return out
+
+
 def _decode_water_ps(vec):
     import sc2_model_key_decode as K
     import sc2_interp as ip
@@ -255,6 +306,142 @@ def _decode_simple_vs(vec):
     return ({}, [])
 
 
+# ---------------------------------------------------------------------------
+# SELF-CONTAINED FAMILIES  (the M4 long tail)
+# ---------------------------------------------------------------------------
+# Each entry is transcribed from that family's `<Name>_BuildSection` in sc2.i64:
+# the `PermSchema_RegisterAxis` sequence (own axes, width =
+# cardinality.bit_length()) and the sub-section pointers written into the +776
+# list (link order = key order).  `shared_transport` marks the families that use
+# the engine-injected VertexTransport, so their live-interpolant mask is
+# meaningful; the rest declare their own IO structs and get an empty live set,
+# exactly like Simple.
+_SELF_CONTAINED = {
+    # RenderPlane_BuildSection @0x102b66420 (id 20): NO own axes; links
+    # [FOW, Common] -- note FOW FIRST, unlike LensFlare.  Own IO struct
+    # (VertexTransport{vHPos,vFowUV}), so live is empty.
+    "RenderPlane": {
+        "own": [],
+        "links": ["FOW", "Common"],
+        "shared_transport": False,
+    },
+    # MinimapTerrain_BuildSection @0x102b5e430 (id 16): two own axes, NO linked
+    # sub-sections at all.  Own vertex format (SMinimapTerrainVtxFmt).
+    "MinimapTerrain": {
+        "own": [("b_showMap", 1), ("b_iScaleAlphaToTerrain", 1)],
+        "links": [],
+        "shared_transport": False,
+    },
+    # LensFlare_BuildSection @0x102b53f90 (id 22): one own axis; links
+    # [Common, FOW].  Own VertexTransport.
+    "LensFlare": {
+        "own": [("b_shaderMode", 1)],
+        "links": ["Common", "FOW"],
+        "shared_transport": False,
+    },
+    # Flash_BuildSection @0x102b490a0 (id 14): two pure dispatch axes, one per
+    # stage, and NO linked sub-sections.  Cardinalities 5 and 14 -> the retail set
+    # is exactly 5 VS + 14 PS perms.  Own vertex format (SFlashVtxFmt).
+    "Flash": {
+        "own": [("b_iVertexShader", 3), ("b_iPixelShader", 4)],
+        "links": [],
+        "shared_transport": False,
+    },
+    # Bokeh_BuildSection @0x102b46a50 (id 23): one pass selector + Common.
+    # 7 passes x 3 encodings = the 21 retail PS perms.
+    "Bokeh": {
+        "own": [("b_iBokehPass", 3)],
+        "links": ["Common"],
+        "shared_transport": False,
+    },
+    # DeferredLight_BuildSection @0x102b480f0 (id 7): links [Common, Lighting]
+    # (the second pointer is the Lighting singleton unk_10841A830[10542], which is
+    # where its b_iAffectedByAO / b_iUseSpecular come from).
+    # NOTE deferredlight.fx also references `b_iStereoscopicCorrection`, which is
+    # registered by NO section -- like b_useVertexLighting it is dead source and
+    # reads a constant 0.
+    "DeferredLight": {
+        "own": [("b_iLightDebugMode", 2), ("b_iLightType", 2),
+                ("b_useDeffSpecularPower", 1), ("b_useVSBackBufferUV", 1),
+                ("b_useViewport", 1)],
+        "links": ["Common", "Lighting"],
+        # Unlike the other self-contained families this one uses the ENGINE's
+        # interpolant transport (InitShader(vertOut) / WRITE_INTERPOLANT_*), so its
+        # live set must be decoded from the key's live mask.  It is tiny --
+        # {ScreenPos} or {BackBufferUV, ScreenPos} -- but the PS input signature
+        # depends on it, so it cannot be left empty.
+        "shared_transport": True,
+    },
+    # HDR_BuildSection @0x102b52c40 (id 15): ten own axes, NO linked sub-sections.
+    # The ten match hdr.fx's ten `b_*` references exactly.
+    "HDR": {
+        "own": [("b_iHDRPass", 3), ("b_useBloom", 1), ("b_useWhiteShift", 1),
+                ("b_addMotionBlur", 1), ("b_useColorMapping", 1),
+                ("b_iColorMapSize", 5), ("b_iUse8BitHDRPostProcess", 1),
+                ("b_iScaleBloom", 1), ("b_iAALumaMode", 3), ("b_iOperator", 3)],
+        "links": [],
+        "shared_transport": False,
+    },
+    # Image_BuildSection @0x102b53510 (id 21): nine own axes + Common.  The nine
+    # match image.fx's nine `b_*` references exactly.
+    "Image": {
+        "own": [("b_colorAdjustMode", 3), ("b_iLayerCount", 3),
+                ("b_iVertexLayoutLayerCount", 3), ("b_renderingInnerText", 1),
+                ("b_imageUse8BitHDR", 1), ("b_iUseAlphaMask", 1),
+                ("b_layer0AlphaOnly", 1), ("b_layer1AlphaOnly", 1),
+                ("b_layer2AlphaOnly", 1)],
+        "links": ["Common"],
+        "shared_transport": False,
+    },
+    # PostProcessQuad_BuildSection @0x102b63770 (id 19): the big one -- 36 own axes
+    # spanning 79 bits (blur / DOF / SSAO / halo / AA), then Common at 184.
+    "PostProcessQuad": {
+        "own": [("b_iMode", 4), ("b_iScaleOutput", 1), ("b_iAddToOutput", 1),
+                ("b_iPostMaskModulate", 1), ("b_iTakeMin", 1),
+                ("b_iClampNegativeOutput", 1), ("b_iOutputChannelFilter", 3),
+                ("b_iInputChannelFilter", 3), ("b_iTapCount", 7),
+                ("b_iBlurAlphaOnly", 1), ("b_iBlurAllChannels", 1),
+                ("b_iInteriorBlur", 1), ("b_iLayeredBlur", 1),
+                ("b_iWeightedBlur", 1), ("b_iUseSeparateBlurMap", 1),
+                ("b_iDOFDotBlend", 1), ("b_iCorrectDOFForDepth", 1),
+                ("b_iConstrainToViewport", 1), ("b_iDepthScaledBlur", 1),
+                ("b_iDOFDebug", 4), ("b_iHaloBlurMode", 3),
+                ("b_iSSAOEncodedDepth", 1), ("b_iSSAOOptimizedSampleDelta", 1),
+                ("b_iSSAOBlockerLookup", 1), ("b_iSSAOOutput", 2),
+                ("b_iUseSeparateDetailSSAO", 1), ("b_iParticleScreenTexture", 1),
+                ("b_useTransform", 1), ("b_iAAMode", 3),
+                ("b_PostProcessFastFOW", 1), ("b_iHaloRastermode", 2),
+                ("b_iSampleCount", 6), ("b_iSampleInterpolantCount", 4),
+                ("b_iSampleCountPS", 1), ("b_iShowSingleTap", 8),
+                ("b_iSSAOSampleCount", 7)],
+        "links": ["Common"],
+        # Like DeferredLight, an own ROOT on the SHARED transport: postprocessquad.fx
+        # calls InitShader(vertOut) and carries UV / GaussianBlurSample /
+        # DownscaleUV0,1 varyings, so its live set must come from the key.
+        "shared_transport": True,
+    },
+}
+
+
+def _decode_self_contained(vec, family):
+    """(b_values, live) for a family described by `_SELF_CONTAINED`."""
+    import sc2_model_key_decode as K
+    spec = _SELF_CONTAINED[family]
+    bv = {}
+    g = FAMILY_OWN_AXIS_BASE
+    for axis, w in spec["own"]:
+        bv[axis] = K.extract(vec, g, w)
+        g += w
+    own_bits = sum(w for _, w in spec["own"])
+    for name, base in section_bases(spec["links"], own_bits).items():
+        bv.update(_decode_section_at(vec, name, base))
+    if not spec["shared_transport"]:
+        return bv, []
+    import sc2_interp as ip
+    known = set(ip.INTERP_DIM) | set(ip.ARRAY_INTERP) | set(ip.SPECIAL_READS)
+    return bv, sorted(K.live_names(vec, known))
+
+
 # (family, stage) -> callable(vec) -> (b_values, live)
 _SCHEMAS = {
     ("Simple", "ps"): _decode_simple_ps,
@@ -267,15 +454,19 @@ _SCHEMAS = {
 
 
 def has_schema(family, stage):
-    return (family, stage) in _SCHEMAS
+    return (family, stage) in _SCHEMAS or family in _SELF_CONTAINED
 
 
 def decode_family(family, stage, vec):
     """(b_values, live) for a known (family, stage) schema, else None."""
     fn = _SCHEMAS.get((family, stage))
-    if fn is None:
-        return None
-    return fn(vec)
+    if fn is not None:
+        return fn(vec)
+    # A self-contained family's schema covers BOTH stages (design §2), so the
+    # same decode serves ps and vs.
+    if family in _SELF_CONTAINED:
+        return _decode_self_contained(vec, family)
+    return None
 
 
 # Families whose PS uses DefaultPixelMain and whose PS key decode is the
@@ -510,8 +701,34 @@ def decode_perm(family, stage, vec):
     return None
 
 
+def _check_layout_rule():
+    """`section_bases` must reproduce the two independently-derived tables.
+
+    Model's 13 bases were anchored empirically one section at a time, and Water's
+    4-section subset was derived by hand from its own BuildFamily; if the
+    ceil-to-byte packing rule were wrong, neither would come out."""
+    import sc2_model_key_decode as K
+    bad = []
+    model = section_bases(list(SHARED_LINK_ORDER) + ["MainShading", "VertexWarp"],
+                          own_axis_bits("Model"))
+    for name, base in model.items():
+        want = (K.MAT_GLOB_BASE if name == "Material" else
+                K.MRT_BASE if name == "MRT" else K.SECTION_BASE[name])
+        if base != want:
+            bad.append("Model.%s computed %d want %d" % (name, base, want))
+    water = section_bases(["Common", "Lighting", "MRT", "FOW"], 5)
+    for name, base in water.items():
+        if base != _WATER_SECTION_BASE[name]:
+            bad.append("Water.%s computed %d want %d"
+                       % (name, base, _WATER_SECTION_BASE[name]))
+    print("layout rule vs Model(13 sections) + Water(4): %s"
+          % ("OK" if not bad else "FAILED -> " + "; ".join(bad)))
+    return not bad
+
+
 def _self_check():
     """Decode the Simple manifests (if present) and print the per-slot axes."""
+    _check_layout_rule()
     import json
     perms_dir = os.path.join(os.path.dirname(HERE), "sc2_perms")
     for stage in ("ps", "vs"):

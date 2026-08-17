@@ -26,7 +26,12 @@ INTERP_DIM = {
     "ShadowSpecular": 3, "ShadowMapUV": 4, "FogColor": 4, "HalfVec": 3,
     "EyeToVertex": 3, "EyeToVertexFresnel": 3, "FOWUV": 4, "TerrainUV": 4,
     "ParallaxVector": 3, "TriPlanarWeights": 4, "Vector4": 4,
-    "DownscaleUV0": 4, "DownscaleUV1": 4, "BackBufferUV": 4,
+    # BackBufferUV is a float2 (GetBackBufferUV returns float2, and
+    # sc2_model_key_decode.INTERP_TABLE32 records 2 components for it).  It had been
+    # 4 here, which nothing noticed until deferredlight.fx — the only root that ever
+    # makes it live — failed to compile its own reference:
+    #   WRITE_INTERPOLANT_BackBufferUV(GetBackBufferUV(...)) -> X3017 float2 -> float4.
+    "DownscaleUV0": 4, "DownscaleUV1": 4, "BackBufferUV": 2,
 }
 # array interpolants: name -> (dim, count-source is caller-supplied)
 ARRAY_INTERP = {"UV": 4, "GaussianBlurSample": 4}
@@ -76,6 +81,15 @@ def _uv_count(b_values):
     return n
 
 
+def _gbs_count(b_values):
+    """Length of the per-tap `GaussianBlurSample` array interpolant.
+
+    postprocessquad.fx writes it as `for (i = 0; i < b_iSampleInterpolantCount; i++)`
+    — the same axis INTERP_TABLE32 records as its gate.  Floored at 1 so a live-but-
+    zero-count permutation still declares a well-formed array (mirroring _uv_count)."""
+    return max(1, int(b_values.get("b_iSampleInterpolantCount", 0)))
+
+
 def _initshader_arity(text, entry):
     epos = text.find(entry + "(")
     body = text[epos:] if epos >= 0 else text
@@ -84,6 +98,22 @@ def _initshader_arity(text, entry):
         return -1
     inner = m.group(1).strip()
     return 0 if inner == "" else inner.count(",") + 1
+
+
+def gen_initshader_stub(entry_text, entry):
+    """The `InitShader` definition an OWN-IO family still needs (inject_preamble
+    off), or "" when it needs none.
+
+    Families that carry their own IO structs skip gen_preamble entirely, but a few
+    still call the engine's zero-argument `InitShader()` — hdr.fx and image.fx do,
+    purely as a per-draw hook with no interpolant transport behind it.  Emitting
+    the empty definition is enough; the transport structs/macros stay out (they
+    would only shadow the family's own `VertexOutput`/`SImageVtxFmt`).
+
+    Returns "" for the arity-1/2/3 forms (those families need the FULL preamble,
+    i.e. inject_preamble=True) and for entries that never call InitShader at all —
+    so this is inert for renderplane/minimapterrain/lensflare/flash/terrainblend."""
+    return "void InitShader() {}" if _initshader_arity(entry_text, entry) == 0 else ""
 
 
 def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
@@ -97,6 +127,8 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
     scal = sorted(n for n in live if n in INTERP_DIM)
     has_uv = "UV" in live
     uvc = max(1, _uv_count(b_values)) if has_uv else 0
+    has_gbs = "GaussianBlurSample" in live
+    gbsc = _gbs_count(b_values) if has_gbs else 0
     L = []
 
     def field_lines(with_sem):
@@ -111,6 +143,12 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
             out.append("  float4 sc2UV[%d]%s;" %
                        (uvc, " : TEXCOORD%d" % tc if with_sem else ""))
             tc += uvc
+        # The second array interpolant, after UV — postprocessquad.fx's per-tap blur
+        # offsets.  Keep this ordering in lockstep with sc2_shaders_cfg.interp_defines.
+        if has_gbs:
+            out.append("  float4 sc2GaussianBlurSample[%d]%s;" %
+                       (gbsc, " : TEXCOORD%d" % tc if with_sem else ""))
+            tc += gbsc
         return out, tc
 
     # ---- macros shared by both stages -------------------------------------
@@ -155,6 +193,11 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
             m.append("#define READ_INTERPOLANT_UV(i) %s.sc2UV[i]" % varname)
         else:
             m.append("#define READ_INTERPOLANT_UV(i) float4(0,0,0,0)")
+        if has_gbs:
+            m.append("#define READ_INTERPOLANT_GaussianBlurSample(i) "
+                     "%s.sc2GaussianBlurSample[i]" % varname)
+        else:
+            m.append("#define READ_INTERPOLANT_GaussianBlurSample(i) float4(0,0,0,0)")
         return m
 
     def write_macros():
@@ -170,11 +213,15 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
             m.append("#define WRITE_INTERPOLANT_UV(i,v) vertOut.sc2UV[i] = (v)")
         else:
             m.append("#define WRITE_INTERPOLANT_UV(i,v)")
-        # BackBufferUV / Downscale / GaussianBlur write no-ops unless live
+        # BackBufferUV / Downscale write no-ops unless live
         for n in ("BackBufferUV", "DownscaleUV0", "DownscaleUV1"):
             if n not in live:
                 m.append("#define WRITE_INTERPOLANT_%s(v)" % n)
-        m.append("#define WRITE_INTERPOLANT_GaussianBlurSample(i,v)")
+        if has_gbs:
+            m.append("#define WRITE_INTERPOLANT_GaussianBlurSample(i,v) "
+                     "vertOut.sc2GaussianBlurSample[i] = (v)")
+        else:
+            m.append("#define WRITE_INTERPOLANT_GaussianBlurSample(i,v)")
         return m
 
     if stage == "vs":
@@ -212,6 +259,9 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
         cp = ["(v).HPos=(r).HPos;"] + ["(v).%s=(r).%s;" % (n, n) for n in scal]
         if has_uv:
             cp += ["(v).sc2UV[%d]=(r).sc2UV[%d];" % (i, i) for i in range(uvc)]
+        if has_gbs:
+            cp += ["(v).sc2GaussianBlurSample[%d]=(r).sc2GaussianBlurSample[%d];"
+                   % (i, i) for i in range(gbsc)]
         if "FrontFace" in live:
             cp.append("(v).FrontFace=(r).FrontFace;")
         L.append("#define InitShader(r,v) { %s }" % "".join(cp))

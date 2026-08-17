@@ -3,38 +3,25 @@
 "stage": "vs",
 "count": 1,
 "stage_index": 16,
-"decoded": false,
+"decoded": true,
 "perms": [
 {
 "slot": 0,
 "key": "0c000000030bff04051b0c950960ff020000000000001e00",
 "dedup": 0,
-"vec": [
-0,
-0,
-3,
-11,
-0,
-0,
-0,
-0,
-5,
-27,
-12,
-149,
-9,
-96,
-0,
-0,
-0,
-0,
-0,
-0,
-0,
-0,
-30,
-0
-]
+"bv": {
+"b_iHDRPass": 3,
+"b_useBloom": 0,
+"b_useWhiteShift": 0,
+"b_addMotionBlur": 0,
+"b_useColorMapping": 0,
+"b_iColorMapSize": 0,
+"b_iUse8BitHDRPostProcess": 0,
+"b_iScaleBloom": 0,
+"b_iAALumaMode": 0,
+"b_iOperator": 0
+},
+"live": []
 }
 ]
 }

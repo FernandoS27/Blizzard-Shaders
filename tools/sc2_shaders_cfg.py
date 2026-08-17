@@ -21,8 +21,15 @@ if HERE not in sys.path:
 import sc2_compile_perms as _cp
 
 SC2_CONFIG = os.path.join(REPO_ROOT, "sc2_shaders.json")
-SC2_MODULE = os.path.join(REPO_ROOT, "sc2_shaders", "sc2_shaders.slang")
-SC2_INCLUDE = os.path.join(REPO_ROOT, "sc2_shaders")
+# The module root + include dir default to the live tree, but honour SC2_MODULE /
+# SC2_INCLUDE env overrides so a validation run can point at a FROZEN snapshot of
+# sc2_shaders/ — isolating it from a concurrent session editing the shared module
+# (the whole module is one translation unit, so a mid-edit save fails every in-flight
+# compile).  Freeze with a plain copytree, then export both vars.
+SC2_MODULE = os.environ.get(
+    "SC2_MODULE", os.path.join(REPO_ROOT, "sc2_shaders", "sc2_shaders.slang"))
+SC2_INCLUDE = os.environ.get(
+    "SC2_INCLUDE", os.path.join(REPO_ROOT, "sc2_shaders"))
 PERMS_DIR = os.path.join(REPO_ROOT, "sc2_perms")
 FX_SRC = _cp.SRC            # mods/.../shaders
 
@@ -83,10 +90,18 @@ def interp_defines(live, bv, stage="ps"):
     defs = []
     for i, n in enumerate(scal):
         defs += ["SC2_HAS_%s=1" % n, "SC2_SEM_%s=TEXCOORD%d" % (n, i)]
+    tc = len(scal)
     if "UV" in live:
         uvc = max(1, ip._uv_count(bv))
-        defs += ["SC2_HAS_UV=1", "SC2_SEM_UV=TEXCOORD%d" % len(scal),
+        defs += ["SC2_HAS_UV=1", "SC2_SEM_UV=TEXCOORD%d" % tc,
                  "SC2_UV_COUNT=%d" % uvc]
+        tc += uvc
+    # The second array interpolant (postprocessquad.fx's per-tap blur offsets) sits
+    # after the UV array — same order gen_preamble uses.
+    if "GaussianBlurSample" in live:
+        defs += ["SC2_HAS_GaussianBlurSample=1",
+                 "SC2_SEM_GaussianBlurSample=TEXCOORD%d" % tc,
+                 "SC2_GBS_COUNT=%d" % ip._gbs_count(bv)]
     # SV_IsFrontFace is a system-value input (no TEXCOORD slot), so it's gated
     # independently of the scalar packing.  gen_preamble: FrontFace live ->
     # INTERPOLANT_FrontFace = vertOut.FrontFace; else the safety-net `true`.
@@ -125,7 +140,12 @@ def uv_random_offsets(bv):
 # the same INTERPOLANT_* set), so it packs the same live transport.  (TerrainBlend is
 # NOT here: it carries its own IO structs, so its live set is empty.)
 _SHARED_TRANSPORT = {"Model", "Particle", "Ribbon", "Foliage",
-                     "SplatDirect", "SplatDeferred", "Water"}
+                     "SplatDirect", "SplatDeferred", "Water",
+                     # M4: deferredlight.fx and postprocessquad.fx are own-ROOT but
+                     # not own-IO — both call the engine's InitShader/VertexTransport,
+                     # so their VS output and PS input are packed from the live set
+                     # exactly like the Default families'.
+                     "DeferredLight", "PostProcessQuad"}
 
 
 def perm_defines(family, stage, bv, live):
@@ -198,6 +218,17 @@ def _particle_flipbook_const(rng, nfloat):
         else:
             out.append(rng.uniform(-1, 1))
     return out
+
+
+# Pixel-stage counterpart of VS_CONST_DOMAINS: constants a PIXEL shader uses as an
+# index rather than as a number.  Same failure mode — each leg lays out its own
+# cbuffer and its own indexable temp, so an out-of-range index is a DIFFERENT lane
+# on each side and the comparison fails for a reason that can never happen in game.
+PS_CONST_DOMAINS = {
+    # image.fx picks the layer's alpha source with `cColor[(int)p_vLayerAlphaChannelIndex[i]]`
+    # — a per-layer CHANNEL selector (r/g/b/a), one component per layer.
+    "Image": {"vLayerAlphaChannelIndex": ("index", 4)},
+}
 
 
 VS_CONST_DOMAINS = {

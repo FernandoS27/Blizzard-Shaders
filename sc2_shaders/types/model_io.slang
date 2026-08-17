@@ -20,6 +20,14 @@
 
 implementing sc2_shaders;
 
+// pspostprocess.fx sizes p_fBlurWeights / p_vBlurOffsets as `[b_iSampleCount + 1]`,
+// so psGlobals must too (the comparator aligns the array as one byte region and both
+// legs have to agree on its span).  Slang gives every `__include`d file its own
+// preprocessor state, hence the local default.
+#ifndef b_iSampleCount
+#define b_iSampleCount 0
+#endif
+
 // materialdefines.fx shading-mode enum.  MainShading dispatches on the compile-time
 // b_iShadingMode, so exactly one arm survives DCE per permutation.
 #define SHADINGMODE_STANDARD          0
@@ -910,6 +918,115 @@ public struct ModelPSGlobalsT
     float2             vCausticsUvTiling;     // p_vCausticsUvTiling
     row_major float4x4 mUvMatrixPS;           // p_mUvMatrixPS (caustics UV)
     row_major float4x4 mShadowTransform;      // p_mShadowTransform (common.fx)
+
+    // ---- M4 self-contained families ----------------------------------------
+    // Every pixel root shares this one b0 buffer (the comparator aligns constants
+    // by NAME, and a second cbuffer at b0 would collide), so the small own-IO
+    // families' uniforms live here too and DCE away everywhere else.
+    float4             vColor;                // p_vColor  (minimapterrain.fx, flash.fx)
+    float4             vColorTransformMul;    // p_vColorTransformMul (flash.fx)
+    float4             vColorTransformAdd;    // p_vColorTransformAdd (flash.fx)
+    float              fFrameAlpha;           // p_fFrameAlpha        (flash.fx)
+
+    // hdr.fx + pstonemap.fx (the tonemap resolve).  p_fSaturation/p_fGain/p_fScale
+    // are declared upstream but every use is commented out; they are kept here so
+    // the reference's reflection has a same-named counterpart (both sides DCE them).
+    float              fSaturation;           // p_fSaturation      (hdr.fx)
+    float              fBloomThreshold;       // p_fBloomThreshold  (hdr.fx)
+    float              fHDRScaling;           // p_fHDRScaling      (hdr.fx)
+    float              fExposure;             // p_fExposure        (pstonemap.fx)
+    float              fContrast;             // p_fContrast        (pstonemap.fx)
+    float              fGain;                 // p_fGain            (pstonemap.fx)
+    float              fScale;                // p_fScale           (pstonemap.fx)
+    float              fWhitePoint;           // p_fWhitePoint      (pstonemap.fx)
+
+    // image.fx (the UI compositor).  The three vLayerAlphaChannel* float4s are
+    // indexed BY LAYER (component i belongs to layer i), and vLayerAlphaChannelIndex
+    // additionally selects a CHANNEL of the sample — see the PS_CONST_DOMAINS entry
+    // in sc2_shaders_cfg keeping it in [0,4).
+    float4             vLightAdjustColor;         // p_vLightAdjustColor
+    float4             vDarkAdjustColor;          // p_vDarkAdjustColor
+    float4             vLayerAlphaChannelIndex;   // p_vLayerAlphaChannelIndex
+    float4             vLayerAlphaChannelInverse; // p_vLayerAlphaChannelInverse
+    float4             vLayerAlphaChannelMultiply;// p_vLayerAlphaChannelMultiply
+
+    // bokeh.fx (the DOF chain).  p_fFocusDepth is omitted: it is read only by the
+    // BOKEH_USE_LEGACY_COC arm, which is compiled out of every shipped permutation.
+    float4             vDoFEquation;          // p_vDoFEquation
+    float4             vPixelTransform;       // p_vPixelTransform
+    float4             vRenderTargetSize;     // p_vRenderTargetSize (.xy size, .zw texel)
+    float4             vTileRTSize;           // p_vTileRTSize
+    float              fMaxCoCRadius;         // p_fMaxCoCRadius
+    float2             vCoCGapSpaceTransform; // p_vCoCGapSpaceTransform
+    float              fKarisInvSharpness;    // p_fKarisInvSharpness
+    float2             vCoCTransform;         // p_vCoCTransform
+
+    // deferredlight.fx — the single light this pass shades, plus the depth->view
+    // reconstruction.  These are TOP-LEVEL names here, distinct from the identically
+    // named members inside lighting.fx's PointLight/SpotLight array elements (no
+    // shader ever declares both, and the comparator matches outermost fields).
+    float4             vPositionRecipRadius;  // p_vPositionRecipRadius (xyz pos, w 1/radius)
+    float4             cColorAttenMultiplier; // p_cColorAttenMultiplier (rgb colour, w atten)
+    float3             vDirection;            // p_vDirection (spot axis)
+    float3             vFalloffBiasScaleAndHotSpotMultiplier;
+    float4             vUVToViewPos;          // p_vUVToViewPos
+    float              fShadowMapSize;        // p_fShadowMapSize
+    row_major float4x4 mPTransform;           // p_mPTransform (projection)
+    row_major float3x4 mInvViewTransform;     // p_mInvViewTransform (pscommon.fx)
+
+    // ---- postprocessquad.fx pixel stack -------------------------------------
+    // pspostprocess.fx
+    float2             vSrcSize;              // p_vSrcSize
+    float4             vRecipSrcSizeOffset;   // p_vRecipSrcSizeOffset
+    float4             vParticleAmbientLight; // p_vParticleAmbientLight
+    float              fParticleThreshold;    // p_fParticleThreshold
+    row_major float2x4 mParticleTextureTransform;
+    float3             vParticleFogColor;     // p_vParticleFogColor
+    float              fFOWSmoothing;         // p_fFOWSmoothing
+    float4             vBlurDepthCameraConstants;
+    float4             vBlurDepthRadiusConstants;
+    float              fHaloRadiusRcp;        // p_fHaloRadiusRcp
+    float4             vPostProcessViewport;  // p_vPostProcessViewport (.xy TL, .zw BR)
+    float4             vScale;                // p_vScale
+    float              fAdd;                  // p_fAdd
+    float4             vPostMaskColor;        // p_vPostMaskColor
+    float4             vValue;                // p_vValue
+    float              fGradientScale;        // p_fGradientScale
+    float3             cGradientStartColor;   // p_cGradientStartColor
+    float3             cGradientEndColor;     // p_cGradientEndColor
+    // p_vStrobeParams packs what psmainshading.fx spells out as p_fStrobeOffset /
+    // p_fStrobeSizeRcp / p_fStrobeFalloff; p_cHaloColor is the SAME name in both and
+    // is already declared above with the Model halo pass.
+    float3             vStrobeParams;         // p_vStrobeParams
+    // Sized by the SAME expression as the .fx (`[b_iSampleCount + 1]`), so both legs
+    // agree on the array's byte span — the comparator fills it as one region.
+    float              fBlurWeights[b_iSampleCount + 1];   // p_fBlurWeights
+    float2             vBlurOffsets[b_iSampleCount + 1];   // p_vBlurOffsets
+
+    // psdof.fx
+    float              fFocusDistance;        // p_fFocusDistance
+    float4             vCoCWindow;            // p_vCoCWindow
+    float              fCorrectDepthDOFBias;  // p_fCorrectDepthDOFBias
+    float3             vBlurRamp;             // p_vBlurRamp
+
+    // psssao.fx
+    float              fSampleRadius;         // p_fSampleRadius
+    float3             vSSAOSamplePoints[64]; // p_vSSAOSamplePoints
+    float2             vCameraSize;           // p_vCameraSize
+    float              fOcclusionRadius;      // p_fOcclusionRadius
+    float              fOcclusionPower;       // p_fOcclusionPower
+    float              fDetailOcclusionRadius;
+    float              fDetailOcclusionPower;
+    float              fFullOcclusionThreshold;
+    float              fNoOcclusionThreshold;
+    float              fDetailFullOcclusionThreshold;
+    float              fDetailNoOcclusionThreshold;
+    float              fSSAOLimiter;          // p_fSSAOLimiter
+    float2             vSSAOTermA;            // p_vSSAOTermA
+
+    // psantialiasing.fx
+    float2             vAAEdgeThreshold;      // p_vAAEdgeThreshold
+    float2             vAASubPixel;           // p_vAASubPixel
 };
 ConstantBuffer<ModelPSGlobalsT> psGlobals : register(b0);
 
@@ -1041,3 +1158,56 @@ Texture2D<float4> p_sCreepDiffuseColor_t;
 Texture2D<float4> p_sCreepInteriorNormalMap_t;
 Texture2D<float4> p_sCreepSpecularMask_t;
 Texture2D<float4> p_sCreepGroundNormalMap_t;
+
+// ---- M4 self-contained families -------------------------------------------
+// minimapterrain.fx (its p_vFOWLevels is the same NAME as psfow.fx's, so it
+// aligns onto the existing psGlobals.vFOWLevels) and lensflare.fx.
+Texture2D<float4> p_sTerrainTexture_t;
+Texture2D<float4> p_sWaterTexture_t;
+Texture2D<float4> p_sFowTexture_t;
+Texture2D<float4> p_sCreepTexture_t;
+Texture2D<float4> p_sAtlas_t;
+Texture2D<float4> p_sDirtyLens_t;
+
+// hdr.fx (texDecl2D(p_sSrcMap/p_sBloomMap/...) + texDecl3D(p_sColorMap)).  The
+// colour-grading LUT is the module's only 3D texture.
+Texture2D<float4> p_sSrcMap_t;
+Texture2D<float4> p_sBloomMap_t;
+Texture3D<float4> p_sColorMap_t;
+
+// image.fx (texDecl2D(p_sLayer0..3, p_sAlphaMask)).
+Texture2D<float4> p_sLayer0_t;
+Texture2D<float4> p_sLayer1_t;
+Texture2D<float4> p_sLayer2_t;
+Texture2D<float4> p_sLayer3_t;
+Texture2D<float4> p_sAlphaMask_t;
+
+// deferredlight.fx (texDecl2D(p_sDiffuseMap/p_sSpecularMap)) — the g-buffer albedo
+// and specular targets.  p_sSSAO / p_sNormalDepthMap are shared with the Model root.
+Texture2D<float4> p_sDiffuseMap_t;
+Texture2D<float4> p_sSpecularMap_t;
+
+// postprocessquad.fx pixel stack (pspostprocess.fx / psdof.fx / psssao.fx).
+// p_sSrcMap is shared with hdr.fx; p_sNormalDepthMap with the Model root.
+Texture2D<float4> p_sWeightMap_t;
+Texture2D<float4> p_sSeparateBlurMap_t;
+Texture2D<float4> p_sOperandMap_t;
+Texture2D<float4> p_sParticleTexture_t;
+Texture2D<float4> p_sDepthEncodeRG_t;
+Texture2D<float4> p_sDepthEncodeB_t;
+Texture2D<float4> p_sMediumBlurMap_t;
+Texture2D<float4> p_sLargeBlurMap_t;
+Texture2D<float4> p_sDownscaledDepth_t;
+Texture2D<float4> p_sBlockerFunc_t;
+Texture2D<float4> p_sDetailBlockerFunc_t;
+Texture2D<float4> p_sEncodedDepth_t;
+Texture2D<float4> p_sSSAONoise_t;
+
+// bokeh.fx (texDecl2D x7) — the DOF chain's ping-pong targets.
+Texture2D<float4> p_sInputImage_t;
+Texture2D<float4> p_sInputImageLinear_t;
+Texture2D<float4> p_sFullImageLinear_t;
+Texture2D<float4> p_sAlphaImage_t;
+Texture2D<float4> p_sDepthImage_t;
+Texture2D<float4> p_sTileImage_t;
+Texture2D<float4> p_sPrepassImage_t;

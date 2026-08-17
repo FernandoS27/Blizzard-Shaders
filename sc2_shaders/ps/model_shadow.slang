@@ -70,7 +70,11 @@ float2 decodeSoftShadowUV(ModelPSInput vertOut)
 
 // psshadow.fx : ShadowIntensity — 1 = fully lit.  (The heightmap/parallax-shadow
 // args are only used by the commented-out parallax block, so they are dropped.)
-float4 shadowIntensity(ModelPSInput vertOut, float4 shadowMapUV, float2 softShadowUV)
+//
+// The body never touches `vertOut` — the caller has already resolved the soft-shadow
+// rotation UV — so it lives in this transport-free core, which deferredlight.fx's
+// own root calls directly (it has no ModelPSInput to hand over).
+float4 shadowIntensityUV(float4 shadowMapUV, float2 softShadowUV)
 {
 #if b_useShadows
     float4 cShadowColor;
@@ -141,4 +145,9 @@ float4 shadowIntensity(ModelPSInput vertOut, float4 shadowMapUV, float2 softShad
 #else
     return float4(1, 1, 1, 1);
 #endif
+}
+
+float4 shadowIntensity(ModelPSInput vertOut, float4 shadowMapUV, float2 softShadowUV)
+{
+    return shadowIntensityUV(shadowMapUV, softShadowUV);
 }

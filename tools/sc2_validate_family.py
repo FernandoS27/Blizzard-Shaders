@@ -81,7 +81,11 @@ def _validate_stage(family, stage, *, eps=0.0, trials=12, jobs=8,
                 input_domains=cfg.VS_INPUT_DOMAINS.get(family),
                 const_domains=cfg.VS_CONST_DOMAINS.get(family))
         else:
-            diffs, derr = V.compare_d3d11(ref, cand, trials=trials)
+            # A PIXEL shader can index by constant too (image.fx's per-layer alpha
+            # CHANNEL selector), so the pixel leg takes value domains as well.
+            diffs, derr = V.compare_d3d11(
+                ref, cand, trials=trials,
+                const_domains=cfg.PS_CONST_DOMAINS.get(family))
         if derr:
             return slot, None, "compare error: %s" % (derr,)
         worst = max(diffs.values()) if diffs else 0.0

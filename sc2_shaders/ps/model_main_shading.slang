@@ -82,6 +82,9 @@ implementing sc2_shaders;
 #ifndef b_haloPass
 #define b_haloPass 0
 #endif
+#ifndef b_iWriteFogDensityIntoRed
+#define b_iWriteFogDensityIntoRed 0
+#endif
 #ifndef b_computeHeight
 #define b_computeHeight 0
 #endif
@@ -511,6 +514,14 @@ float4 mainShading(ModelPSInput vertOut, out DeferredOutputs def)
     // gated on debug, unlike fog/FOW).
 #if b_iUse8BitHDR
     cResult.rgb *= psGlobals.vHDRScaling.x;
+#endif
+
+    // Write fog density into red (psmainshading.fx:195-197) — a special output mode
+    // (soft-fog density readback, used by Particle/Ribbon perms): after fog/FOW/HDR,
+    // overwrite red with the fog alpha.  The debug-mode half of the .fx guard is
+    // NO_DEBUG on every transcribed perm, so only the axis gates it here.
+#if b_iWriteFogDensityIntoRed
+    cResult.r = saturate(vertOut.FogColor().w);
 #endif
 
     // ---------- halo (psmainshading.fx:199-200) ----------

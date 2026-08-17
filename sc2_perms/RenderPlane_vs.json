@@ -3,39 +3,31 @@
 "stage": "vs",
 "count": 1,
 "stage_index": 17,
-"decoded": false,
+"decoded": true,
 "perms": [
 {
 "slot": 0,
 "key": "0b000000030bff041413b2568cff040000000000001f00",
 "dedup": 0,
-"vec": [
-0,
-0,
-3,
-11,
-0,
-0,
-0,
-0,
-20,
-19,
-178,
-86,
-140,
-0,
-0,
-0,
-0,
-0,
-0,
-0,
-0,
-0,
-0,
-31,
-0
-]
+"bv": {
+"b_FOWEnabled": 0,
+"b_SampleFOW": 0,
+"b_FOWMode": 0,
+"b_FastFOW": 0,
+"b_FOWAdditiveScale": 0,
+"b_fogScaleByAlpha": 0,
+"b_useBlendAdd": 0,
+"b_useIdentityBasis": 0,
+"b_useModelInstancing": 0,
+"b_iDebugMode": 0,
+"b_iInEncoding": 0,
+"b_iOutEncoding": 0,
+"b_iUse8BitHDR": 0,
+"b_iNormalizeDeffNormal": 0,
+"b_iLowResNormal": 0,
+"b_iAlphaTest": 0
+},
+"live": []
 }
 ]
 }

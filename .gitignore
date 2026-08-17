@@ -17,3 +17,5 @@ research
 *.glsl
 *.hlsl
 *.air
+*.err
+tools\_sc2*

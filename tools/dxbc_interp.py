@@ -114,6 +114,36 @@ def _parse_index(idx):
         return ('dyn', int(mm.group(1)), _SW[mm.group(2)], 0)
     return ('const', int(e))
 
+def _parse_icb(text):
+    """Parse a ``dcl_immediateConstantBuffer { {a,b,c,d}, ... }`` body.
+
+    fxc emits the icb when a shader indexes a small constant table dynamically —
+    notably a dynamic VECTOR subscript, which it lowers to ``dp4 dst, src,
+    icb[i]`` against the four basis vectors (image.fx's per-layer alpha CHANNEL
+    selector is exactly this).
+
+    Each dword prints either as a float (``1.000000``), a bare integer, or hex.
+    A bare ``0`` is the same 32 bits either way, so only the decimal-point /
+    exponent form needs the float reading."""
+    rows = []
+    for row in re.findall(r"\{([^{}]*)\}", text[text.find("{") + 1:]):
+        lanes = []
+        for tok in row.split(","):
+            tok = tok.strip()
+            if not tok:
+                continue
+            if tok.lower().startswith("0x"):
+                lanes.append(int(tok, 16) & 0xFFFFFFFF)
+            elif "." in tok or "e" in tok.lower():
+                lanes.append(f2b(float(tok)))
+            else:
+                lanes.append(i2b(int(tok)))
+        while len(lanes) < 4:
+            lanes.append(0)
+        rows.append(lanes[:4])
+    return rows
+
+
 def _parse_operand(t):
     """Parse a source operand -> tagged tuple (literal or register reference)."""
     neg = absf = False
@@ -181,6 +211,7 @@ class Program:
         self.num_temps = 12
         self.insns = []
         self.ast = []
+        self.icb = []       # dcl_immediateConstantBuffer rows, as 4 uint32 lanes
 
     @classmethod
     def from_file(cls, path):
@@ -197,6 +228,7 @@ class Program:
     def _parse(self, lines):
         started = False
         section = None   # 'in' | 'out' | None
+        icb_acc = None   # accumulating a multi-line dcl_immediateConstantBuffer
         for raw in lines:
             line = raw.rstrip()
             s = line.strip()
@@ -217,6 +249,21 @@ class Program:
                 continue
             # --- shader body ---
             if s.startswith("//") or s == "":
+                continue
+            # dcl_immediateConstantBuffer is the one declaration that WRAPS over
+            # several lines; its `{ 0, 1.000000, 0, 0},` continuations would
+            # otherwise be handed to the instruction parser as opcodes.
+            if icb_acc is not None:
+                icb_acc += " " + s
+                if icb_acc.count("{") == icb_acc.count("}"):
+                    self.icb = _parse_icb(icb_acc)
+                    icb_acc = None
+                continue
+            if s.startswith("dcl_immediateConstantBuffer"):
+                if s.count("{") == s.count("}"):
+                    self.icb = _parse_icb(s)
+                else:
+                    icb_acc = s
                 continue
             if s.startswith("dcl_temps"):
                 self.num_temps = int(s.split()[1]); continue
@@ -375,6 +422,7 @@ class _VM:
     def __init__(self, program, cbufs, inputs, texture, deriv_scale):
         self.r = [[0, 0, 0, 0] for _ in range(max(program.num_temps, 12))]
         self.cb = cbufs
+        self.icb = program.icb
         self.v = inputs
         self.x = {}
         self.o = defaultdict(lambda: [0, 0, 0, 0])
@@ -390,15 +438,29 @@ class _VM:
         if base == 'r':
             return self.r[num]
         if base == 'v':
-            return self.v.get(num, [0, 0, 0, 0])
+            # Inputs can be indexed dynamically (`dcl_indexrange` + `v[r1.w + 2]`),
+            # which fxc emits for a loop over consecutive interpolants — the
+            # postprocessquad.fx gaussian-blur tap loop is exactly that.  In that
+            # form the operand carries NO base number, so the register index is the
+            # whole index expression; `v2` (no brackets) keeps using its number.
+            return self.v.get(self._idx(spec) if spec is not None else num,
+                              [0, 0, 0, 0])
         if base == 'o':
-            return self.o[num]
+            return self.o[self._idx(spec) if spec is not None else num]
         if base == 'x':
             if num not in self.x:
                 self.x[num] = [[0, 0, 0, 0] for _ in range(64)]
             return self.x[num][self._idx(spec)]
         if base == 'cb':
             return self.cb[num][self._idx(spec)]
+        if base == 'icb':
+            # Read-only literal table from dcl_immediateConstantBuffer.  An index
+            # past the end is a real shader bug (or an out-of-domain constant
+            # feeding the subscript), so it must not silently read row 0.
+            i = self._idx(spec)
+            if not (0 <= i < len(self.icb)):
+                raise IndexError("icb index %d outside [0,%d)" % (i, len(self.icb)))
+            return self.icb[i]
         if base == 'null':
             return None
         raise NotImplementedError("operand base " + base)

@@ -251,7 +251,8 @@ def compile_reference(entry_file, entry, stage, b_values, live, tmp_path,
                                     inject_preamble=inject_preamble)
     return bm.compile_native_vs(entry_file, entry, b_values, live, tmp_path,
                                 uv_mappings=uv_mappings,
-                                uv_random_offsets=uv_random_offsets)
+                                uv_random_offsets=uv_random_offsets,
+                                inject_preamble=inject_preamble)
 
 
 # ---------------------------------------------------------------------------
@@ -293,11 +294,37 @@ def _texmap(ref_asm, cand_asm):
             RemapTex({slot: ids[n] for n, slot in c_tex.items()}))
 
 
-def compare_d3d11(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
+def _make_const_draw(rng, const_domains):
+    """`draw(name, nfloat) -> [float]`, honouring any domain declared on `name`.
+
+    A domain is either ("index", n) — a float the shader truncates into an index,
+    so draw exact integers in [0, n) — or a callable `fn(rng, nfloat) -> [float]`
+    for constants with a per-component shape (e.g. a packed float4 whose .w is a
+    divisor and must never be 0).  Shared by the PS and VS comparators."""
+    cdom = const_domains or {}
+
+    def draw(name, nfloat):
+        d = cdom.get(bm.canon(name))
+        if d is None:
+            return [rng.uniform(-1, 1) for _ in range(nfloat)]
+        if callable(d):
+            return list(d(rng, nfloat))
+        if d[0] == "index":
+            return [float(rng.randrange(0, d[1])) for _ in range(nfloat)]
+        raise ValueError("unknown const domain %r" % (d,))
+    return draw
+
+
+def compare_d3d11(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None,
+                  const_domains=None):
     """Per-SV_Target max abs diff between the fxc reference and slangc candidate.
 
     `name_map` optionally maps candidate cbuffer/resource canon-names to the
     reference's (for when the slang port renames a uniform); default identity.
+    `const_domains` restricts named constants to engine-legal values — a pixel
+    shader can index by constant too (image.fx selects the alpha channel with
+    `cColor[(int)p_vLayerAlphaChannelIndex[i]]`), and an out-of-range draw makes
+    each leg read a different lane of its own indexable temp.
     Returns ({target_index: worst_abs_diff}, None) or (None, error_string)."""
     nm = name_map or {}
 
@@ -319,6 +346,7 @@ def compare_d3d11(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
     r_tex, c_tex = _texmap(ref_asm, cand_asm)
     rng = random.Random(seed)
     diffs = {t: 0.0 for t in shared_t}
+    const_draw = _make_const_draw(rng, const_domains)
 
     for _ in range(trials):
         # one shared random vec4 per input key and per constant name.  Iterate in a
@@ -338,9 +366,9 @@ def compare_d3d11(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
                 vals[k] = [rng.uniform(-1, 1) for _ in range(4)]
         cbvals = {}
         for n, o, s in r_cb:
-            cbvals.setdefault(n, [rng.uniform(-1, 1) for _ in range(max(1, s // 4))])
+            cbvals.setdefault(n, const_draw(n, max(1, s // 4)))
         for n, o, s in c_cb:  # ensure candidate-only names still get a value
-            cbvals.setdefault(cn(n), [rng.uniform(-1, 1) for _ in range(max(1, s // 4))])
+            cbvals.setdefault(cn(n), const_draw(n, max(1, s // 4)))
 
         def mk_in(regmap):
             out = {}
@@ -511,23 +539,7 @@ def compare_vs(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None,
     rng = random.Random(seed)
     diffs = {k: 0.0 for k in shared}
 
-    cdom = const_domains or {}
-
-    def _const_draw(name, nfloat):
-        """Values for one named constant, honouring any domain declared on it.
-
-        A domain is either ("index", n) — a float the shader truncates into an
-        array index, so draw exact integers in [0, n) — or a callable
-        `fn(rng, nfloat) -> [float]` for constants with a per-component shape
-        (e.g. a packed float4 whose .w is a divisor and must never be 0)."""
-        d = cdom.get(bm.canon(name))
-        if d is None:
-            return [rng.uniform(-1, 1) for _ in range(nfloat)]
-        if callable(d):
-            return list(d(rng, nfloat))
-        if d[0] == "index":
-            return [float(rng.randrange(0, d[1])) for _ in range(nfloat)]
-        raise ValueError("unknown const domain %r" % (d,))
+    _const_draw = _make_const_draw(rng, const_domains)
 
     for _ in range(trials):
         keys = set(r_in.values()) | set(c_in.values())

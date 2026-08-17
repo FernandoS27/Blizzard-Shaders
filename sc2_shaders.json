@@ -1,5 +1,5 @@
 {
-  "_comment": "SC2 shader families backed by sc2_shaders/sc2_shaders.slang. Each family shares one original .fx across both stages (unlike wc3_shaders' per-stage entries). `vs`/`ps` map the fx entry point + slang entry point + the BLS bundle basename. The per-stage permutation set (and its decoded b_* axes) comes from sc2_perms/<Family>_<stage>.json (the cache-order manifest), not from perm_count here — perm_count is a cross-check. See docs/SC2_SHADERS_MODULE_DESIGN.md / SC2_SHADERS_IMPLEMENTATION.md.",
+  "_comment": "SC2 shader families backed by sc2_shaders/sc2_shaders.slang. Each family shares one original .fx across both stages (unlike wc3_shaders' per-stage entries). `vs`/`ps` map the fx entry point + slang entry point + the BLS bundle basename. The per-stage permutation set (and its decoded b_* axes) comes from sc2_perms/<Family>_<stage>.json (the cache-order manifest), not from perm_count here \u00e2\u20ac\u201d perm_count is a cross-check. See docs/SC2_SHADERS_MODULE_DESIGN.md / SC2_SHADERS_IMPLEMENTATION.md.",
   "families": {
     "Simple": {
       "fx": "simple.fx",
@@ -36,7 +36,7 @@
     "Foliage": {
       "fx": "foliage.fx",
       "_comment_vs": "FoliageVertexMain: compressed vertex stream, fixed Input layout (none of the b_iLayoutHas* axes apply). Shares the Default-family transport/lighting/GenUV bodies. Its section table is the shared one shifted by -8 bits (sc2_family_decode.FAMILY_SECTION_SHIFT).",
-      "_comment_ps": "Foliage has NO dedicated PS entry — foliage.fx uses the shared DefaultPixelMain (slang model_ps_main), same as Model/Ribbon/Particle; only its VS differs. Validated in M2.2. Its own PS perm set + bundle name are what make this a distinct entry.",
+      "_comment_ps": "Foliage has NO dedicated PS entry \u00e2\u20ac\u201d foliage.fx uses the shared DefaultPixelMain (slang model_ps_main), same as Model/Ribbon/Particle; only its VS differs. Validated in M2.2. Its own PS perm set + bundle name are what make this a distinct entry.",
       "vs": {
         "fx_entry": "FoliageVertexMain",
         "slang_entry": "foliage_vs_main",
@@ -53,7 +53,7 @@
     "Ribbon": {
       "fx": "ribbon.fx",
       "_comment_vs": "RibbonVertexMain: GPU ribbon simulation. b_iRibbonSimTech reshapes VertDecl (SPLINE collapses the stream to position/uv/offset/batch; LEGACY adds the prev/next trail samples). The family's own 23-bit axis header sits at key bit 104 (sc2_family_decode.FAMILY_OWN_AXES, read from Ribbon_BuildFamily), which is what puts its shared sections at +16.",
-      "_comment_ps": "Ribbon has NO dedicated PS entry — ribbon.fx uses the shared DefaultPixelMain (slang model_ps_main). Validated in M2.2 (its few excluded slots are fxc rejecting the ORIGINAL .fx at high b_iSoftShadowTaps, not slang defects).",
+      "_comment_ps": "Ribbon has NO dedicated PS entry \u00e2\u20ac\u201d ribbon.fx uses the shared DefaultPixelMain (slang model_ps_main). Validated in M2.2 (its few excluded slots are fxc rejecting the ORIGINAL .fx at high b_iSoftShadowTaps, not slang defects).",
       "vs": {
         "fx_entry": "RibbonVertexMain",
         "slang_entry": "ribbon_vs_main",
@@ -70,7 +70,7 @@
     "Particle": {
       "fx": "particle.fx",
       "_comment_vs": "ParticleVertexMain: point-to-quad expansion. Its Input is UNPERMUTED (like Foliage) but carries true integer attributes (int4 vSize/vRotation, int2 vOffset, uint4 iBatchIndex). b_iInstanceType (11 values) picks the quad basis. Own 18-bit axis header at key bit 104; shared sections at +16. The only root that reads b_UVRandomOffsetEnable[].",
-      "_comment_ps": "Particle has NO dedicated PS entry — particle.fx uses the shared DefaultPixelMain (slang model_ps_main). Validated in M2.2 (excluded slots are fxc rejecting the ORIGINAL .fx, not slang defects).",
+      "_comment_ps": "Particle has NO dedicated PS entry \u00e2\u20ac\u201d particle.fx uses the shared DefaultPixelMain (slang model_ps_main). Validated in M2.2 (excluded slots are fxc rejecting the ORIGINAL .fx, not slang defects).",
       "vs": {
         "fx_entry": "ParticleVertexMain",
         "slang_entry": "particle_vs_main",
@@ -106,7 +106,7 @@
     },
     "TerrainBlend": {
       "fx": "terrainblend.fx",
-      "_comment_ps": "TerrainBlendPixelMain: own-IO terrain/projector texture blending (own schema — 3 axes + Common, 9 blend modes). Validated bit-exact in M2.3. VS not yet ported. inject_preamble=false: terrainblend.fx declares its OWN `VertexTransport` struct, so the shared gen_preamble transport must NOT be injected into the reference compile (it would collide).",
+      "_comment_ps": "TerrainBlendPixelMain: own-IO terrain/projector texture blending (own schema \u00e2\u20ac\u201d 3 axes + Common, 9 blend modes). Validated bit-exact in M2.3. VS not yet ported. inject_preamble=false: terrainblend.fx declares its OWN `VertexTransport` struct, so the shared gen_preamble transport must NOT be injected into the reference compile (it would collide).",
       "ps": {
         "fx_entry": "TerrainBlendPixelMain",
         "slang_entry": "terrainblend_ps_main",
@@ -117,12 +117,170 @@
     },
     "Water": {
       "fx": "water.fx",
-      "_comment_ps": "WaterPixelMain: own-root PS reusing the shared transport + body stack (own schema — 5 axes + Common/Lighting/FOW). env/cheap/pretty branches. Validated bit-exact in M2. VS not yet ported.",
+      "_comment_ps": "WaterPixelMain: own-root PS reusing the shared transport + body stack (own schema \u00e2\u20ac\u201d 5 axes + Common/Lighting/FOW). env/cheap/pretty branches. Validated bit-exact in M2. VS not yet ported.",
       "ps": {
         "fx_entry": "WaterPixelMain",
         "slang_entry": "water_ps_main",
         "perm_count": 66,
         "bls_name": "water.bls"
+      }
+    },
+    "RenderPlane": {
+      "fx": "renderplane.fx",
+      "_comment": "M4 self-contained. NO own axes; links [FOW, Common] in that order (RenderPlane_BuildSection @0x102b66420). Own VertexTransport -> inject_preamble false.",
+      "vs": {
+        "fx_entry": "RenderPlaneVertexMain",
+        "slang_entry": "renderplane_vs_main",
+        "perm_count": 1,
+        "bls_name": "renderplane.bls",
+        "inject_preamble": false
+      },
+      "ps": {
+        "fx_entry": "RenderPlanePixelMain",
+        "slang_entry": "renderplane_ps_main",
+        "perm_count": 4,
+        "bls_name": "renderplane.bls",
+        "inject_preamble": false
+      }
+    },
+    "MinimapTerrain": {
+      "fx": "minimapterrain.fx",
+      "_comment": "M4 self-contained. Own axes b_showMap@104, b_iScaleAlphaToTerrain@105; NO linked sub-sections (MinimapTerrain_BuildSection @0x102b5e430) -- its 4 perms are the 2x2.",
+      "vs": {
+        "fx_entry": "MinimapTerrainVertexMain",
+        "slang_entry": "minimapterrain_vs_main",
+        "perm_count": 1,
+        "bls_name": "minimapterrain.bls",
+        "inject_preamble": false
+      },
+      "ps": {
+        "fx_entry": "MinimapTerrainPixelMain",
+        "slang_entry": "minimapterrain_ps_main",
+        "perm_count": 4,
+        "bls_name": "minimapterrain.bls",
+        "inject_preamble": false
+      }
+    },
+    "LensFlare": {
+      "fx": "lensflare.fx",
+      "_comment": "M4 self-contained. Own axis b_shaderMode@104; links [Common, FOW] (LensFlare_BuildSection @0x102b53f90). Own VertexTransport -> inject_preamble false.",
+      "vs": {
+        "fx_entry": "LensFlareVertexMain",
+        "slang_entry": "lensflare_vs_main",
+        "perm_count": 1,
+        "bls_name": "lensflare.bls",
+        "inject_preamble": false
+      },
+      "ps": {
+        "fx_entry": "LensFlarePixelMain",
+        "slang_entry": "lensflare_ps_main",
+        "perm_count": 8,
+        "bls_name": "lensflare.bls",
+        "inject_preamble": false
+      }
+    },
+    "Flash": {
+      "fx": "flash.fx",
+      "_comment": "M4 self-contained. Own axes b_iVertexShader@104 w3 (card 5) + b_iPixelShader@107 w4 (card 14); NO linked sub-sections (Flash_BuildSection @0x102b490a0). Retail: 5 VS perms, 14 PS perms -- exactly the cardinalities. Own vertex format -> inject_preamble false.",
+      "vs": {
+        "fx_entry": "FlashVertexMain",
+        "slang_entry": "flash_vs_main",
+        "perm_count": 5,
+        "bls_name": "flash.bls",
+        "inject_preamble": false
+      },
+      "ps": {
+        "fx_entry": "FlashPixelMain",
+        "slang_entry": "flash_ps_main",
+        "perm_count": 14,
+        "bls_name": "flash.bls",
+        "inject_preamble": false
+      }
+    },
+    "HDR": {
+      "fx": "hdr.fx",
+      "_comment": "M4 self-contained. Ten own axes @104 (b_iHDRPass..b_iOperator), NO linked sub-sections (HDR_BuildSection @0x102b52c40). Own VertexOutput -> inject_preamble false; hdr.fx still calls the zero-arg InitShader(), which sc2_interp.gen_initshader_stub supplies to the reference leg.",
+      "vs": {
+        "fx_entry": "HDRVertexMain",
+        "slang_entry": "hdr_vs_main",
+        "perm_count": 1,
+        "bls_name": "hdr.bls",
+        "inject_preamble": false
+      },
+      "ps": {
+        "fx_entry": "HDRPixelMain",
+        "slang_entry": "hdr_ps_main",
+        "perm_count": 320,
+        "bls_name": "hdr.bls",
+        "inject_preamble": false
+      }
+    },
+    "Image": {
+      "fx": "image.fx",
+      "_comment": "M4 self-contained. Nine own axes @104 + Common (Image_BuildSection @0x102b53510). b_iLayerCount sizes the PS composite, b_iVertexLayoutLayerCount the vertex STREAM (always the wider of the two). Own SImageVtxFmt -> inject_preamble false. PS_CONST_DOMAINS pins p_vLayerAlphaChannelIndex to [0,4) (it selects a channel of the sample).",
+      "vs": {
+        "fx_entry": "ImageVertexMain",
+        "slang_entry": "image_vs_main",
+        "perm_count": 7,
+        "bls_name": "image.bls",
+        "inject_preamble": false
+      },
+      "ps": {
+        "fx_entry": "ImagePixelMain",
+        "slang_entry": "image_ps_main",
+        "perm_count": 3520,
+        "bls_name": "image.bls",
+        "inject_preamble": false
+      }
+    },
+    "Bokeh": {
+      "fx": "bokeh.fx",
+      "_comment": "M4 self-contained. One own axis b_iBokehPass@104 w3 + Common (Bokeh_BuildSection @0x102b46a50); 7 passes x 3 encodings = the 21 retail PS perms. PREPASS..MEDIAN write two targets. Own VertexTransport -> inject_preamble false.",
+      "vs": {
+        "fx_entry": "BokehVertexMain",
+        "slang_entry": "bokeh_vs_main",
+        "perm_count": 1,
+        "bls_name": "bokeh.bls",
+        "inject_preamble": false
+      },
+      "ps": {
+        "fx_entry": "BokehPixelMain",
+        "slang_entry": "bokeh_ps_main",
+        "perm_count": 21,
+        "bls_name": "bokeh.bls",
+        "inject_preamble": false
+      }
+    },
+    "DeferredLight": {
+      "fx": "deferredlight.fx",
+      "_comment": "M4 self-contained SCHEMA but SHARED transport: 5 own axes @104 + [Common, Lighting] (DeferredLight_BuildSection @0x102b480f0). Unlike the other M4 families it calls InitShader/WRITE_INTERPOLANT_*, so inject_preamble stays TRUE and it is in sc2_shaders_cfg._SHARED_TRANSPORT. Live set is {ScreenPos} or {BackBufferUV, ScreenPos}. b_iStereoscopicCorrection is registered by no section (dead source, constant 0).",
+      "vs": {
+        "fx_entry": "DeferredLightVertexMain",
+        "slang_entry": "deferredlight_vs_main",
+        "perm_count": 8,
+        "bls_name": "deferredlight.bls"
+      },
+      "ps": {
+        "fx_entry": "DeferredLightPixelMain",
+        "slang_entry": "deferredlight_ps_main",
+        "perm_count": 82,
+        "bls_name": "deferredlight.bls"
+      }
+    },
+    "PostProcessQuad": {
+      "fx": "postprocessquad.fx",
+      "_comment": "M4, the big one: 36 own axes spanning 79 bits + [Common] at 184 (PostProcessQuad_BuildSection @0x102b63770). 15 modes (copy/blur/downscale/CoC/DOF/SSAO/gradient/depth-encode/screen-particle/FXAA/FOW/halo x3). Own ROOT on the SHARED transport (InitShader + UV/GaussianBlurSample/DownscaleUV0,1/ScreenPos), so inject_preamble stays TRUE and it is in _SHARED_TRANSPORT. The ONLY root that makes GaussianBlurSample live -- sc2_interp.gen_preamble grew that array interpolant for it.",
+      "vs": {
+        "fx_entry": "PostProcessQuadVertexMain",
+        "slang_entry": "postprocessquad_vs_main",
+        "perm_count": 23,
+        "bls_name": "postprocessquad.bls"
+      },
+      "ps": {
+        "fx_entry": "PostProcessQuadPixelMain",
+        "slang_entry": "postprocessquad_ps_main",
+        "perm_count": 1031,
+        "bls_name": "postprocessquad.bls"
       }
     }
   }

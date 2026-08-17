@@ -99,13 +99,17 @@ def cb_rows(asm, floor=260):
 
 
 def compile_native_vs(entry_file, entry, b_values, live, tmp_path, uv_mappings=None,
-                      uv_random_offsets=None):
+                      uv_random_offsets=None, inject_preamble=True):
     allb, nondef = h.scan_b_tokens(entry_file)
     base = {b: 0 for b in allb}
     base.update(b_values)
     etext = open(entry_file, encoding="latin1").read()
-    pre = ip.gen_preamble("vs", live, base, etext, entry, uv_mappings=uv_mappings,
-                          uv_random_offsets=uv_random_offsets)
+    # Own-IO families (renderplane/lensflare/minimapterrain declare their own
+    # VertexTransport, or none at all) must NOT get the shared transport spliced
+    # in — it would redefine the struct.  Mirrors the PS path's flag.
+    pre = (ip.gen_preamble("vs", live, base, etext, entry, uv_mappings=uv_mappings,
+                           uv_random_offsets=uv_random_offsets) if inject_preamble
+           else ip.gen_initshader_stub(etext, entry))
     inc = entry_file.replace("\\", "/")
 
     def assemble(bv):
@@ -137,8 +141,9 @@ def compile_native_ps(entry_file, entry, b_values, live, tmp_path, uv_mappings=N
     base = {b: 0 for b in allb}
     base.update(b_values)
     etext = open(entry_file, encoding="latin1").read()
-    pre = ip.gen_preamble("ps", live, base, etext, entry,
-                          uv_mappings=uv_mappings) if inject_preamble else ""
+    pre = (ip.gen_preamble("ps", live, base, etext, entry,
+                           uv_mappings=uv_mappings) if inject_preamble
+           else ip.gen_initshader_stub(etext, entry))
     inc = entry_file.replace("\\", "/")
 
     def assemble(bv):
