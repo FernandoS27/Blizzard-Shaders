@@ -228,8 +228,12 @@ class Program:
                 continue
             if s.startswith("dcl_"):
                 continue
+            # `ret` is kept as an instruction (not a parse terminator): an early
+            # ret inside an if-block (clip-plane discard-and-return) must survive so
+            # _build_ast sees the matching endif and the instructions after it.
             if s == "ret":
-                break
+                self.insns.append(("ret", ""))
+                continue
             sp = s.split(None, 1)
             self.insns.append((sp[0], sp[1] if len(sp) > 1 else ""))
 
@@ -285,6 +289,10 @@ def _build_ast(insns, i, terms):
             nodes.append(('discard', _parse_operand(rest), True)); i += 1
         elif op == 'discard_z':
             nodes.append(('discard', _parse_operand(rest), False)); i += 1
+        elif op == 'ret':
+            nodes.append(('ret',)); i += 1
+        elif op in ('retc_nz', 'retc_z'):
+            nodes.append(('retc', _parse_operand(rest), op == 'retc_nz')); i += 1
         else:
             ops = _split_operands(rest)
             dest = _parse_dest(ops[0]) if ops else None
@@ -339,6 +347,11 @@ class _Break(Exception):
     pass
 
 class _Continue(Exception):
+    pass
+
+class _Ret(Exception):
+    """Early `ret` inside a control-flow block (e.g. a clip-plane discard that
+    returns the current output values).  Unwinds to the top-level run()."""
     pass
 
 class Outputs:
@@ -508,8 +521,16 @@ def execute(program, inputs=None, cbufs=None, *, texture=None, deriv_scale=1.0,
             elif t == 'discard':
                 if (vm.uread(n[1])[_cond_lane(n[1])] != 0) == n[2]:
                     vm.discarded = True
+            elif t == 'ret':
+                raise _Ret()
+            elif t == 'retc':
+                if (vm.uread(n[1])[_cond_lane(n[1])] != 0) == n[2]:
+                    raise _Ret()
 
-    run(program.ast)
+    try:
+        run(program.ast)
+    except _Ret:
+        pass                    # early return: keep whatever outputs were written
     return Outputs(dict(vm.o), vm.discarded)
 
 
@@ -551,6 +572,18 @@ def _do_op(vm, node):
         cos = _operand_as_dest(srcs[0]); a = vm.fread(srcs[1])
         vm.write_f(dest, [math.sin(x) for x in a], sat)
         vm.write_f(cos, [math.cos(x) for x in a], sat)
+        return
+    if base == 'udiv':
+        # udiv destQuotient, destRemainder, src0, src1 (either dest may be null).
+        # Per the D3D spec, divide-by-zero yields 0xFFFFFFFF in BOTH destinations
+        # rather than faulting — the flipbook UV path (`iCell % columnCount`)
+        # relies on this being total.
+        rem = _operand_as_dest(srcs[0])
+        a = vm.uread(srcs[1]); b = vm.uread(srcs[2])
+        q = [(a[k] // b[k]) if b[k] else 0xFFFFFFFF for k in range(4)]
+        r = [(a[k] % b[k]) if b[k] else 0xFFFFFFFF for k in range(4)]
+        vm.write_bits(dest, q, False)
+        vm.write_bits(rem, r, False)
         return
 
     # ---- texture ops ----
@@ -608,15 +641,23 @@ def _do_op(vm, node):
         elif base == 'rcp':
             r = [_fdiv(1.0, x) for x in a]
         elif base == 'exp':
-            r = [2.0 ** x for x in a]
+            # exp2; clamp double-overflow to +inf (GPU semantics), NaN passes through.
+            r = []
+            for x in a:
+                try:
+                    r.append(2.0 ** x)
+                except OverflowError:
+                    r.append(float('inf'))
         elif base == 'log':
             r = [(math.log2(x) if x > 0 else -float('inf')) for x in a]
         elif base == 'frc':
-            r = [x - math.floor(x) for x in a]
+            # NaN/inf pass through as NaN (GPU: frac of non-finite is undefined→NaN);
+            # math.floor would raise on non-finite.
+            r = [(x - math.floor(x)) if math.isfinite(x) else float('nan') for x in a]
         elif base == 'round_ni':
-            r = [math.floor(x) for x in a]
+            r = [math.floor(x) if math.isfinite(x) else x for x in a]
         elif base == 'round_z':
-            r = [math.trunc(x) for x in a]
+            r = [math.trunc(x) if math.isfinite(x) else x for x in a]
         vm.write_f(dest, r, sat); return
     if base in ('lt', 'ge', 'eq', 'ne'):
         a = vm.fread(srcs[0]); b = vm.fread(srcs[1])
@@ -671,6 +712,35 @@ def _do_op(vm, node):
     if base == 'bfrev':
         a = vm.uread(srcs[0])
         vm.write_bits(dest, [int('{:032b}'.format(x)[::-1], 2) for x in a], False); return
+    if base == 'bfi':
+        # bfi dest, width, offset, insert, base:
+        #   mask = ((1 << width) - 1) << offset
+        #   dest = ((insert << offset) & mask) | (base & ~mask)
+        # Both fxc and slangc emit this for `i * 2^k + c` with a small literal c
+        # (width/offset/c all immediates), which is how the batched Ribbon/Particle
+        # roots address p_mSplineRibbonControlPoints[iBatchIndex*4 + k].
+        w = vm.uread(srcs[0]); off = vm.uread(srcs[1])
+        ins = vm.uread(srcs[2]); bse = vm.uread(srcs[3])
+        out = []
+        for k in range(4):
+            wk, ok = w[k] & 31, off[k] & 31
+            mask = (((1 << wk) - 1) << ok) & 0xFFFFFFFF
+            out.append((((ins[k] << ok) & mask) | (bse[k] & ~mask)) & 0xFFFFFFFF)
+        vm.write_bits(dest, out, False); return
+    if base in ('ubfe', 'ibfe'):
+        # ubfe/ibfe dest, width, offset, src: extract `width` bits at `offset`;
+        # ibfe sign-extends the extracted field, ubfe zero-extends it.
+        w = vm.uread(srcs[0]); off = vm.uread(srcs[1]); s = vm.uread(srcs[2])
+        out = []
+        for k in range(4):
+            wk, ok = w[k] & 31, off[k] & 31
+            if wk == 0:
+                out.append(0); continue
+            v = (s[k] >> ok) & ((1 << wk) - 1) if ok < 32 else 0
+            if base == 'ibfe' and (v >> (wk - 1)) & 1:
+                v -= (1 << wk)
+            out.append(v & 0xFFFFFFFF)
+        vm.write_bits(dest, out, False); return
 
     # ---- conversions ----
     if base == 'ftoi':

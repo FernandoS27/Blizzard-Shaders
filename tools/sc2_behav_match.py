@@ -98,12 +98,14 @@ def cb_rows(asm, floor=260):
     return n + 4
 
 
-def compile_native_vs(entry_file, entry, b_values, live, tmp_path, uv_mappings=None):
+def compile_native_vs(entry_file, entry, b_values, live, tmp_path, uv_mappings=None,
+                      uv_random_offsets=None):
     allb, nondef = h.scan_b_tokens(entry_file)
     base = {b: 0 for b in allb}
     base.update(b_values)
     etext = open(entry_file, encoding="latin1").read()
-    pre = ip.gen_preamble("vs", live, base, etext, entry, uv_mappings=uv_mappings)
+    pre = ip.gen_preamble("vs", live, base, etext, entry, uv_mappings=uv_mappings,
+                          uv_random_offsets=uv_random_offsets)
     inc = entry_file.replace("\\", "/")
 
     def assemble(bv):
@@ -122,14 +124,21 @@ def compile_native_vs(entry_file, entry, b_values, live, tmp_path, uv_mappings=N
     return open(tmp_path + ".asm").read(), None
 
 
-def compile_native_ps(entry_file, entry, b_values, live, tmp_path, uv_mappings=None):
+def compile_native_ps(entry_file, entry, b_values, live, tmp_path, uv_mappings=None,
+                      inject_preamble=True):
     """Compile the native `.fx` pixel shader for one permutation.  `live` is the
-    interpolant set the PS reads (driven from the retail PS's `in_` varyings)."""
+    interpolant set the PS reads (driven from the retail PS's `in_` varyings).
+
+    `inject_preamble=False` skips the gen_preamble interpolant-transport injection
+    for families that carry their OWN IO structs and name them `VertexTransport`
+    (e.g. terrainblend.fx), where the shared struct would be a redefinition.  Such
+    families use direct field access (vertOut.vUV0), not READ_INTERPOLANT."""
     allb, nondef = h.scan_b_tokens(entry_file)
     base = {b: 0 for b in allb}
     base.update(b_values)
     etext = open(entry_file, encoding="latin1").read()
-    pre = ip.gen_preamble("ps", live, base, etext, entry, uv_mappings=uv_mappings)
+    pre = ip.gen_preamble("ps", live, base, etext, entry,
+                          uv_mappings=uv_mappings) if inject_preamble else ""
     inc = entry_file.replace("\\", "/")
 
     def assemble(bv):

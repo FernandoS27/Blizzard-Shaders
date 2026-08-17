@@ -86,7 +86,8 @@ def _initshader_arity(text, entry):
     return 0 if inner == "" else inner.count(",") + 1
 
 
-def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None):
+def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
+                 uv_random_offsets=None):
     """Emit the engine-equivalent interpolant machinery for one permutation.
 
     `live` is the set of live interpolant names (VS-writes ∩ PS-reads).  The VS
@@ -184,7 +185,14 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None):
         ar = _initshader_arity(entry_text, entry)
         if ar == 3:      # model/splat: fills the per-emitter UV arrays
             uvm_vals = uv_mappings or [0] * 8
-            body = "".join("(uvm)[%d]=%d;(uvr)[%d]=0;" % (i, uvm_vals[i] if i < len(uvm_vals) else 0, i)
+            # b_UVRandomOffsetEnable[] is read ONLY by particle.fx (the other roots
+            # just forward it to InitShader), so it defaulted to all-zero for a long
+            # time.  It is a real MainShading axis, and on the Particle root it moves
+            # the UV, so the caller can now supply the decoded values.
+            uvr_vals = uv_random_offsets or [0] * 8
+            body = "".join("(uvm)[%d]=%d;(uvr)[%d]=%d;"
+                           % (i, uvm_vals[i] if i < len(uvm_vals) else 0,
+                              i, uvr_vals[i] if i < len(uvr_vals) else 0)
                            for i in range(8))
             L.append("#define InitShader(v,uvm,uvr) { %s }" % body)
         elif ar == 1:
@@ -208,18 +216,36 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None):
             cp.append("(v).FrontFace=(r).FrontFace;")
         L.append("#define InitShader(r,v) { %s }" % "".join(cp))
         L += interp_macros("vertOut")
-        # WRITE_* no-ops so any VS-side macros in shared headers are inert in PS
-        for n in list(INTERP_DIM) + ["GaussianBlurSample", "BackBufferUV",
-                                     "DownscaleUV0", "DownscaleUV1"]:
+        # WRITE_* macros.  A pixel shader can legitimately MUTATE its interpolants
+        # before the shared body reads them: splatdeferred.fx's box-render preamble
+        # reconstructs ViewPos/WorldPos from the depth buffer, writes them, then
+        # tail-calls DefaultPixelMain (which re-reads them through InitShader).  So a
+        # write to a LIVE interpolant must be a real store to `vertOut` (the entry's
+        # raw param); writes to dead interpolants stay no-ops so VS-side macros in
+        # shared headers remain inert in the PS.  Both the 1-arg and 2-arg SWIZZLE
+        # forms are defined (the box-render's dead STANDARD path uses SWIZZLE writes
+        # that must still parse under runtime-`if` DCE).
+        for n in INTERP_DIM:
+            if n in live:
+                L.append("#define WRITE_INTERPOLANT_%s(v) vertOut.%s = (v)" % (n, n))
+                L.append("#define WRITE_INTERPOLANT_SWIZZLE_%s(s,v) vertOut.%s.s = (v)" % (n, n))
+            else:
+                L.append("#define WRITE_INTERPOLANT_%s(v)" % n)
+                L.append("#define WRITE_INTERPOLANT_SWIZZLE_%s(s,v)" % n)
+        for n in ("GaussianBlurSample", "BackBufferUV", "DownscaleUV0", "DownscaleUV1"):
             L.append("#define WRITE_INTERPOLANT_%s(v)" % n)
+            L.append("#define WRITE_INTERPOLANT_SWIZZLE_%s(s,v)" % n)
         # UV writes ARE live in the PS parallax path: OffsetUVEmitter (called from
         # ApplyParallax when b_useParallaxMapping) offsets sc2UV[index] and the layer
         # samplers re-read it.  It is the 2-param (i,v) form and must actually store --
         # a 1-param no-op both mis-counts args (compile X1516) AND drops the offset.
+        # The 3-param swizzled form (i,s,v) is the splat box-render's UV update.
         if has_uv:
             L.append("#define WRITE_INTERPOLANT_UV(i,v) vertOut.sc2UV[i] = (v)")
+            L.append("#define WRITE_INTERPOLANT_SWIZZLE_UV(i,s,v) vertOut.sc2UV[i].s = (v)")
         else:
             L.append("#define WRITE_INTERPOLANT_UV(i,v)")
+            L.append("#define WRITE_INTERPOLANT_SWIZZLE_UV(i,s,v)")
     return "\n".join(L)
 
 

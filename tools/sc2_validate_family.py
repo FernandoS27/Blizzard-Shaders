@@ -53,8 +53,18 @@ def _validate_stage(family, stage, *, eps=0.0, trials=12, jobs=8,
     def work(item):
         slot, bv, live, dedup = item
         tag = "%s_%s_%d" % (family, stage, slot)
+        # model.fx's `int b_iUVMapping[8]` is an engine-filled ARRAY, not a define:
+        # the reference's InitShader stub fills it from `uv_mappings`, the candidate
+        # gets the same values as SC2_UVMAPPING<i> defines (sc2_shaders_cfg).
+        uvm = cfg.uv_mappings(bv)
+        # Own-IO families (terrainblend.fx declares its own `VertexTransport`) set
+        # inject_preamble=false in the config so the shared gen_preamble transport is
+        # NOT spliced into the reference compile (it would collide).  Default true.
         ref, rerr = V.compile_reference(fxfile, fx_entry, stage, bv, live,
-                                        os.path.join(SCRATCH, tag + "_ref.fx"))
+                                        os.path.join(SCRATCH, tag + "_ref.fx"),
+                                        uv_mappings=uvm,
+                                        inject_preamble=scfg.get("inject_preamble", True),
+                                        uv_random_offsets=cfg.uv_random_offsets(bv))
         if ref is None:
             return slot, None, "ref compile failed: %s" % (rerr,)
         defines = cfg.perm_defines(family, stage, bv, live)
@@ -63,8 +73,15 @@ def _validate_stage(family, stage, *, eps=0.0, trials=12, jobs=8,
                                      include_dirs=[cfg.SC2_INCLUDE])
         if cand is None:
             return slot, None, "slang compile failed: %s" % (cerr,)
-        cmp = V.compare_vs if stage == "vs" else V.compare_d3d11
-        diffs, derr = cmp(ref, cand, trials=trials)
+        if stage == "vs":
+            # Attributes/constants this family uses as array INDICES must be drawn
+            # from their engine-legal range (see sc2_shaders_cfg.VS_INPUT_DOMAINS).
+            diffs, derr = V.compare_vs(
+                ref, cand, trials=trials,
+                input_domains=cfg.VS_INPUT_DOMAINS.get(family),
+                const_domains=cfg.VS_CONST_DOMAINS.get(family))
+        else:
+            diffs, derr = V.compare_d3d11(ref, cand, trials=trials)
         if derr:
             return slot, None, "compare error: %s" % (derr,)
         worst = max(diffs.values()) if diffs else 0.0

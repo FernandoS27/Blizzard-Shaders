@@ -1,4 +1,5 @@
 slang_out*
+sc2_slang_out*
 re_shaders
 war3.w3mod
 docs
@@ -7,4 +8,12 @@ __pycache__
 mods/
 *.fx
 tools/sc2_dxbc*
+tools/_slang_tmp
+tools/_sc2_val_tmp
 research
+*.asm
+*.dxbc
+*.spv
+*.glsl
+*.hlsl
+*.air

@@ -27,8 +27,10 @@ implementing sc2_shaders;
 #define b_iUse8BitHDR 0
 #endif
 
-[shader("fragment")]
-public ModelPSOutput model_ps_main(ModelPSInput vertOut)
+// The shared DefaultPixelMain body, factored out so own-root families that tail-
+// call DefaultPixelMain (SplatDirect/SplatDeferred) can reuse it verbatim without
+// duplicating the emit-gate/MRT stack.
+public ModelPSOutput computeModelPixel(ModelPSInput vertOut)
 {
     ModelPSOutput result;
     DeferredOutputs def;
@@ -77,4 +79,10 @@ public ModelPSOutput model_ps_main(ModelPSInput vertOut)
 #endif
 
     return result;
+}
+
+[shader("fragment")]
+public ModelPSOutput model_ps_main(ModelPSInput vertOut)
+{
+    return computeModelPixel(vertOut);
 }

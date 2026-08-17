@@ -28,6 +28,23 @@ implementing sc2_shaders;
 #define SPECULAR_A_ONLY                1
 #define TEAMCOLOR_DIFFUSE              1
 
+// materialdefines.fx shading-mode enum — redeclared here because slang's __include
+// does NOT propagate #defines across files, and the dispatch `#if b_iShadingMode ==
+// SHADINGMODE_*` must compare against the real values (b_iShadingMode is passed as a
+// -D define; an undefined SHADINGMODE_* would read 0 and mis-route every non-standard
+// mode).
+#define SHADINGMODE_STANDARD          0
+#define SHADINGMODE_DISPLACEMENT      1
+#define SHADINGMODE_VECTORUI          2
+#define SHADINGMODE_TERRAIN           3
+#define SHADINGMODE_VOLUME            4
+#define SHADINGMODE_MODEL_TRIANGLE_ID 5
+#define SHADINGMODE_REFLECTION        6
+#define SHADINGMODE_CLOAKING          7
+#ifndef b_iShadingMode
+#define b_iShadingMode 0
+#endif
+
 // ---- axis defaults for the MaterialColor feature axes -----------------------
 #ifndef b_iFakeEnergyConservingSpec
 #define b_iFakeEnergyConservingSpec 0
@@ -37,6 +54,9 @@ implementing sc2_shaders;
 #endif
 #ifndef b_useVertexAlpha
 #define b_useVertexAlpha 0
+#endif
+#ifndef b_splatAttenuationEnabled
+#define b_splatAttenuationEnabled 0
 #endif
 #ifndef b_iModAlpha
 #define b_iModAlpha 0
@@ -61,6 +81,12 @@ implementing sc2_shaders;
 #endif
 #ifndef b_haloPass
 #define b_haloPass 0
+#endif
+#ifndef b_computeHeight
+#define b_computeHeight 0
+#endif
+#ifndef b_no8BitHDR
+#define b_no8BitHDR 0
 #endif
 
 // pscommon.fx depth/normal encoding enum + b_iInEncoding default (the depth-blend
@@ -301,8 +327,21 @@ float4 materialColor(ModelPSInput vertOut, float3 vNormal,
     cFinal.a *= saturate(vertOut.VertexColor().a);
 #endif
     cFinal.a *= psGlobals.vSpecularMultiplier_DepthBlendThreshold_HeightMapScale_AlphaFactor.w;
-    // SplatAttenuationProjector (psmaterial.fx:359-361) needs the VectorUI/Tangent
-    // interpolants — deferred to its increment.
+    // SplatAttenuationProjector (psmaterial.fx:359-361 -> common.fx:81-88).  Splat
+    // families (SplatDirect/SplatDeferred) enable this; the VS packs the plane into
+    // VectorUI0, worldPos into VectorUI1.xyz, halfHeight into VectorUI1.w and
+    // minHeight into Tangent.w (splatdirect.fx:215-218).  PIXEL_SHADER_VERSION >= PS_30
+    // is always true for the ps_5_0 target, so only b_splatAttenuationEnabled gates it.
+#if b_splatAttenuationEnabled
+    {
+        float3 saWorldPos = vertOut.VectorUI1().xyz;
+        float4 saPlane = vertOut.VectorUI0();
+        float saHalfHeight = vertOut.VectorUI1().w;
+        float saMinHeight = vertOut.Tangent().w;
+        float saD = abs(dot(float4(saWorldPos, 1.0f), saPlane));
+        cFinal.a *= saturate((saHalfHeight - saD) / (saHalfHeight - saMinHeight));
+    }
+#endif
 
     // Soft/depth blend (psmaterial.fx:365-372): fade the alpha toward 0 as the
     // fragment approaches the prepass depth (a.k.a. soft particles).  PIXEL_SHADER_VERSION
@@ -381,9 +420,12 @@ float4 mainShading(ModelPSInput vertOut, out DeferredOutputs def)
 {
     float4 cResult = float4(1, 1, 1, 1);
 
-    // g-buffer inits (psmainshading.fx:48-53 / MainShading:114-116).
+    // g-buffer inits.  DefaultPixelMain zeroes them (psmainshading.fx:48-53), then
+    // MainShading (114-116) re-inits vDeferredNormal=0, cDeferredAO=1, cDeferredDiffuse=1
+    // — so cDiffuse enters the arms as 1 (matters for the non-standard arms that don't
+    // set it, e.g. cloaking's MRT-diffuse perms; standard always overwrites it).
     def.vNormal = float3(0, 0, 0);
-    def.cDiffuse = float3(0, 0, 0);
+    def.cDiffuse = float3(1, 1, 1);
     def.cSpecular = float3(0, 0, 0);
     def.cAO = 1.0f;             // DecodeAOValue only overwrites this via the AO layer
     def.cSpecularPower = 0.0f;
@@ -430,7 +472,11 @@ float4 mainShading(ModelPSInput vertOut, out DeferredOutputs def)
     // blends the material diffuse/specular by the light diffuse/specular.
     float fSpecularity = materialSpecularity(vertOut, vDeferredNormal, def.cGlossiness, tp);
     def.cSpecularPower = fSpecularity;
-    LightResult light = mainLighting(vertOut, vDeferredNormal, fSpecularity, fAmbientOcclusion);
+    // psmainshading.fx:151 — the standard arm decodes the soft-shadow noise UV and
+    // passes it to MainLighting.
+    float2 stdSoftShadowUV = decodeSoftShadowUV(vertOut);
+    LightResult light = mainLighting(vertOut, vDeferredNormal, fSpecularity,
+                                     fAmbientOcclusion, stdSoftShadowUV);
     cResult = materialColor(vertOut, vDeferredNormal,
                             light.cLightDiffuse, light.cLightSpecular,
                             light.cShadowColor, fSpecularity, def, tp);
@@ -466,15 +512,55 @@ float4 mainShading(ModelPSInput vertOut, out DeferredOutputs def)
 #if b_iUse8BitHDR
     cResult.rgb *= psGlobals.vHDRScaling.x;
 #endif
-#endif
 
-    // Halo pass (psmainshading.fx:199-200): a separate arm that replaces cResult with
-    // the screen-space halo strobe (runs whenever b_haloPass, regardless of mode).
-#if b_haloPass
+    // ---------- halo (psmainshading.fx:199-200) ----------
+    // A separate arm that replaces cResult with the screen-space halo strobe.  In the
+    // .fx if-ladder this is `else if (b_haloPass)`, reached only when the standard arm's
+    // `mode==STANDARD && !halo` guard fails — i.e. exactly when b_haloPass is set.
+#elif b_haloPass
     cResult = getHaloColor(getBackBufferUV(vertOut), psGlobals.cHaloColor,
                            psGlobals.fStrobeOffset, psGlobals.fStrobeSizeRcp,
                            psGlobals.fStrobeFalloff);
+
+    // ---------- terrain (psmainshading.fx:204-207) ----------
+#elif (b_iShadingMode == SHADINGMODE_TERRAIN)
+    cResult = shadeTerrain(vertOut, def);
+  #if b_iUse8BitHDR && !b_computeHeight && !b_no8BitHDR
+    cResult.rgb *= psGlobals.vHDRScaling.x;
+  #endif
+
+    // ---------- displacement (psmainshading.fx:211-213) ----------
+#elif (b_iShadingMode == SHADINGMODE_DISPLACEMENT)
+    // DecodeNormal(vertOut) is computed into vDeferredNormal in the .fx but is only a
+    // g-buffer/fresnel feed; with no MRT on any displacement perm it DCEs, so Displace
+    // (which reads INTERPOLANT_Normal directly) needs nothing from it.
+    cResult = displace(vertOut);
+
+    // ---------- vector UI (psmainshading.fx:217-220) ----------
+#elif (b_iShadingMode == SHADINGMODE_VECTORUI)
+    cResult = vectorUI(vertOut);
+  #if b_iUse8BitHDR
+    cResult.rgb *= psGlobals.vHDRScaling.x;
+  #endif
+
+    // ---------- volume (psmainshading.fx:223-224) ----------
+#elif (b_iShadingMode == SHADINGMODE_VOLUME)
+    cResult = volume(vertOut);
+
+    // ---------- reflection (psmainshading.fx:228-229) ----------
+#elif (b_iShadingMode == SHADINGMODE_REFLECTION)
+    cResult = reflection(vertOut);
+
+    // ---------- cloaking (psmainshading.fx:230-231) ----------
+#elif (b_iShadingMode == SHADINGMODE_CLOAKING)
+    cResult = cloaking(vertOut, def);
+
+    // ---------- model triangle id (psmainshading.fx:225-226) ----------
+#elif (b_iShadingMode == SHADINGMODE_MODEL_TRIANGLE_ID)
+    cResult = vertOut.VertexColor();
 #endif
+    // Any other b_iShadingMode (incl. the 6 mode-8 fall-through perms) leaves cResult
+    // at its (1,1,1,1) init, exactly as the .fx if-ladder does.
 
     // AlphaTest (common.fx).
 #if b_iAlphaTest

@@ -158,16 +158,17 @@ MAT_GLOB_BASE = 136       # MSB-first bit; 26 globals, 29 bits
 MAT_LAYER_BASE = 165      # MSB-first bit; 18 layers x 40 bits (dec.PROPS order)
 
 
-def decode_material(vec):
+def decode_material(vec, shift=0):
     """{material b_*: value} decoded MSB-first at the anchored bases.  Verified:
-    recovers the material-layer samplers the older LSB-first fit dropped."""
+    recovers the material-layer samplers the older LSB-first fit dropped.
+    `shift` is the per-family section offset (see decode_section)."""
     out = {}
-    g = MAT_GLOB_BASE
+    g = MAT_GLOB_BASE + shift
     for name, w in dec.MAT_GLOBALS:
         out[name] = extract(vec, g, w)
         g += w
     for li, layer in enumerate(dec.LAYERS):
-        base = MAT_LAYER_BASE + 40 * li
+        base = MAT_LAYER_BASE + shift + 40 * li
         off = 0
         for prop, w in dec.PROPS:
             out["b_i%s%s" % (layer, prop)] = extract(vec, base + off, w)
@@ -188,7 +189,12 @@ def b_values(vec, all_b, shift_bits=0):
     for k, v in decode_material(vec).items():        # anchored MSB material
         if k in bv:
             bv[k] = v
-    maxe = 0                                          # re-apply cardinality clamps
+    return _clamp_cardinalities(bv)
+
+
+def _clamp_cardinalities(bv):
+    """Re-apply the schema's cardinality clamps (shared by both decode bases)."""
+    maxe = 0
     for k in list(bv):
         if k.endswith("UVEmitter"):
             bv[k] = min(bv[k], 7); maxe = max(maxe, bv[k])
@@ -203,6 +209,35 @@ def b_values(vec, all_b, shift_bits=0):
     if maxe + 1 > bv.get("b_iUVEmitterCount", 0):
         bv["b_iUVEmitterCount"] = maxe + 1
     return bv
+
+
+def _anchored_base(vec, all_b, shift):
+    """Base b_* map for a family whose sections are SHIFTED off Model's bases.
+
+    `b_values`' structural half is `sc2_compile_perms.decode_perm_bvalues`, an
+    LSB-first fit made against MODEL's key layout.  For a family whose sections
+    start 8 or 16 bits away that fit's bases are wrong *by construction*, and
+    "shifting a fit" is not a meaningful operation — so it is dropped entirely
+    here rather than shifted.
+
+    What survives is the axis NAME SET (layout-independent, and the only source of
+    the token-pasted material-layer axes such as `b_iDiffuseUVMapping`, which
+    `scan_b_tokens` cannot see), with every value zeroed, plus the physically-
+    anchored material section read at the family's own offset.  `decode_ps`'s
+    per-section overrides then supply the rest.
+
+    Dropping the fit loses nothing: the anchored table covers 675 of the 681 PS
+    axes, and the six it misses read a constant 0 on every retail key
+    (`b_alphaEnable`, `b_useParallaxOcclusion`, `b_useEmissiveMultiplier`,
+    `b_LayoutUseSignedIntUVs`, `b_useVertexLighting` — the last is `if (false)`
+    dead source — plus `b_iBlendWeightCount`, which is a VERTEX own-axis supplied
+    by `sc2_family_decode.decode_own_axes`)."""
+    import sc2_compile_perms as _C
+    bv = {k: 0 for k in _C.decode_perm_bvalues(vec, all_b)}
+    for k, v in decode_material(vec, shift).items():
+        if k in bv:
+            bv[k] = v
+    return _clamp_cardinalities(bv)
 
 
 # ---------------------------------------------------------------------------
@@ -293,10 +328,11 @@ MRT_AXES = ["b_emitFinalColor", "b_emitAlpha", "b_emitMRTDepth", "b_emitMRTNorma
             "b_emitMRTAO", "b_blendMRTNormals"]
 
 
-def decode_mrt(vec):
+def decode_mrt(vec, shift=0):
     """{MRT emit axis: value} MSB-first at bit 1152.  The emitMRT* axes exactly
-    reproduce retail's oC1/oC2/oC3 output set (validated 400/400)."""
-    return {MRT_AXES[i]: extract(vec, MRT_BASE + i, 1) for i in range(9)}
+    reproduce retail's oC1/oC2/oC3 output set (validated 400/400).
+    `shift` is the per-family section offset (see decode_section)."""
+    return {MRT_AXES[i]: extract(vec, MRT_BASE + shift + i, 1) for i in range(9)}
 
 
 # Per-section physical MSB-first bit bases, verified vs the real D3D corpus by the
@@ -323,9 +359,15 @@ _AXES_BY_NAME = {name: axes for name, _b, axes in SECTIONS}
 _LIGHTING_SKIP = {"b_UseAmbientEnvironment"}
 
 
-def decode_section(vec, name):
-    """{axis: value} for a section at its verified physical MSB-first base."""
-    g = SECTION_BASE[name]
+def decode_section(vec, name, shift=0):
+    """{axis: value} for a section at its verified physical MSB-first base.
+
+    `shift` offsets every base by a whole-family constant.  The four Default
+    families share ONE section table but place it at different absolute bit
+    offsets (their key headers differ in size): Model +0, Foliage -8, Ribbon +16,
+    Particle +16 — see sc2_family_decode.FAMILY_SECTION_SHIFT.  Default 0 keeps
+    every existing caller byte-for-byte unchanged."""
+    g = SECTION_BASE[name] + shift
     out = {}
     for axis, w in _AXES_BY_NAME[name]:
         out[axis] = extract(vec, g, w)
@@ -343,16 +385,20 @@ def shadow_quality(vec):
     return 1, (12 if f == 3 else 6)
 
 
-def decode_ps(vec, all_b, known_interp=None):
+def decode_ps(vec, all_b, known_interp=None, shift=0):
     """The full opengl3-FREE Model PS permutation: returns (b_values, live).
 
     OLD-fit base + anchored MSB material, then EXACT per-section overrides
     (Common/Lighting/MainShading/MRT/FOW, verified regression-safe by the
     section-anchoring workflow), mask-derived feature gates, exact emit flags,
     and the shadow-quality field.  live = mask-derived interpolant name set."""
-    bv = b_values(vec, all_b)                         # OLD fit + MSB material
+    # Model (shift 0) keeps its long-validated OLD-fit base byte-for-byte; a
+    # shifted family cannot use a fit made against Model's layout (see
+    # _anchored_base) and is built from the anchored sections alone.
+    bv = (b_values(vec, all_b) if shift == 0
+          else _anchored_base(vec, all_b, shift))
     # exact-anchored section overrides (win over the OLD LSB fit)
-    for k, v in decode_section(vec, "Common").items():
+    for k, v in decode_section(vec, "Common", shift).items():
         if k in bv:
             bv[k] = v
     # Adopt the exact Lighting section INCLUDING the shadow sub-section
@@ -363,13 +409,13 @@ def decode_ps(vec, all_b, known_interp=None):
     # old "force LR=0" hack was compensating for reading LR at the wrong bit).  These axes
     # are absent from the OLD fit -> set unconditionally (b_usePCF is a bit-alignment axis
     # not used by model.fx; an unused #define is harmless).
-    for k, v in decode_section(vec, "Lighting").items():
+    for k, v in decode_section(vec, "Lighting", shift).items():
         if k not in _LIGHTING_SKIP:
             bv[k] = v
-    for k, v in decode_section(vec, "MainShading").items():
+    for k, v in decode_section(vec, "MainShading", shift).items():
         if k in bv:
             bv[k] = v
-    for k, v in decode_mrt(vec).items():              # exact oC1/2/3 + emit flags
+    for k, v in decode_mrt(vec, shift).items():              # exact oC1/2/3 + emit flags
         if k in bv:
             bv[k] = v
     # mask-derived gates (win over section for the two Lighting axes that regress,
@@ -379,8 +425,8 @@ def decode_ps(vec, all_b, known_interp=None):
     # @bit902 -- adopt it directly.  (The old "& per-pixel (vlm==0)" gate wrongly forced 0
     # on vertex/partial-lit perms that DO sample the cube, e.g. vlm=2 -> -1 sampler undershoot.)
     if "b_UseAmbientEnvironment" in bv:
-        bv["b_UseAmbientEnvironment"] = extract(vec, 902, 1)
-    for k, v in decode_section(vec, "FOW").items():   # exact FOW > FOWUV heuristic
+        bv["b_UseAmbientEnvironment"] = extract(vec, 902 + shift, 1)
+    for k, v in decode_section(vec, "FOW", shift).items():   # exact FOW > FOWUV heuristic
         if k in bv:
             bv[k] = v
     # TerrainDoodad section (@1168): creep pass/output-mode + terrain alpha-mask layer.
@@ -388,7 +434,7 @@ def decode_ps(vec, all_b, known_interp=None):
     # the real 1), which drops the creep ApplyFog lerp + p_cFogColor uniform -> the one
     # remaining behavioral outlier (worst=1.0).  Adopting the anchored section fixes it
     # bit-exact (13/13 consts); b_no8BitHDR/mask axes are physically anchored here too.
-    for k, v in decode_section(vec, "TerrainDoodad").items():
+    for k, v in decode_section(vec, "TerrainDoodad", shift).items():
         if k in bv:
             bv[k] = v
     # Volume section (@1016, NOT the earlier 1008): b_iVolumeType(2)@1016 +
@@ -399,7 +445,7 @@ def decode_ps(vec, all_b, known_interp=None):
     # undershooting the p_sNormalDepthMap / p_sThickness sampler that passes 3/4/5 declare.
     # Anchor verified: pass@1018(w3) reproduces all 14 volume perms bit-exact (was 1/14).
     if bv.get("b_iShadingMode") == 4:
-        for k, v in decode_section(vec, "Volume").items():
+        for k, v in decode_section(vec, "Volume", shift).items():
             if k in bv:
                 bv[k] = v
     # Displacement section (@920): psdisplacement.fx layers are compiled only under
@@ -408,7 +454,7 @@ def decode_ps(vec, all_b, known_interp=None):
     # UVEmitter=4 where the anchored section gives LayerEnable=1 + UVEmitter=0), which both
     # diverges behaviour and overflows sc2UV[] (GetUVEmitter(4) with count=1 -> X3504).
     if bv.get("b_iShadingMode") == 1:
-        for k, v in decode_section(vec, "Displacement").items():
+        for k, v in decode_section(vec, "Displacement", shift).items():
             if k in bv:
                 bv[k] = v
     # VectorUI section (@1008, NOT 1000 -- same +8 physical shift as Volume): psvectorui.fx
@@ -416,7 +462,7 @@ def decode_ps(vec, all_b, known_interp=None):
     # selects the splat-draw path; the OLD fit left it 0 for every VectorUI perm.  Anchored
     # base reproduces b_iDrawType for all 11 clean perms (mix of 1/2).
     if bv.get("b_iShadingMode") == 2:
-        for k, v in decode_section(vec, "VectorUI").items():
+        for k, v in decode_section(vec, "VectorUI", shift).items():
             if k in bv:
                 bv[k] = v
     # Reflection section (@1232, base already correct -- just never adopted): psreflection.fx
@@ -424,7 +470,7 @@ def decode_ps(vec, all_b, known_interp=None):
     # layers (ReflectionNormal/Strength/BlurMask) drive the sampler set; the OLD fit mis-read the
     # layer enables -> -1/-2 sampler undershoot.  Adopting fixes all 11 reflection perms bit-exact.
     if bv.get("b_iShadingMode") == 6:
-        for k, v in decode_section(vec, "Reflection").items():
+        for k, v in decode_section(vec, "Reflection", shift).items():
             if k in bv:
                 bv[k] = v
     # Cloaking section (@1360, base already correct -- never adopted): pscloaking.fx is compiled
@@ -432,7 +478,7 @@ def decode_ps(vec, all_b, known_interp=None):
     # (AlphaMask/Envio/EnvioMask/AlphaTest/AlphaMaskOriginal/Normal); the OLD fit mis-read the
     # layer enables -> up to -4 sampler undershoot on 94/97 perms.  Adopting fixes them bit-exact.
     if bv.get("b_iShadingMode") == 7:
-        for k, v in decode_section(vec, "Cloaking").items():
+        for k, v in decode_section(vec, "Cloaking", shift).items():
             if k in bv:
                 bv[k] = v
     # (Shadows are now decoded EXACTLY from the Lighting shadow sub-section above --

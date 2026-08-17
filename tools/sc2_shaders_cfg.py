@@ -60,19 +60,24 @@ def bv_to_defines(bv):
     return ["%s=%d" % (k, int(v)) for k, v in sorted(bv.items()) if int(v)]
 
 
-def interp_defines(live, bv):
+def interp_defines(live, bv, stage="ps"):
     """slangc `-D` list describing the live interpolant transport for the shared-
     interpolant (DefaultPixelMain) families.
 
-    Mirrors sc2_interp.gen_preamble's PS packing EXACTLY so the slang candidate's
+    Mirrors sc2_interp.gen_preamble's packing EXACTLY so the slang candidate's
     VS->PS interpolant register assignment matches the fxc reference's: the live
     scalar interpolants (INTERP_DIM) are sorted by name and assigned TEXCOORD0,1,2…
     in that order; the per-emitter UV array (if live) follows at the next TEXCOORD,
     sized like gen_preamble (max(1, UV emitter count)).  For each we emit
     `SC2_HAS_<name>=1` (presence gate) and `SC2_SEM_<name>=TEXCOORD<i>` (the exact
     semantic, passed whole so the slang struct needs no token-pasting); UV also
-    gets `SC2_UV_COUNT`.  FrontFace/specials are added as the transcription reaches
-    the features that use them."""
+    gets `SC2_UV_COUNT`.
+
+    Both stages share this packing — gen_preamble builds the VS `VertexTransport`
+    and the PS `VertexTransportRaw` from the same sorted live set — so the same
+    defines drive the VS output struct and the PS input struct.  The `stage` split
+    only concerns the non-TEXCOORD specials: SV_IsFrontFace is a pixel-stage system
+    value and must never appear in a vertex output signature."""
     import sc2_interp as ip
     scal = sorted(n for n in live if n in ip.INTERP_DIM)
     defs = []
@@ -85,23 +90,126 @@ def interp_defines(live, bv):
     # SV_IsFrontFace is a system-value input (no TEXCOORD slot), so it's gated
     # independently of the scalar packing.  gen_preamble: FrontFace live ->
     # INTERPOLANT_FrontFace = vertOut.FrontFace; else the safety-net `true`.
-    if "FrontFace" in live:
+    # It is a PS-only input (gen_preamble adds it to VertexTransportRaw only).
+    if stage == "ps" and "FrontFace" in live:
         defs.append("SC2_HAS_FrontFace=1")
     return defs
 
 
+def uv_mappings(bv):
+    """The engine-filled `int b_iUVMapping[8]` array for one permutation.
+
+    model.fx declares it as a LOCAL array and has `InitShader` fill it (it is a
+    per-instance array, not a `#define`), so it cannot ride along in the `-D` set
+    like the scalar axes.  The reference leg takes it through
+    `gen_preamble(..., uv_mappings=…)`; the candidate leg gets one
+    `SC2_UVMAPPING<i>=<mode>` define per slot (see `perm_defines`).  Both read the
+    same MainShading-section axes, so the two legs agree by construction."""
+    return [int(bv.get("b_iUVMapping%d" % i, 0)) for i in range(8)]
+
+
+def uv_random_offsets(bv):
+    """The engine-filled `int b_UVRandomOffsetEnable[8]` array for one permutation.
+
+    Same shape as `uv_mappings` — an InitShader-filled array, not a `#define`.
+    Only particle.fx READS it (it nudges the UV by a per-particle random byte pair
+    unpacked from vRotation.w); the other Default roots merely forward it, which is
+    why it could safely default to all-zero until the Particle root landed."""
+    return [int(bv.get("b_UVRandomOffsetEnable%d" % i, 0)) for i in range(8)]
+
+
 # Families whose PS uses the shared DefaultPixelMain interpolant transport.
-_SHARED_TRANSPORT = {"Model", "Particle", "Ribbon", "Foliage"}
+# SplatDirect/SplatDeferred tail-call DefaultPixelMain, so their PS packs the same
+# VertexTransportRaw from the same live-interpolant set.  Water is an own-root PS
+# body but still builds its VertexTransport via the shared InitShader (its VS writes
+# the same INTERPOLANT_* set), so it packs the same live transport.  (TerrainBlend is
+# NOT here: it carries its own IO structs, so its live set is empty.)
+_SHARED_TRANSPORT = {"Model", "Particle", "Ribbon", "Foliage",
+                     "SplatDirect", "SplatDeferred", "Water"}
 
 
 def perm_defines(family, stage, bv, live):
-    """Full slangc `-D` set for one permutation slot: the b_* axes, plus the
-    interpolant-transport defines for the shared-transport families' pixel
-    shaders."""
+    """Full slangc `-D` set for one permutation slot: the b_* axes, plus (for the
+    shared-transport families) the interpolant-transport defines — the VS output
+    struct and the PS input struct are packed from the same live set — and, for
+    the vertex stage, the per-emitter UV-mapping array."""
     defs = bv_to_defines(bv)
-    if stage == "ps" and family in _SHARED_TRANSPORT:
-        defs += interp_defines(live, bv)
+    if family in _SHARED_TRANSPORT:
+        defs += interp_defines(live, bv, stage)
+        if stage == "vs":
+            # The whole module is ONE translation unit, so slangc preprocesses the
+            # vertex root even when the pixel entry is requested (and vice versa).
+            # SC2_STAGE_VS lets stage-specific preprocessor logic — notably the
+            # "feature not transcribed yet" guards — fire only for its own stage.
+            defs += ["SC2_STAGE_VS=1"]
+            defs += ["SC2_UVMAPPING%d=%d" % (i, m)
+                     for i, m in enumerate(uv_mappings(bv))]
+            defs += ["SC2_UVRANDOM%d=%d" % (i, m)
+                     for i, m in enumerate(uv_random_offsets(bv))]
     return defs
+
+
+# ---------------------------------------------------------------------------
+# Engine-legal value domains for the behavioural comparator.
+# ---------------------------------------------------------------------------
+# Attributes/constants a family uses as ARRAY INDICES rather than as numbers.
+# Feeding them uniform noise indexes outside the declared array, which either
+# aborts the interpreter or (worse) silently reads a neighbouring constant — and
+# because the two legs lay out their cbuffers independently, "a neighbouring
+# constant" is a DIFFERENT constant on each leg, i.e. a false failure.
+# See sc2_slang_validate._VS_INPUT_DOMAINS for the domain kinds.
+VS_INPUT_DOMAINS = {
+    # Ribbon/Particle batch the whole system into one draw and select the batch
+    # with a per-vertex integer attribute (`BatchIndexType iBatchIndex` = uint4).
+    # It indexes the remapping table (32) and, after remapping, the per-batch
+    # arrays (MAX_BATCHED_RIBBONS = 8) — so draw from the tighter of the two.
+    "Ribbon":   {"TEXCOORD6": ("uint", 8)},
+    # Particle puts its batch index at TEXCOORD4 (Ribbon uses TEXCOORD6, which on
+    # Particle is vInterpolator2 — a normal float attribute).  It also declares
+    # vSize/vRotation (int4) and vOffset (int2) as true integer attributes, whose
+    # registers hold integer BIT PATTERNS: float noise there decodes to ~1e38 sizes.
+    "Particle": {"TEXCOORD4": ("uint", 8),
+                 "TEXCOORD0": ("sint", 4096),     # vSize    (scaled by 1/256)
+                 "TEXCOORD2": ("sint", 4096),     # vRotation(scaled by 1/32)
+                 "NORMAL":    ("sint", 2)},       # vOffset  (quad corner, -1/0/1)
+}
+
+def _particle_flipbook_const(rng, nfloat):
+    """p_vSystemTime_ElementScale_FlipbookMidKeyTime_FlipbookColumnCount[8].
+
+    A packed float4 whose components are NOT interchangeable:
+      .x system time, .y element scale  — any value works;
+      .z flipbook mid-key time          — a fraction; particle.fx divides by
+                                          (1.0 - z), so it must not be 1, and
+                                          keeping it strictly inside (0,1) means
+                                          BOTH flipbook arms stay reachable at
+                                          runtime (the age is saturated to [0,1]);
+      .w flipbook column count          — used as an INTEGER divisor and modulus
+                                          (`iCell % (int)w`), so 0 would abort the
+                                          interpreter outright.
+    """
+    out = []
+    for i in range(nfloat):
+        c = i & 3
+        if c == 2:
+            out.append(rng.uniform(0.05, 0.95))
+        elif c == 3:
+            out.append(float(rng.randrange(1, 9)))
+        else:
+            out.append(rng.uniform(-1, 1))
+    return out
+
+
+VS_CONST_DOMAINS = {
+    # `ArrayDecl(float) p_fRibbonBatchIndexRemappingTable[32]` — a float array the
+    # shader truncates into a batch index, so its VALUES must be legal indices too.
+    "Ribbon":   {"fRibbonBatchIndexRemappingTable": ("index", 8)},
+    "Particle": {
+        "fParticleBatchIndexRemappingTable": ("index", 8),
+        "vSystemTime_ElementScale_FlipbookMidKeyTime_FlipbookColumnCount":
+            _particle_flipbook_const,
+    },
+}
 
 
 def iter_slots(family, stage):

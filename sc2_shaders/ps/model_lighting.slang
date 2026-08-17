@@ -349,8 +349,21 @@ LightResult lighting(float3 vNormalWS, float3 vPositionWS, float fAmbientOcclusi
 // pslighting.fx : MainLighting — returns the diffuse + specular light colour the
 // MaterialColor blend consumes, plus cShadowColor and the lighting-region map (fog
 // reads it).  cShadowColor is computed unconditionally (1 on the no-shadow path).
+// Standard entry (Model / splat / terrain): the shadow UV is the VS-emitted
+// INTERPOLANT_ShadowMapUV.  Delegates to the explicit-shadowUV form below.
 LightResult mainLighting(ModelPSInput vertOut, float3 vDeferredNormal,
-                         float fSpecularity, float fAmbientOcclusion)
+                         float fSpecularity, float fAmbientOcclusion, float2 softShadowUV)
+{
+    return mainLighting(vertOut, vDeferredNormal, fSpecularity, fAmbientOcclusion,
+                        softShadowUV, vertOut.ShadowMapUV());
+}
+
+// Explicit-shadowUV entry: Water recomputes a distorted shadow UV in the PS
+// (mul(worldPos + p_fShadowDistortion*rnd, p_mShadowTransform)) and passes it in,
+// rather than reading the interpolant.  Everything else is identical.
+LightResult mainLighting(ModelPSInput vertOut, float3 vDeferredNormal,
+                         float fSpecularity, float fAmbientOcclusion, float2 softShadowUV,
+                         float4 shadowUV)
 {
     LightResult r;
     r.cLightDiffuse = float3(0, 0, 0);
@@ -358,8 +371,11 @@ LightResult mainLighting(ModelPSInput vertOut, float3 vDeferredNormal,
     r.cLightingRegionMap = float4(0, 0, 0, 0);
 
     // Shadow value first (pslighting.fx:90) — always computed, 1 when b_useShadows off.
-    float2 softShadowUV = decodeSoftShadowUV(vertOut);
-    r.cShadowColor = shadowIntensity(vertOut, vertOut.ShadowMapUV(), softShadowUV);
+    // softShadowUV is passed in (the standard arm feeds decodeSoftShadowUV; terrain /
+    // creep feed their own terrain/creep-space noise UV).  The POM-shadow heightmap
+    // params are omitted: no reachable terrain/creep perm sets b_useParallaxMapping,
+    // so the height-map depth-bias path in ShadowIntensity DCEs.
+    r.cShadowColor = shadowIntensity(vertOut, shadowUV, softShadowUV);
 
 #if b_useLighting == 0
     // Unlit: full diffuse pass-through (b_iDebugMode==LIGHTING_ONLY -> 0 lands with

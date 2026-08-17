@@ -1,0 +1,381 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Fernando Sahmkow
+// See LICENSE in the repository root for full terms.
+//
+// Preprocessor-only header shared by the Model vertex-shader translation units.
+//
+// Slang's `__include` merges DECLARATIONS into the module but each `.slang` file
+// is its own PREPROCESSING unit, so `#define`s do not flow between them (the M1
+// lesson recorded in docs/SC2_SHADERS_IMPLEMENTATION.md).  A plain `#include` of
+// this header does flow, so the compile-time axis defaults and the .fx enums live
+// here once instead of being copy-pasted into every VS file.
+//
+// Path is written from the module root (`-I sc2_shaders`), so every VS file
+// includes it identically regardless of its own directory.
+//
+// Contains ONLY #defines — no declarations — so including it three times inside
+// one module is safe.
+
+#ifndef SC2_MODEL_VS_DEFINES_H
+#define SC2_MODEL_VS_DEFINES_H
+
+// ---------------------------------------------------------------------------
+// Compile-time axis defaults.  The driver emits `-Db_x=<v>` only for NONZERO axes
+// (sc2_shaders_cfg.bv_to_defines), matching the reference's `#define b_* 0` base
+// map, so every axis read in an *expression* needs a 0 default here.
+// ---------------------------------------------------------------------------
+#ifndef b_iShadingMode
+#define b_iShadingMode 0
+#endif
+#ifndef b_iUVCoordCount
+#define b_iUVCoordCount 0
+#endif
+#ifndef b_iUVEmitterCount
+#define b_iUVEmitterCount 0
+#endif
+#ifndef b_usePackedUVEmitter
+#define b_usePackedUVEmitter 0
+#endif
+#ifndef b_iLayoutHasColor
+#define b_iLayoutHasColor 0
+#endif
+#ifndef b_iLayoutHasCustomUB4N1
+#define b_iLayoutHasCustomUB4N1 0
+#endif
+#ifndef b_iLayoutHasNoVertexBlendWeights
+#define b_iLayoutHasNoVertexBlendWeights 0
+#endif
+#ifndef b_iLayoutHasNoVertexBlendIndices
+#define b_iLayoutHasNoVertexBlendIndices 0
+#endif
+#ifndef b_iUseSignedIntUVs
+#define b_iUseSignedIntUVs 0
+#endif
+#ifndef b_iBlendWeightCount
+#define b_iBlendWeightCount 0
+#endif
+#ifndef b_useNormalMapping
+#define b_useNormalMapping 0
+#endif
+#ifndef b_iZOffsetFromUB4N_XY
+#define b_iZOffsetFromUB4N_XY 0
+#endif
+#ifndef b_iUseLocalTriPlanarWeights
+#define b_iUseLocalTriPlanarWeights 0
+#endif
+#ifndef b_iUseLocalTriPlanarTangentSpace
+#define b_iUseLocalTriPlanarTangentSpace 0
+#endif
+#ifndef b_iUseWorldTriPlanarWeights
+#define b_iUseWorldTriPlanarWeights 0
+#endif
+#ifndef b_iUseWorldTriPlanarTangentSpace
+#define b_iUseWorldTriPlanarTangentSpace 0
+#endif
+#ifndef b_useModelInstancing
+#define b_useModelInstancing 0
+#endif
+#ifndef b_enableVertexWarps
+#define b_enableVertexWarps 0
+#endif
+#ifndef b_iWarpCount
+#define b_iWarpCount 0
+#endif
+#ifndef b_creepEnabled
+#define b_creepEnabled 0
+#endif
+#ifndef b_computeHeight
+#define b_computeHeight 0
+#endif
+#ifndef b_iVertexAOFromVertexColor
+#define b_iVertexAOFromVertexColor 0
+#endif
+#ifndef b_splatTextureProjectorEnabled
+#define b_splatTextureProjectorEnabled 0
+#endif
+#ifndef b_splatAttenuationEnabled
+#define b_splatAttenuationEnabled 0
+#endif
+#ifndef b_useParallaxMapping
+#define b_useParallaxMapping 0
+#endif
+#ifndef b_useIdentityBasis
+#define b_useIdentityBasis 0
+#endif
+#ifndef b_iUsePOMNew
+#define b_iUsePOMNew 0
+#endif
+#ifndef b_useLighting
+#define b_useLighting 0
+#endif
+#ifndef b_UseVertexBasedAmbientOcclusion
+#define b_UseVertexBasedAmbientOcclusion 0
+#endif
+#ifndef b_useShadows
+#define b_useShadows 0
+#endif
+#ifndef b_iVertexLightingMode
+#define b_iVertexLightingMode 0
+#endif
+#ifndef b_iDirectionalLightCount
+#define b_iDirectionalLightCount 0
+#endif
+#ifndef b_iLightingMode
+#define b_iLightingMode 0
+#endif
+#ifndef b_iLightingModel
+#define b_iLightingModel 0
+#endif
+#ifndef b_UseLightingRegions
+#define b_UseLightingRegions 0
+#endif
+#ifndef b_iUseSpecular
+#define b_iUseSpecular 0
+#endif
+#ifndef b_useDblLambert
+#define b_useDblLambert 0
+#endif
+
+// The engine fills `int b_iUVMapping[8]` per instance via InitShader, so it is an
+// ARRAY, not a #define — the driver passes each slot's mode as SC2_UVMAPPING<i>
+// (sc2_shaders_cfg.perm_defines) and the emitter unroll instantiates the generic
+// GenUV with that literal, which is exactly how fxc sees `b_iUVMapping[i]` once
+// InitShader's literal stores are folded.
+#ifndef SC2_UVMAPPING0
+#define SC2_UVMAPPING0 0
+#endif
+#ifndef SC2_UVMAPPING1
+#define SC2_UVMAPPING1 0
+#endif
+#ifndef SC2_UVMAPPING2
+#define SC2_UVMAPPING2 0
+#endif
+#ifndef SC2_UVMAPPING3
+#define SC2_UVMAPPING3 0
+#endif
+#ifndef SC2_UVMAPPING4
+#define SC2_UVMAPPING4 0
+#endif
+#ifndef SC2_UVMAPPING5
+#define SC2_UVMAPPING5 0
+#endif
+#ifndef SC2_UVMAPPING6
+#define SC2_UVMAPPING6 0
+#endif
+#ifndef SC2_UVMAPPING7
+#define SC2_UVMAPPING7 0
+#endif
+
+// ---------------------------------------------------------------------------
+// materialdefines.fx enums + array bounds
+// ---------------------------------------------------------------------------
+#define UVMAP_EXPLICITUV0              0
+#define UVMAP_EXPLICITUV1              1
+#define UVMAP_REFLECT_CUBICENVIO       2
+#define UVMAP_REFLECT_SPHERICALENVIO   3
+#define UVMAP_PLANARLOCALZ             4
+#define UVMAP_PLANARWORLDZ             5
+#define UVMAP_PARTICLE_FLIPBOOK        6
+#define UVMAP_CUBICENVIO               7
+#define UVMAP_SPHERICALENVIO           8
+#define UVMAP_EXPLICITUV2              9
+#define UVMAP_EXPLICITUV3              10
+#define UVMAP_PLANARLOCALX             11
+#define UVMAP_PLANARLOCALY             12
+#define UVMAP_PLANARWORLDX             13
+#define UVMAP_PLANARWORLDY             14
+#define UVMAP_SCREENSPACE              15
+#define UVMAP_TRIPLANAR_LOCAL          16
+#define UVMAP_TRIPLANAR_WORLD          17
+#define UVMAP_TRIPLANAR_WORLD_LOCAL_Z  18
+
+#define VS_TriPlanarIsWorldFX(m)   ((m) >= UVMAP_TRIPLANAR_WORLD && (m) <= UVMAP_TRIPLANAR_WORLD_LOCAL_Z)
+#define VS_IsTriPlanarMappingFX(m) ((m) >= UVMAP_TRIPLANAR_LOCAL && (m) <= UVMAP_TRIPLANAR_WORLD_LOCAL_Z)
+
+#define VS_SHADINGMODE_STANDARD          0
+#define VS_SHADINGMODE_DISPLACEMENT      1
+#define VS_SHADINGMODE_VECTORUI          2
+#define VS_SHADINGMODE_TERRAIN           3
+#define VS_SHADINGMODE_VOLUME            4
+#define VS_SHADINGMODE_MODEL_TRIANGLE_ID 5
+#define VS_SHADINGMODE_REFLECTION        6
+#define VS_SHADINGMODE_CLOAKING          7
+
+// lighting.fx light filters / light modes / vertex-lighting modes.  (Prefixed so
+// they cannot be confused with the pixel root's copies — separate translation
+// units, but the VS specialisations differ: isPerPixel is always false here.)
+#define VS_ALL_LIGHTS                       0
+#define VS_EXCLUDE_SHADOWLIGHT              1
+#define VS_SHADOWLIGHT_ONLY                 2
+#define VS_NO_LOCAL_LIGHTS_MODE             0
+#define VS_DEFERRED_LIGHTING_MODE           1
+#define VS_VERTEX_SINGLEPASS_LIGHTING_MODE  2
+#define VS_PIXEL_SINGLEPASS_LIGHTING_MODE   3
+#define VS_VERTEXLIGHTING_NONE              0
+#define VS_VERTEXLIGHTING_FULL              1
+#define VS_VERTEXLIGHTING_PARTIAL           2
+#define VS_BLINN_SHADING                    0
+#define VS_KAJIYAKAY_SHADING                1
+
+#define MAX_DIRECTIONAL_LIGHTS 3
+#define MAX_POINT_LIGHTS       3
+#define MAX_SPOTLIGHTS         7
+
+// vsskinning.fx / vsuvmapping.fx / shadersystem.fx / vsvertexwarp.fx bounds.
+#define MAX_BONE_MATRICES  64
+#define MAX_UV_EMITTERS    8
+#define MAX_SPLATS         8
+#define MAX_WARPS          1
+
+// ---------------------------------------------------------------------------
+// Ribbon family (ribbon.fx).  Axis widths/positions come from Ribbon_BuildFamily
+// in the retail binary — see tools/sc2_family_decode.FAMILY_OWN_AXES.
+// ---------------------------------------------------------------------------
+#ifndef b_iRibbonType
+#define b_iRibbonType 0
+#endif
+#ifndef b_iRibbonSizeInterpolation
+#define b_iRibbonSizeInterpolation 0
+#endif
+#ifndef b_iRibbonColorInterpolation
+#define b_iRibbonColorInterpolation 0
+#endif
+#ifndef b_iRibbonSimTech
+#define b_iRibbonSimTech 0
+#endif
+#ifndef b_precomputedAge
+#define b_precomputedAge 0
+#endif
+#ifndef b_precomputedTangent
+#define b_precomputedTangent 0
+#endif
+#ifndef b_proceduralPosition
+#define b_proceduralPosition 0
+#endif
+#ifndef b_computeUFromAge
+#define b_computeUFromAge 0
+#endif
+#ifndef b_ribbonLocalSpace
+#define b_ribbonLocalSpace 0
+#endif
+#ifndef b_clampTail
+#define b_clampTail 0
+#endif
+#ifndef b_tintRibbonRed
+#define b_tintRibbonRed 0
+#endif
+#ifndef b_gpuSplineRibbon
+#define b_gpuSplineRibbon 0
+#endif
+#ifndef b_compressedVertex
+#define b_compressedVertex 0
+#endif
+#ifndef b_splineRibbon
+#define b_splineRibbon 0
+#endif
+
+#define RIBBON_SIM_GPUONLY                   0
+#define RIBBON_SIM_SPLINE_RIBBON             1
+#define RIBBON_SIM_MIXED                     2
+#define RIBBON_SIM_MIXED_PRECOMPUTED_TANGENT 3
+#define RIBBON_SIM_LEGACY                    4
+
+#define RIBBON_BILLBOARD 0
+#define RIBBON_PLANAR    1
+#define RIBBON_CYLINDER  2
+#define RIBBON_STAR      3
+
+// ribbonparticlecommon.fx keyframe interpolation modes (e_im* on the C++ side).
+#define INTERPOLATION_LINEAR             0
+#define INTERPOLATION_LINEAR_SMOOTH      1
+#define INTERPOLATION_BEZIER             2
+#define INTERPOLATION_LINEAR_WITH_HOLD   3
+#define INTERPOLATION_BEZIER_WITH_HOLD   4
+
+// shadersystem.fx — must match c_ribbonMaxBatchCount / c_particleMaxBatchCount
+// and c_ribbonMaxBatchIndexRemappingTableSize on the C++ side.
+#define MAX_BATCHED_PARTICLES                8
+#define MAX_BATCHED_RIBBONS                  MAX_BATCHED_PARTICLES
+#define MAX_BATCH_INDEX_REMAPPING_TABLE_SIZE 32
+
+// ---------------------------------------------------------------------------
+// Particle family (particle.fx).  Axis widths/positions come from
+// Particle_BuildFamily — see tools/sc2_family_decode.FAMILY_OWN_AXES.
+// ---------------------------------------------------------------------------
+#ifndef b_iInstanceType
+#define b_iInstanceType 0
+#endif
+#ifndef b_localSpace
+#define b_localSpace 0
+#endif
+#ifndef b_useProceduralPosition
+#define b_useProceduralPosition 0
+#endif
+#ifndef b_iParticleSizeInterpolation
+#define b_iParticleSizeInterpolation 0
+#endif
+#ifndef b_iParticleColorInterpolation
+#define b_iParticleColorInterpolation 0
+#endif
+#ifndef b_iParticleRotationInterpolation
+#define b_iParticleRotationInterpolation 0
+#endif
+#ifndef b_randomFlipBookStart
+#define b_randomFlipBookStart 0
+#endif
+#ifndef b_fixedTailLength
+#define b_fixedTailLength 0
+#endif
+#ifndef b_clampedTailLength
+#define b_clampedTailLength 0
+#endif
+
+#define PARTICLE_BILLBOARD            0
+#define PARTICLE_TAIL                 1
+#define PARTICLE_FACE_TRAVEL_DIR      2
+#define PARTICLE_FACE_WORLD_DIR       3
+#define PARTICLE_SINGLE_AXIS          4
+#define PARTICLE_TERRAIN_ORIENTED     5
+#define PARTICLE_TERRAIN_DIR_ORIENTED 6
+#define PARTICLE_EMITTER_ORIENTED     7
+#define PARTICLE_PHYSICS_ORIENTED     8
+#define PARTICLE_PINNED               9
+#define PARTICLE_TRAIL                10
+
+// `int b_UVRandomOffsetEnable[8]` is an InitShader-filled ARRAY like
+// b_iUVMapping (see above), so the driver passes it per slot as SC2_UVRANDOM<i>.
+// particle.fx is the only root that reads it.
+#ifndef SC2_UVRANDOM0
+#define SC2_UVRANDOM0 0
+#endif
+#ifndef SC2_UVRANDOM1
+#define SC2_UVRANDOM1 0
+#endif
+#ifndef SC2_UVRANDOM2
+#define SC2_UVRANDOM2 0
+#endif
+#ifndef SC2_UVRANDOM3
+#define SC2_UVRANDOM3 0
+#endif
+#ifndef SC2_UVRANDOM4
+#define SC2_UVRANDOM4 0
+#endif
+#ifndef SC2_UVRANDOM5
+#define SC2_UVRANDOM5 0
+#endif
+#ifndef SC2_UVRANDOM6
+#define SC2_UVRANDOM6 0
+#endif
+#ifndef SC2_UVRANDOM7
+#define SC2_UVRANDOM7 0
+#endif
+
+// foliage.fx bounds (must match c_foliagePointsPerCell / c_FoliageUVRange).
+#define FOLIAGE_GRID_SIZE  8
+#define FOLIAGE_UV_RANGE   32.0f
+
+// common.fx:10 — terrain height range (DecodeZOffset).
+#define c_terrainMinHeight (-100.0f)
+#define c_terrainMaxHeight ( 100.0f)
+
+#endif  // SC2_MODEL_VS_DEFINES_H

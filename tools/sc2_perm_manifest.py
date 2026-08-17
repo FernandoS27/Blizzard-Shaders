@@ -110,8 +110,10 @@ def _decode_perm(family, stage, vec):
     store bv/live inline for at-a-glance inspection; undecodable families keep the
     raw vec."""
     import sc2_family_decode as fd
-    if family in fd.DEFAULT_PS_FAMILIES and stage == "ps":
+    if stage == "ps" and family in fd.DEFAULT_PS_FAMILIES:
         return {}                       # compact — decode from key on demand
+    if stage == "vs" and family in fd.DEFAULT_VS_FAMILIES:
+        return {}                       # ditto: the VS shares the family schema
     r = fd.decode_perm(family, stage, vec)
     if r is not None:
         bv, live = r

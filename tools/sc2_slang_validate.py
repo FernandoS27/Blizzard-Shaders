@@ -243,12 +243,15 @@ def compile_slang(slang_file, entry, stage, defines, tmp_path,
 # reference leg: original .fx -> ps_5_0/vs_5_0 (fxc), returns asm
 # ---------------------------------------------------------------------------
 def compile_reference(entry_file, entry, stage, b_values, live, tmp_path,
-                      uv_mappings=None):
+                      uv_mappings=None, inject_preamble=True,
+                      uv_random_offsets=None):
     if stage == "ps":
         return bm.compile_native_ps(entry_file, entry, b_values, live, tmp_path,
-                                    uv_mappings=uv_mappings)
+                                    uv_mappings=uv_mappings,
+                                    inject_preamble=inject_preamble)
     return bm.compile_native_vs(entry_file, entry, b_values, live, tmp_path,
-                                uv_mappings=uv_mappings)
+                                uv_mappings=uv_mappings,
+                                uv_random_offsets=uv_random_offsets)
 
 
 # ---------------------------------------------------------------------------
@@ -318,8 +321,13 @@ def compare_d3d11(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
     diffs = {t: 0.0 for t in shared_t}
 
     for _ in range(trials):
-        # one shared random vec4 per input key and per constant name
-        keys = set(v for v in r_in.values()) | set(v for v in c_in.values())
+        # one shared random vec4 per input key and per constant name.  Iterate in a
+        # DETERMINISTIC order (sorted): iterating the raw set assigns rng draws in
+        # Python's hash-randomised set order, so the same perm would get different
+        # random inputs each process run — bit-exact perms still read 0, but any real
+        # divergence's magnitude/threshold flips run-to-run (a validation-noise bug).
+        keys = sorted(set(v for v in r_in.values()) | set(v for v in c_in.values()),
+                      key=lambda k: str(k))
         vals = {}
         for k in keys:
             if k == "HPos":
@@ -405,7 +413,66 @@ def _out_keys(asm, slangc=False):
     return out
 
 
-def compare_vs(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
+# ---------------------------------------------------------------------------
+# ENGINE-LEGAL VALUE DOMAINS
+# ---------------------------------------------------------------------------
+# Some vertex attributes and some constants are not numbers, they are ARRAY
+# INDICES.  A uniform [-1,1] draw would send the lookup far outside the declared
+# array, and the interpreter (rightly) does not bounds-clamp — so the run either
+# dies with "list index out of range" or, worse, silently reads a NEIGHBOURING
+# constant.  That last case is a false failure rather than a crash: the two legs
+# lay their cbuffers out independently (aligned by NAME), so an out-of-range row
+# is a different constant on each leg.
+#
+# Both legs still see the SAME random draw; this only keeps it inside the array.
+#
+#   "ubyte4n" — the stream is D3DCOLOR/ubyte4n and the shader decodes it with
+#               D3DCOLORtoUBYTE4 (`*255.001953`, truncate), so a legal element is
+#               in [0, (n-1)/255].
+#   "uint"    — a true integer attribute (`uint4` in the declaration): the
+#               register holds the integer's BIT PATTERN, not its float value.
+#   "index"   — a float-typed constant the shader truncates to an index (SC2's
+#               batch-index remapping tables are `float p_f...[32]`).
+# Keys are matched against BOTH "<SEMANTIC><INDEX>" (e.g. "TEXCOORD6") and the
+# bare "<SEMANTIC>", so a domain can pin one indexed slot or a whole semantic.
+_VS_INPUT_DOMAINS = {
+    "BLENDINDICES": ("ubyte4n", 64),        # p_mBlendMatrices[64]
+}
+
+
+def _domain_draw(kind, n, rng):
+    """One 4-component raw-register value honouring an index domain."""
+    if kind == "ubyte4n":
+        return [bm._f2b(rng.uniform(0.0, (n - 1) / 255.0)) for _ in range(4)]
+    if kind == "uint":
+        return [rng.randrange(0, n) for _ in range(4)]
+    if kind == "sint":
+        # A signed integer attribute (`int4`/`int2` in the declaration): the
+        # register holds the integer's two's-complement bit pattern.  Not an array
+        # index — the range just keeps the decoded value physically plausible
+        # instead of the ~1e38 a random float's bits would decode to.
+        return [rng.randrange(-n, n) & 0xFFFFFFFF for _ in range(4)]
+    raise ValueError("unknown input domain %r" % (kind,))
+
+
+def _vs_input_value(key, rng, domains=None):
+    """RAW 32-bit register contents for one vertex attribute.
+
+    Returns bit patterns, not floats, so integer-typed attributes can carry a
+    small integer rather than the bits of a float."""
+    if key == "FRONTFACE":
+        return [0xFFFFFFFF] * 4
+    if isinstance(key, tuple):
+        sem, idx = key[0].upper(), key[1]
+        for tbl in (domains or {}, _VS_INPUT_DOMAINS):
+            d = tbl.get("%s%d" % (sem, idx)) or tbl.get(sem)
+            if d is not None:
+                return _domain_draw(d[0], d[1], rng)
+    return [bm._f2b(rng.uniform(-1, 1)) for _ in range(4)]
+
+
+def compare_vs(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None,
+               input_domains=None, const_domains=None):
     """Per-VS-output max abs diff between the fxc reference and slangc candidate.
 
     Mirrors compare_d3d11's constant(by name)/input(by signature)/texture(by
@@ -413,7 +480,10 @@ def compare_vs(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
     TEXCOORD/COLOR interpolants — matched by output-signature semantic, over the
     components each side actually writes.  Both legs are D3D-native (no OpenGL
     clip-space convention), so positions compare directly.  Returns
-    ({output_key: worst_abs_diff}, None) or (None, error_string)."""
+    ({output_key: worst_abs_diff}, None) or (None, error_string).
+
+    `input_domains` / `const_domains` restrict specific attributes / constants to
+    engine-legal ARRAY INDICES — see _VS_INPUT_DOMAINS."""
     nm = name_map or {}
 
     def cn(n):
@@ -422,7 +492,13 @@ def compare_vs(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
     rp = di.Program.from_text(ref_asm)
     cp = di.Program.from_text(cand_asm)
 
-    r_in, c_in = _in_keys(ref_asm), _in_keys(cand_asm)
+    # The candidate leg needs slangc=True on its INPUTS too, not just its outputs:
+    # the ×10 index inflation hits every indexed semantic, so a vertex attribute
+    # declared COLOR1 arrives as COLOR10.  Without this the two legs key that
+    # attribute differently and each gets its own random value — a divergence in
+    # whatever varying reads it, and nowhere else (index-0 attributes are unaffected
+    # because 0*10 == 0, which is why the pixel path never surfaced it).
+    r_in, c_in = _in_keys(ref_asm), _in_keys(cand_asm, slangc=True)
     r_cb, c_cb = _cb(ref_asm), _cb(cand_asm)
     r_out, c_out = _out_keys(ref_asm), _out_keys(cand_asm, slangc=True)
     r_by_k = {k: reg for reg, k in r_out.items()}
@@ -435,28 +511,38 @@ def compare_vs(ref_asm, cand_asm, *, trials=8, seed=0, name_map=None):
     rng = random.Random(seed)
     diffs = {k: 0.0 for k in shared}
 
+    cdom = const_domains or {}
+
+    def _const_draw(name, nfloat):
+        """Values for one named constant, honouring any domain declared on it.
+
+        A domain is either ("index", n) — a float the shader truncates into an
+        array index, so draw exact integers in [0, n) — or a callable
+        `fn(rng, nfloat) -> [float]` for constants with a per-component shape
+        (e.g. a packed float4 whose .w is a divisor and must never be 0)."""
+        d = cdom.get(bm.canon(name))
+        if d is None:
+            return [rng.uniform(-1, 1) for _ in range(nfloat)]
+        if callable(d):
+            return list(d(rng, nfloat))
+        if d[0] == "index":
+            return [float(rng.randrange(0, d[1])) for _ in range(nfloat)]
+        raise ValueError("unknown const domain %r" % (d,))
+
     for _ in range(trials):
         keys = set(r_in.values()) | set(c_in.values())
         vals = {}
-        for k in keys:
-            if k == "FRONTFACE":
-                vals[k] = None
-            else:
-                vals[k] = [rng.uniform(-1, 1) for _ in range(4)]
+        for k in sorted(keys, key=str):
+            vals[k] = _vs_input_value(k, rng, input_domains)
         cbvals = {}
         for n, o, s in r_cb:
-            cbvals.setdefault(n, [rng.uniform(-1, 1) for _ in range(max(1, s // 4))])
+            cbvals.setdefault(n, _const_draw(n, max(1, s // 4)))
         for n, o, s in c_cb:
-            cbvals.setdefault(cn(n), [rng.uniform(-1, 1) for _ in range(max(1, s // 4))])
+            cbvals.setdefault(cn(n), _const_draw(n, max(1, s // 4)))
 
         def mk_in(regmap):
-            out = {}
-            for reg, k in regmap.items():
-                if k == "FRONTFACE":
-                    out[reg] = [0xFFFFFFFF] * 4
-                else:
-                    out[reg] = [bm._f2b(x) for x in vals[k]]
-            return out
+            # vals[] already holds RAW register bit patterns (_vs_input_value).
+            return {reg: list(vals[k]) for reg, k in regmap.items()}
 
         def mk_cb(cb_list, asm, rename):
             cb = [[0, 0, 0, 0] for _ in range(bm.cb_rows(asm))]

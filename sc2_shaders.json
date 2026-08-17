@@ -19,11 +19,110 @@
     "Model": {
       "fx": "model.fx",
       "_comment_ps": "DefaultPixelMain shared by Model/Particle/Ribbon/Foliage; M1 covers the standard shading mode incrementally. perm_count is the retail PS set from the manifest.",
+      "_comment_vs": "ModelVertexMain is Model-specific (the four Default families share only the PIXEL root). The VS permutation set decodes from the SAME family schema as the PS (sc2_family_decode.decode_default_vs) plus b_iBlendWeightCount.",
+      "vs": {
+        "fx_entry": "ModelVertexMain",
+        "slang_entry": "model_vs_main",
+        "perm_count": 25696,
+        "bls_name": "model.bls"
+      },
       "ps": {
         "fx_entry": "DefaultPixelMain",
         "slang_entry": "model_ps_main",
         "perm_count": 50322,
         "bls_name": "model.bls"
+      }
+    },
+    "Foliage": {
+      "fx": "foliage.fx",
+      "_comment_vs": "FoliageVertexMain: compressed vertex stream, fixed Input layout (none of the b_iLayoutHas* axes apply). Shares the Default-family transport/lighting/GenUV bodies. Its section table is the shared one shifted by -8 bits (sc2_family_decode.FAMILY_SECTION_SHIFT).",
+      "_comment_ps": "Foliage has NO dedicated PS entry — foliage.fx uses the shared DefaultPixelMain (slang model_ps_main), same as Model/Ribbon/Particle; only its VS differs. Validated in M2.2. Its own PS perm set + bundle name are what make this a distinct entry.",
+      "vs": {
+        "fx_entry": "FoliageVertexMain",
+        "slang_entry": "foliage_vs_main",
+        "perm_count": 96,
+        "bls_name": "foliage.bls"
+      },
+      "ps": {
+        "fx_entry": "DefaultPixelMain",
+        "slang_entry": "model_ps_main",
+        "perm_count": 349,
+        "bls_name": "foliage.bls"
+      }
+    },
+    "Ribbon": {
+      "fx": "ribbon.fx",
+      "_comment_vs": "RibbonVertexMain: GPU ribbon simulation. b_iRibbonSimTech reshapes VertDecl (SPLINE collapses the stream to position/uv/offset/batch; LEGACY adds the prev/next trail samples). The family's own 23-bit axis header sits at key bit 104 (sc2_family_decode.FAMILY_OWN_AXES, read from Ribbon_BuildFamily), which is what puts its shared sections at +16.",
+      "_comment_ps": "Ribbon has NO dedicated PS entry — ribbon.fx uses the shared DefaultPixelMain (slang model_ps_main). Validated in M2.2 (its few excluded slots are fxc rejecting the ORIGINAL .fx at high b_iSoftShadowTaps, not slang defects).",
+      "vs": {
+        "fx_entry": "RibbonVertexMain",
+        "slang_entry": "ribbon_vs_main",
+        "perm_count": 2192,
+        "bls_name": "ribbon.bls"
+      },
+      "ps": {
+        "fx_entry": "DefaultPixelMain",
+        "slang_entry": "model_ps_main",
+        "perm_count": 3161,
+        "bls_name": "ribbon.bls"
+      }
+    },
+    "Particle": {
+      "fx": "particle.fx",
+      "_comment_vs": "ParticleVertexMain: point-to-quad expansion. Its Input is UNPERMUTED (like Foliage) but carries true integer attributes (int4 vSize/vRotation, int2 vOffset, uint4 iBatchIndex). b_iInstanceType (11 values) picks the quad basis. Own 18-bit axis header at key bit 104; shared sections at +16. The only root that reads b_UVRandomOffsetEnable[].",
+      "_comment_ps": "Particle has NO dedicated PS entry — particle.fx uses the shared DefaultPixelMain (slang model_ps_main). Validated in M2.2 (excluded slots are fxc rejecting the ORIGINAL .fx, not slang defects).",
+      "vs": {
+        "fx_entry": "ParticleVertexMain",
+        "slang_entry": "particle_vs_main",
+        "perm_count": 6154,
+        "bls_name": "particle.bls"
+      },
+      "ps": {
+        "fx_entry": "DefaultPixelMain",
+        "slang_entry": "model_ps_main",
+        "perm_count": 10637,
+        "bls_name": "particle.bls"
+      }
+    },
+    "SplatDirect": {
+      "fx": "splatdirect.fx",
+      "_comment_ps": "SplatDirectPixelMain: stencil-fill wrapper over DefaultPixelMain (own axis b_stencilFillPass). Model PS schema; validated bit-exact in M2.3. VS not yet ported.",
+      "ps": {
+        "fx_entry": "SplatDirectPixelMain",
+        "slang_entry": "splatdirect_ps_main",
+        "perm_count": 3488,
+        "bls_name": "splatdirect.bls"
+      }
+    },
+    "SplatDeferred": {
+      "fx": "splatdeferred.fx",
+      "_comment_ps": "SplatDeferredPixelMain: depth-reconstruction box-render preamble over DefaultPixelMain (3 own axes). Validated bit-exact in M2.3. VS not yet ported.",
+      "ps": {
+        "fx_entry": "SplatDeferredPixelMain",
+        "slang_entry": "splatdeferred_ps_main",
+        "perm_count": 468,
+        "bls_name": "splatdeferred.bls"
+      }
+    },
+    "TerrainBlend": {
+      "fx": "terrainblend.fx",
+      "_comment_ps": "TerrainBlendPixelMain: own-IO terrain/projector texture blending (own schema — 3 axes + Common, 9 blend modes). Validated bit-exact in M2.3. VS not yet ported. inject_preamble=false: terrainblend.fx declares its OWN `VertexTransport` struct, so the shared gen_preamble transport must NOT be injected into the reference compile (it would collide).",
+      "ps": {
+        "fx_entry": "TerrainBlendPixelMain",
+        "slang_entry": "terrainblend_ps_main",
+        "perm_count": 54,
+        "bls_name": "terrainblend.bls",
+        "inject_preamble": false
+      }
+    },
+    "Water": {
+      "fx": "water.fx",
+      "_comment_ps": "WaterPixelMain: own-root PS reusing the shared transport + body stack (own schema — 5 axes + Common/Lighting/FOW). env/cheap/pretty branches. Validated bit-exact in M2. VS not yet ported.",
+      "ps": {
+        "fx_entry": "WaterPixelMain",
+        "slang_entry": "water_ps_main",
+        "perm_count": 66,
+        "bls_name": "water.bls"
       }
     }
   }

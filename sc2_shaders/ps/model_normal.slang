@@ -104,6 +104,51 @@ float3 tangentToWorld(float3 vTextureNormal, float3 vNormal, float3 vTangent, fl
 #endif
 }
 
+// psmaterial.fx : DecodeNormalInternal — the general (layer-parameterised) normal
+// decode.  decodeNormal(vertOut) below is the Normal-layer specialisation; this
+// variant takes an arbitrary layer config + texture (cloaking's CloakingNormal layer).
+// NOTE (.fx quirk): the triplanar atlas params come from the NORMAL layer
+// (p_vNormalAtlasParams), not the passed layer — the .fx's SETUP_LAYER(Normal) inside
+// DecodeNormalInternal makes p_vNormalAtlasParams the atlas source regardless.
+float3 decodeNormalInternal(ModelPSInput vertOut, SLayerConfig cfg,
+                            Texture2D<float4> tLayer, SamplerState sLayer)
+{
+    float3 vNormalWS;
+    float fExtra = 0.0f;
+
+#if b_useNormalMapping
+    if (cfg.b_iLayerEnable)
+    {
+        float4 vUV = getUVEmitter(vertOut, cfg.b_iUVEmitter,
+                                  cfg.p_vMultiplyAddAlphaTrans.w, cfg.p_mUVTransform);
+        float3 vNormalTS;
+        if (!IsTriPlanarMappingFX(cfg.b_iUVMapping))
+            vNormalTS = decodeTextureNormal(tLayer, sLayer, vUV, fExtra);
+        else if (TriPlanarIsLocalFX(cfg.b_iUVMapping))
+            vNormalTS = decodeTriTextureNormal(tLayer, sLayer, vUV, psGlobals.vNormalAtlasParams,
+                            vertOut.TriPlanarWeights(), vertOut.VectorUI0().xyz, fExtra);
+        else
+        {
+            float4 weights = float4(vertOut.FogColor().x, vertOut.FogColor().y, vUV.w, 0.0f);
+            vNormalTS = decodeTriTextureNormal(tLayer, sLayer, vUV, psGlobals.vNormalAtlasParams,
+                            weights, vertOut.Normal().xyz, fExtra);
+        }
+        vNormalWS = tangentToWorld(vNormalTS, vertOut.Normal().xyz,
+                                   vertOut.Tangent().xyz, vertOut.Binormal());
+    }
+    else
+        vNormalWS = normalize(vertOut.Normal().xyz);
+#else
+    vNormalWS = normalize(vertOut.Normal().xyz);
+#endif
+
+#if b_iTwoSided
+    if (vertOut.FrontFace())
+        vNormalWS = -vNormalWS;
+#endif
+    return vNormalWS;
+}
+
 // psmaterial.fx : DecodeNormal(vertOut) -> DecodeNormalInternal.
 float3 decodeNormal(ModelPSInput vertOut)
 {
