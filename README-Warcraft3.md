@@ -7,7 +7,7 @@ An open-source recreation of the shaders used by **Warcraft III: Reforged**, rev
 
 This is the **complete, verified** half of the repo: every shader family the game ships — **SD**, **SD-on-HD**, **HD**, **Crystal**, **water**, **terrain**, **foliage**, **sprite**, **distortion**, **PopcornFX particles**, and the HDR→LDR **tonemap** — is reimplemented in [Slang](https://shader-slang.com/), then re-packed the compiled bytecode back into the game's `.bls` wire format so patched shaders can be dropped into the game. A separate `custom_shaders` module sits on top of the reconstruction for user-authored variants (currently a toon / cel-shaded HD variant). Both the DirectX bundles (`ps/`, `vs/`) and the Metal bundles (`mtlfs/`, `mtlvs/`) are covered; Metal packing only runs when built on macOS, where Apple's Metal compiler is available. An opt-in `--build_extra` mode also packs OpenGL (`glslvs/glslps`), Vulkan (`spvvs/spvps`) and WebGPU (`wgpuvs/wgpups`) BLS bundles for ports / re-implementations that need a non-shipped backend.
 
-Correctness is proven by **bit-identical DXBC** against the retail blobs — see [docs/SHADER_VERIFICATION.md](docs/SHADER_VERIFICATION.md) and the DXBC interpreter harness.
+Correctness is proven by **bit-identical DXBC** against the retail blobs, checked per-permutation by the [tools/shader_diff_all.py](tools/shader_diff_all.py) harness and the [DXBC interpreter](tools/dxbc_interp.py).
 
 ## What's in the repo
 
@@ -20,8 +20,6 @@ Correctness is proven by **bit-identical DXBC** against the retail blobs — see
 | [shader_config.py](shader_config.py) | Loads and merges both JSON files into a single `FamilyConfig` view used by the build scripts. |
 | [compile_all_slang.py](compile_all_slang.py) | Compiles every permutation of every family to a chosen graphics API target (D3D11 by default). |
 | [build_bls.py](build_bls.py) | Packs the compiled DXBC blobs back into `.bls` files using the shipped `.bls` files as binding-metadata templates. With `--build_extra` also packs OpenGL / Vulkan / WebGPU bundles. |
-| [re_shaders/](re_shaders/) | Per-family reverse-engineering notes, extracted retail disassembly, and comparison reports. |
-| [docs/BLS_FILE_FORMAT_SPECIFICATION.md](docs/BLS_FILE_FORMAT_SPECIFICATION.md) | Reverse-engineered BLS wire-format reference — covers the v1.8 / v1.12 / v1.14 outer containers, DX / Metal / extra-backend inner perm layouts, and the `--build_extra` directory conventions. |
 
 ## Shader families
 
@@ -134,7 +132,7 @@ Useful flags:
 
 #### Extra backends
 
-The shipped game only loads DX (`ps/`, `vs/`) and Metal (`mtlfs/`, `mtlvs/`) BLS files. `--build_extra` produces additional BLS bundles for OpenGL, Vulkan and WebGPU using the same v1.8 outer container — see [docs/BLS_FILE_FORMAT_SPECIFICATION.md §3.6](docs/BLS_FILE_FORMAT_SPECIFICATION.md). The inner per-perm wire format mirrors Metal v1.8 (44-byte header + opaque blob + trailing `0x00`); the blob is raw GLSL / WGSL source text or a SPIR-V binary module. These bundles are intended for engine ports / re-implementations rather than the shipped Warcraft III client.
+The shipped game only loads DX (`ps/`, `vs/`) and Metal (`mtlfs/`, `mtlvs/`) BLS files. `--build_extra` produces additional BLS bundles for OpenGL, Vulkan and WebGPU using the same v1.8 outer container. The inner per-perm wire format mirrors Metal v1.8 (44-byte header + opaque blob + trailing `0x00`); the blob is raw GLSL / WGSL source text or a SPIR-V binary module. These bundles are intended for engine ports / re-implementations rather than the shipped Warcraft III client.
 
 To produce the full set:
 

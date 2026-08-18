@@ -11,7 +11,7 @@ All of these games run on a shared lineage of Blizzard engine tech — the same 
 | Game | Status | Details |
 | --- | --- | --- |
 | **Warcraft III: Reforged** | ✅ Complete & verified | [README-Warcraft3.md](README-Warcraft3.md) |
-| **StarCraft II** / **Heroes of the Storm** | ✅ All 18 families reimplemented, validated & packed | [docs/SC2_SHADERS_PLAN.md](docs/SC2_SHADERS_PLAN.md) |
+| **StarCraft II** / **Heroes of the Storm** | ✅ All 18 families reimplemented, validated & packed | [README-Starcraft2.md](README-Starcraft2.md) |
 | **World of Warcraft** | 🔮 Planned | — |
 
 ### Warcraft III: Reforged
@@ -26,14 +26,14 @@ A recreation of the StarCraft II engine's `.fx` über-shaders (shared with Heroe
 
 Unlike Warcraft III — which ships pre-compiled BLS bundles that give a fixed permutation set and an extractable retail-DXBC anchor — SC2 ships a `MSER` `baselinecache.bin` cache with neither: the permutation set had to be *mined* out of the cache, and the retail bytecode is not directly extractable. Both problems are solved, and every shader family is reimplemented in Slang under [sc2_shaders/](sc2_shaders/):
 
-- **Container & compression reversed.** The `baselinecache.bin` / `MSER` format and the StormLib FGK adaptive-Huffman (SComp) decompressor are decoded — see [tools/storm_huffman.py](tools/storm_huffman.py) and [docs/SC2_BASELINECACHE_ANALYSIS.md](docs/SC2_BASELINECACHE_ANALYSIS.md).
-- **Family taxonomy mapped.** All 50 shader entry points and their `b_*` permutation axes are catalogued in [docs/SC2_SHADER_FAMILIES.md](docs/SC2_SHADER_FAMILIES.md) (build 41359: **65,369** unique compiled permutations, **101,184** named retail instances).
+- **Container & compression reversed.** The `baselinecache.bin` / `MSER` format and its compression are decoded — [tools/sc2_cache.py](tools/sc2_cache.py) mines the container and [tools/sc2_d3d_decode.py](tools/sc2_d3d_decode.py) decodes the compressed D3D shader blobs.
+- **Family taxonomy mapped.** All 50 shader entry points and their `b_*` permutation axes are catalogued (build 41359: **65,369** unique compiled permutations, **101,184** named retail instances).
 - **Permutation decode complete.** Every family's key schema is transcribed from the engine's own `<Family>_BuildSection` packing rule, giving the exact `b_*` feature vector behind each retail permutation — per-family manifests under [sc2_perms/](sc2_perms/).
 - **All 18 families reimplemented and validated.** Both stages of every family are ported to Slang and checked **behaviourally bit-exact** against the fxc-compiled original `.fx` for the same decoded permutation, over the *complete* retail permutation set — not a sample.
 - **Packed to BLS v1.14.** [compile_all_sc2.py](compile_all_sc2.py) sweeps every permutation to DXBC and [build_sc2_bls.py](build_sc2_bls.py) packs each family+stage into v1.14 bundles whose slots follow retail cache order — **107,976 permutations across 36 bundles**, each round-trip verified.
 - **Portable across backends.** The same module compiles to D3D12 DXIL, Vulkan SPIR-V, Metal, WGSL and GLSL as well as the shipped D3D11 DXBC — `compile_all_sc2.py --target` selects the API and `--sample N` compiles a subset per family chosen to exercise every `b_*` axis value, so a portability check costs minutes instead of a 108k-permutation sweep. The reconstruction itself is unaffected: the D3D11 bytecode stays byte-identical, so the bundles and the bit-exactness proof are untouched.
 
-**→ The full plan, milestones, and verification strategy live in [docs/SC2_SHADERS_PLAN.md](docs/SC2_SHADERS_PLAN.md); the per-milestone implementation log is in [docs/SC2_SHADERS_IMPLEMENTATION.md](docs/SC2_SHADERS_IMPLEMENTATION.md).**
+**→ The full family list, build instructions, and verification strategy live in [README-Starcraft2.md](README-Starcraft2.md).**
 
 ```sh
 python compile_all_sc2.py --all --jobs 24 --skip-existing   # every perm -> DXBC
@@ -64,21 +64,7 @@ Every sub-project follows the same pipeline:
 | [compile_all_slang.py](compile_all_slang.py) | The permutation sweep engine — compiles every permutation of every family to a chosen graphics API target (D3D11, Metal, GL, Vulkan, WebGPU). |
 | [build_bls.py](build_bls.py) | Packs compiled bytecode into `.bls` bundles. Handles the v1.8 / v1.12 / v1.14 outer containers and the DX / Metal / extra-backend inner layouts. |
 | [shader_config.py](shader_config.py) | Merges the per-project family JSONs into a single config view. |
-| [tools/](tools/) | Reverse-engineering utilities, including the DXBC interpreter and the StormLib SComp / Huffman decompressor shared by the SC2/HotS/Wc3 engines. |
-| [docs/](docs/) | Format specifications and per-game reverse-engineering plans and analyses. |
-| [re_shaders/](re_shaders/) | Per-family retail disassembly, notes, and comparison reports. |
-
-### Reference documentation
-
-| Document | Covers |
-| --- | --- |
-| [docs/BLS_FILE_FORMAT_SPECIFICATION.md](docs/BLS_FILE_FORMAT_SPECIFICATION.md) | The BLS shader-bundle wire format (v1.8 / v1.12 / v1.14). |
-| [docs/SHADER_VERIFICATION.md](docs/SHADER_VERIFICATION.md) | How reconstructed shaders are verified against retail bytecode. |
-| [docs/SC2_BASELINECACHE_ANALYSIS.md](docs/SC2_BASELINECACHE_ANALYSIS.md) | The SC2 `baselinecache.bin` container and its SComp compression. |
-| [docs/SC2_SHADER_FAMILIES.md](docs/SC2_SHADER_FAMILIES.md) | The SC2 family taxonomy and per-family permutation axes. |
-| [docs/SC2_SHADERS_PLAN.md](docs/SC2_SHADERS_PLAN.md) | The plan to reimplement SC2 `.fx` shaders as Slang → BLS v1.14. |
-| [docs/SC2_SHADERS_MODULE_DESIGN.md](docs/SC2_SHADERS_MODULE_DESIGN.md) | The `sc2_shaders` module architecture and validation model. |
-| [docs/SC2_SHADERS_IMPLEMENTATION.md](docs/SC2_SHADERS_IMPLEMENTATION.md) | The per-milestone implementation log (M0–M5) and its measured results. |
+| [tools/](tools/) | Reverse-engineering utilities, including the DXBC interpreter and the SC2 shader-cache miner and decoders. |
 
 ## License
 
