@@ -339,22 +339,34 @@ void vsSkin(inout float4 vPosition, inout float3 vNormal, inout float3 vTangent,
 // ---------------------------------------------------------------------------
 // vsvertexwarp.fx : ApplyWarp / ApplyWarps
 // ---------------------------------------------------------------------------
-float4 vsApplyWarp(float4 vVertexWS, VertexWarp warp)
+// Takes the warp INDEX, and reads the warp's FIELDS — never the VertexWarp
+// as a whole.  slangc's GLSL emitter aborts with "internal error 99999: unexpected IR
+// opcode during code emit" the moment a cbuffer struct holding a `row_major`
+// matrix becomes a value: passing it to a function trips it, and so does copying
+// it into a local (slangc 2026.1 / 2026.5.2 / 2026.8.1 — the D3D, SPIR-V, Metal
+// and WGSL backends all emit either form fine).  Reading the three members separately
+// is the shape that survives.  MAX_WARPS is 1 and the index is a compile-time
+// constant, so the D3D bytecode is identical to the by-value version's.
+float4 vsApplyWarp(float4 vVertexWS, int iWarp)
 {
+    row_major float3x4 mWarpTransform    = vsGlobals.warps[iWarp].vTransform;
+    row_major float3x4 mWarpInvTransform = vsGlobals.warps[iWarp].vInvTransform;
+    float2             vStrengthRadius   = vsGlobals.warps[iWarp].vStrengthRadius;
+
     // Put in warp space.
-    float3 vVertex = mul(warp.vInvTransform, vVertexWS);
-    float3 vModelPos = mul(warp.vInvTransform,
+    float3 vVertex = mul(mWarpInvTransform, vVertexWS);
+    float3 vModelPos = mul(mWarpInvTransform,
                            float4(vsGlobals.vVertexWarpModelPosition, 1.0f));
     vModelPos.z = 0;
 
-    float fModelDistance = saturate(length(vModelPos) / warp.vStrengthRadius.y);
+    float fModelDistance = saturate(length(vModelPos) / vStrengthRadius.y);
     float fOriginalLength = length(vVertex.xy);
 
     // Gradient from 0 to 1.
-    float fGradient = saturate(fOriginalLength / warp.vStrengthRadius.y);
+    float fGradient = saturate(fOriginalLength / vStrengthRadius.y);
     float fSquaredGradient = 1.0f - fGradient * fGradient;
 
-    float fScalar = warp.vStrengthRadius.x;
+    float fScalar = vStrengthRadius.x;
 
     // Put R from -5 to 1.
     float fR = (1.0f - fGradient)
@@ -371,7 +383,7 @@ float4 vsApplyWarp(float4 vVertexWS, VertexWarp warp)
     vVertex = vVertex * fModelDistance;
 
     // Back in world space.
-    vVertexWS.xyz = mul(warp.vTransform, float4(vVertex, 1.0f));
+    vVertexWS.xyz = mul(mWarpTransform, float4(vVertex, 1.0f));
     return vVertexWS;
 }
 
@@ -380,7 +392,7 @@ float4 vsApplyWarp(float4 vVertexWS, VertexWarp warp)
 float4 vsApplyWarps(float4 vVertexWS)
 {
 #if (b_iWarpCount >= 1)
-    vVertexWS = vsApplyWarp(vVertexWS, vsGlobals.warps[0]);
+    vVertexWS = vsApplyWarp(vVertexWS, 0);
 #endif
     return vVertexWS;
 }

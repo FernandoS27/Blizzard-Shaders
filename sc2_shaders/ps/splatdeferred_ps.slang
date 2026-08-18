@@ -67,7 +67,7 @@ public ModelPSOutput splatdeferred_ps_main(ModelPSInput vertOut)
         float4 viewPos = splatReconstructViewPos(depth, viewUV);
         float4 worldPos = mul(viewPos, psGlobals.mViewInvTransform44);
         float4 objPos = mul(worldPos, psGlobals.mWorldInvTransform);
-        clip(0.5f - abs(objPos.xyz) + 0.001f);     // c_fEpsilon = 0.001
+        sc2_clip(0.5f - abs(objPos.xyz) + 0.001f);     // c_fEpsilon = 0.001
     #if SC2_HAS_ViewPos
         vertOut.m_ViewPos = viewPos.xyz;           // WRITE_INTERPOLANT_ViewPos
     #endif

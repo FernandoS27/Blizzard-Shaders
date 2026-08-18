@@ -27,6 +27,9 @@
 
 module sc2_shaders;
 
+// --- Cross-backend intrinsic shims ------------------------------------------
+__include "portable";
+
 // --- Data types -------------------------------------------------------------
 __include "types/simple_io";
 __include "types/model_io";

@@ -359,7 +359,7 @@ public float4 image_ps_main(ImagePSInput IN) : SV_Target0
 
     // common.fx : AlphaTest(1 - cColor.a).
 #if b_iAlphaTest
-    clip((1 - cColor.a) - psGlobals.fAlphaThreshold);
+    sc2_clip((1 - cColor.a) - psGlobals.fAlphaThreshold);
 #endif
 
     return cColor;

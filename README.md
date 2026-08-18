@@ -31,6 +31,7 @@ Unlike Warcraft III — which ships pre-compiled BLS bundles that give a fixed p
 - **Permutation decode complete.** Every family's key schema is transcribed from the engine's own `<Family>_BuildSection` packing rule, giving the exact `b_*` feature vector behind each retail permutation — per-family manifests under [sc2_perms/](sc2_perms/).
 - **All 18 families reimplemented and validated.** Both stages of every family are ported to Slang and checked **behaviourally bit-exact** against the fxc-compiled original `.fx` for the same decoded permutation, over the *complete* retail permutation set — not a sample.
 - **Packed to BLS v1.14.** [compile_all_sc2.py](compile_all_sc2.py) sweeps every permutation to DXBC and [build_sc2_bls.py](build_sc2_bls.py) packs each family+stage into v1.14 bundles whose slots follow retail cache order — **107,976 permutations across 36 bundles**, each round-trip verified.
+- **Portable across backends.** The same module compiles to D3D12 DXIL, Vulkan SPIR-V, Metal, WGSL and GLSL as well as the shipped D3D11 DXBC — `compile_all_sc2.py --target` selects the API and `--sample N` compiles a subset per family chosen to exercise every `b_*` axis value, so a portability check costs minutes instead of a 108k-permutation sweep. The reconstruction itself is unaffected: the D3D11 bytecode stays byte-identical, so the bundles and the bit-exactness proof are untouched.
 
 **→ The full plan, milestones, and verification strategy live in [docs/SC2_SHADERS_PLAN.md](docs/SC2_SHADERS_PLAN.md); the per-milestone implementation log is in [docs/SC2_SHADERS_IMPLEMENTATION.md](docs/SC2_SHADERS_IMPLEMENTATION.md).**
 
@@ -38,6 +39,9 @@ Unlike Warcraft III — which ships pre-compiled BLS bundles that give a fixed p
 python compile_all_sc2.py --all --jobs 24 --skip-existing   # every perm -> DXBC
 python build_sc2_bls.py   --all --verify                    # -> bls_out_sc2_1_14/
 python tools/sc2_validate_all.py                            # slang vs original .fx
+
+# portability check: every family, every other backend, 12 perms per stage
+python compile_all_sc2.py --all --target d3d12,vulkan,webgpu,metal,opengl --sample 12
 ```
 
 ### World of Warcraft (planned)

@@ -415,6 +415,22 @@ float4 ppqDepthEncode(PostProcessQuadPSInput vertOut)
     return vResult;
 }
 
+// p_fBlurWeights read through a function, NOT indexed at the call site.
+//
+// slangc's WGSL backend segfaults (access violation, no diagnostic) whenever an
+// element of a SCALAR array in a constant buffer is passed straight into a call —
+// `float p_fBlurWeights[N]` trips it, `float2 p_vBlurOffsets[N]` right next to it
+// does not.  Reproduced on slangc 2026.1 / 2026.5.2 / 2026.8.1; D3D, SPIR-V and
+// Metal all emit it fine.  Doing arithmetic on the value first does not help (the
+// fold puts the raw load back); taking the INDEX here and returning the load's
+// RESULT does.  Keep this a plain function — `[ForceInline]` reintroduces the
+// crash — and it costs nothing on the D3D path: fxc inlines it straight back, so
+// the DXBC the validation harness checks stays byte-identical.
+float ppqBlurWeight(int i)
+{
+    return psGlobals.fBlurWeights[i];
+}
+
 // pspostprocess.fx : GaussSample — one weighted tap, with the optional viewport
 // clamp / interior / weighted / layered rejections.
 float ppqGaussSample(float2 vTapUV, float fWeight, inout float4 vResult, float4 vNormalDepth)
@@ -515,10 +531,10 @@ float4 ppqGaussianBlur(PostProcessQuadPSInput vertOut)
         {
       #if b_iDepthScaledBlur
             fTotalWeight += ppqGaussSample(vCenterTap + depthScale * psGlobals.vBlurOffsets[i],
-                                           psGlobals.fBlurWeights[i], cResult, vNormalDepth);
+                                           ppqBlurWeight(i), cResult, vNormalDepth);
       #else
             fTotalWeight += ppqGaussSample(vCenterTap + psGlobals.vBlurOffsets[i],
-                                           psGlobals.fBlurWeights[i], cResult, vNormalDepth);
+                                           ppqBlurWeight(i), cResult, vNormalDepth);
       #endif
         }
     }
@@ -528,11 +544,11 @@ float4 ppqGaussianBlur(PostProcessQuadPSInput vertOut)
     {
         if (b_iShowSingleTap >= b_iSampleCount * 2 || (b_iShowSingleTap % b_iSampleCount) == i * 2)
             fTotalWeight += ppqGaussSample(vertOut.GaussianBlurSample(i).xy,
-                                           psGlobals.fBlurWeights[i * 2 + 1], cResult, vNormalDepth);
+                                           ppqBlurWeight(i * 2 + 1), cResult, vNormalDepth);
 
         if (b_iShowSingleTap >= b_iSampleCount * 2 || (b_iShowSingleTap % b_iSampleCount) == i * 2 + 1)
             fTotalWeight += ppqGaussSample(vertOut.GaussianBlurSample(i).zw,
-                                           psGlobals.fBlurWeights[i * 2 + 2], cResult, vNormalDepth);
+                                           ppqBlurWeight(i * 2 + 2), cResult, vNormalDepth);
     }
   #endif
 
@@ -711,7 +727,7 @@ float4 ppqHaloBlur(PostProcessQuadPSInput vertOut)
     minSq = minSq * minSq * HALO_RADIUS_MULTIPLIER * HALO_RADIUS_MULTIPLIER;
 
     // Inside the blurred object: write nothing.
-    clip(minSq - 0.001);
+    sc2_clip(minSq - 0.001);
 
     float offset = psGlobals.vRecipSrcSizeOffset.x;
     for (int i = 1; i < b_iTapCount; i++)
@@ -728,7 +744,7 @@ float4 ppqHaloBlur(PostProcessQuadPSInput vertOut)
     }
 
     // Outside the max radius: write nothing.
-    clip(b_iTapCount * b_iTapCount - minSq);
+    sc2_clip(b_iTapCount * b_iTapCount - minSq);
 
     // Halo mode determines the strength curve.
     float strength = 0.f;
@@ -1458,7 +1474,7 @@ public float4 postprocessquad_ps_main(PostProcessQuadPSInput vertOut) : SV_Targe
 #endif
 
 #if b_iAlphaTest
-    clip(cResult.a - psGlobals.fAlphaThreshold);
+    sc2_clip(cResult.a - psGlobals.fAlphaThreshold);
 #endif
 
     return cResult;

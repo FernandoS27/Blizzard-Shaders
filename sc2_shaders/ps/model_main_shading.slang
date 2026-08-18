@@ -575,7 +575,7 @@ float4 mainShading(ModelPSInput vertOut, out DeferredOutputs def)
 
     // AlphaTest (common.fx).
 #if b_iAlphaTest
-    clip(cResult.a - psGlobals.fAlphaThreshold);
+    sc2_clip(cResult.a - psGlobals.fAlphaThreshold);
 #endif
 
     return cResult;

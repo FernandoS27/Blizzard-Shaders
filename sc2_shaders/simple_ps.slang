@@ -19,7 +19,7 @@ public float4 simple_ps_main(SimplePSInput input) : SV_Target
 {
     float4 cResult = p_sTexture_t.Sample(p_sTexture_s, input.vUV.xy) * input.cColor;
 #if b_iAlphaTest
-    clip(cResult.a - p_fAlphaThreshold);
+    sc2_clip(cResult.a - p_fAlphaThreshold);
 #endif
     return cResult;
 }
