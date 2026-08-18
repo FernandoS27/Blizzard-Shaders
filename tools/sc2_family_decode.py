@@ -307,6 +307,71 @@ def _decode_simple_vs(vec):
 
 
 # ---------------------------------------------------------------------------
+# THE OWN-ROOT VERTEX STAGES (SplatDirect / SplatDeferred / TerrainBlend / Water)
+# ---------------------------------------------------------------------------
+# A family's PermSchema covers BOTH stages (design §2), so none of these four needs
+# a new section table: each reuses the very layout its already-validated PIXEL
+# decode uses.  What differs is only the axis SUBSET, because a vertex include
+# closure is a different set of headers than a pixel one.
+#
+# TerrainBlend and Water turn out to need no subset at all — terrainblend.fx's VS
+# branches on `b_iTerrainBlendMode` (+ the unconditional clip planes) and water.fx's
+# on `b_iCheapWater` / `b_useShadows` / the fog + lighting axes, every one of which
+# the pixel decode already produces.  Their VS decode IS their PS decode.
+#
+# The two splat roots do need the vertex-only additions `decode_default_vs`
+# documents: the `int b_iUVMapping[8]` / `b_UVRandomOffsetEnable[8]` ARRAY elements
+# (InitShader-filled, so `scan_b_tokens` never classes them as defines and
+# `decode_ps` never copies them out of MainShading) — the emitter loop dispatches
+# `GenUV` on exactly those.  They do NOT get VertexWarp: splatdirect.fx /
+# splatdeferred.fx include neither VSVertexWarp.fx nor VSSkinning.fx, matching their
+# BuildFamily link lists, which append MainShading without VertexWarp.  So there is
+# also no `b_iBlendWeightCount` here — it is MODEL's own-axis block, not a shared
+# axis, and these two families spend their own header bits on the splat axes below.
+_SPLAT_VS_SECTIONS = ("Common", "Lighting", "MainShading", "TerrainDoodad", "FOW")
+
+
+def _decode_splat_vs(vec, own):
+    """(b_values, live) for a splat VERTEX key.  `own` is the family's own-axis
+    block as (name, physical_bit, width) triples — the same bits its PS decode
+    reads, since one schema covers both stages."""
+    import sc2_model_key_decode as K
+    allb, known = _default_ps_ctx()
+    bv = {b: 0 for b in allb}
+    for name in _SPLAT_VS_SECTIONS:
+        bv.update(K.decode_section(vec, name))
+    # Material GLOBALS carry the splat / triplanar / parallax axes the vertex
+    # bodies branch on (the 18-layer array in the same section is pixel-only).
+    bv.update(K.decode_material(vec))
+    ms = K.decode_section(vec, "MainShading")
+    for i in range(8):
+        bv["b_iUVMapping%d" % i] = ms["b_iUVMapping%d" % i]
+        bv["b_UVRandomOffsetEnable%d" % i] = ms["b_UVRandomOffsetEnable%d" % i]
+    for axis, base, width in own:
+        bv[axis] = K.extract(vec, base, width)
+    bv = K.derive_feature_axes(bv, vec)
+    return bv, sorted(K.live_names(vec, known))
+
+
+def _decode_splatdirect_vs(vec):
+    return _decode_splat_vs(vec, [("b_stencilFillPass", SPLAT_STENCIL_FILL_BIT, 1)])
+
+
+def _decode_splatdeferred_vs(vec):
+    # Same three own axes the PS reads; here b_iUseMinimumHeight is the LIVE one
+    # (splatdeferred.fx clamps the reconstructed box height in the vertex stage)
+    # and b_iSplatBoxRender/b_iUseHardwareDepth are the pixel-side pair.
+    return _decode_splat_vs(vec, [("b_iUseHardwareDepth", 104, 1),
+                                  ("b_iUseMinimumHeight", 105, 1),
+                                  ("b_iSplatBoxRender", 106, 1)])
+
+
+# TerrainBlend / Water: one schema, one decode, both stages (see above).
+_decode_terrainblend_vs = _decode_terrainblend_ps
+_decode_water_vs = _decode_water_ps
+
+
+# ---------------------------------------------------------------------------
 # SELF-CONTAINED FAMILIES  (the M4 long tail)
 # ---------------------------------------------------------------------------
 # Each entry is transcribed from that family's `<Name>_BuildSection` in sc2.i64:
@@ -450,6 +515,10 @@ _SCHEMAS = {
     ("SplatDeferred", "ps"): _decode_splatdeferred_ps,
     ("TerrainBlend", "ps"): _decode_terrainblend_ps,
     ("Water", "ps"): _decode_water_ps,
+    ("SplatDirect", "vs"): _decode_splatdirect_vs,
+    ("SplatDeferred", "vs"): _decode_splatdeferred_vs,
+    ("TerrainBlend", "vs"): _decode_terrainblend_vs,
+    ("Water", "vs"): _decode_water_vs,
 }
 
 

@@ -378,4 +378,42 @@
 #define c_terrainMinHeight (-100.0f)
 #define c_terrainMaxHeight ( 100.0f)
 
+// ---------------------------------------------------------------------------
+// M5 — the four own-ROOT vertex families (splatdirect / splatdeferred /
+// terrainblend / water).  Their own key axes come from the same family schema
+// their (already validated) PIXEL decode uses; see tools/sc2_family_decode.
+// ---------------------------------------------------------------------------
+#ifndef b_stencilFillPass
+#define b_stencilFillPass 0
+#endif
+#ifndef b_iUseHardwareDepth
+#define b_iUseHardwareDepth 0
+#endif
+#ifndef b_iUseMinimumHeight
+#define b_iUseMinimumHeight 0
+#endif
+#ifndef b_iSplatBoxRender
+#define b_iSplatBoxRender 0
+#endif
+#ifndef b_iTerrainBlendMode
+#define b_iTerrainBlendMode 0
+#endif
+#ifndef b_iCheapWater
+#define b_iCheapWater 0
+#endif
+
+// terrainblend.fx blend modes.
+#define VS_BLEND_TERRAIN_DIFFUSE       0
+#define VS_BLEND_TERRAIN_NORMAL        1
+#define VS_BLEND_PROJECTOR_DIFFUSE     2
+#define VS_BLEND_PROJECTOR_NORMAL      3
+#define VS_BLEND_COPY_TERRAIN_SPEC     4
+#define VS_BLEND_PROJECTOR_SPEC        5
+#define VS_BLEND_COPY_FINAL_SPEC       6
+#define VS_BLEND_TERRAIN_DIFFUSEHEIGHT 7
+#define VS_BLEND_TERRAIN_NORMALHEIGHT  8
+
+// water.fx : c_maxNumWaves — the Gerstner wave-vector table bound.
+#define MAX_WATER_WAVES 64
+
 #endif  // SC2_MODEL_VS_DEFINES_H

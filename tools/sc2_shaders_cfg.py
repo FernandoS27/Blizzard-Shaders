@@ -169,6 +169,10 @@ def perm_defines(family, stage, bv, live):
     return defs
 
 
+# shadersystem.fx : MAX_SPLATS — the per-splat uniform array bound the batch-index
+# remapping table has to land inside.
+MAX_SPLATS = 8
+
 # ---------------------------------------------------------------------------
 # Engine-legal value domains for the behavioural comparator.
 # ---------------------------------------------------------------------------
@@ -192,6 +196,12 @@ VS_INPUT_DOMAINS = {
                  "TEXCOORD0": ("sint", 4096),     # vSize    (scaled by 1/256)
                  "TEXCOORD2": ("sint", 4096),     # vRotation(scaled by 1/32)
                  "NORMAL":    ("sint", 2)},       # vOffset  (quad corner, -1/0/1)
+    # SPLAT_VERTEX_FORMAT makes vBlendIndices a TRUE `uint4` (vsmodelvertexformat.fx),
+    # not the D3DCOLOR bytes the shared BLENDINDICES default assumes — the register
+    # holds the integer itself.  splatdirect.fx uses [0] two ways: as the index into
+    # p_fBatchIndexRemappingTable[32], and (under b_stencilFillPass) directly into
+    # p_vSplatVolumeCorner[8*MAX_SPLATS], so the tighter bound of the two applies.
+    "SplatDirect": {"BLENDINDICES": ("uint", 32)},
 }
 
 def _particle_flipbook_const(rng, nfloat):
@@ -240,6 +250,15 @@ VS_CONST_DOMAINS = {
         "vSystemTime_ElementScale_FlipbookMidKeyTime_FlipbookColumnCount":
             _particle_flipbook_const,
     },
+    # splatdirect.fx: `(int)(p_fBatchIndexRemappingTable[i] + 0.1)` selects the
+    # per-splat uniform arrays (all [MAX_SPLATS]) and the splat projection matrix,
+    # so the table's VALUES must themselves be legal splat indices.
+    "SplatDirect": {"fBatchIndexRemappingTable": ("index", MAX_SPLATS)},
+    # water.fx: `for (i = 0; i < p_fNumWaveVectors.x; i++)` over p_vWaveVectors[64].
+    # This one is a LOOP BOUND, not just an index — an unconstrained draw asks the
+    # interpreter for ~1e38 iterations.  A small count keeps the sweep cheap and both
+    # legs still see the same value.
+    "Water": {"fNumWaveVectors": ("index", 8)},
 }
 
 

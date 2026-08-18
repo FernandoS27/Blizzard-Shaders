@@ -103,6 +103,19 @@ __include "ribbon_vs";
 __include "particle_vs";
 
 // ---------------------------------------------------------------------------
+// M5 - the own-ROOT vertex stages of the four families whose PIXEL roots landed in
+// M2.  Each decodes from the SAME family key schema its pixel stage already uses.
+// ---------------------------------------------------------------------------
+// SplatDirect (splatdirect.fx) - the legacy batched splat, on the shared transport.
+__include "vs/splatdirect_vs";
+// SplatDeferred (splatdeferred.fx) - the single-splat deferred variant.
+__include "vs/splatdeferred_vs";
+// TerrainBlend (terrainblend.fx) - own-IO terrain/projector blend quad.
+__include "vs/terrainblend_vs";
+// Water (water.fx) - the Gerstner wave surface, on the shared transport.
+__include "vs/water_vs";
+
+// ---------------------------------------------------------------------------
 // M4 - self-contained families (own IO structs, own small key schemas).
 // ---------------------------------------------------------------------------
 // RenderPlane (renderplane.fx) - the FOW black-mask plane.

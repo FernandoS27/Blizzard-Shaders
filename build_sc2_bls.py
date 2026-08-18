@@ -114,27 +114,38 @@ def verify_bls(path, expected_perms):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Bundle sc2_shaders perms into BLS.")
-    ap.add_argument("--family", required=True)
+    ap.add_argument("--family", help="one family; omit with --all")
+    ap.add_argument("--all", action="store_true",
+                    help="every family in sc2_shaders.json (M5.1)")
     ap.add_argument("--stage", choices=["ps", "vs"], help="default: both")
     ap.add_argument("--slang-out", default=str(REPO_ROOT / "sc2_slang_out"))
     ap.add_argument("--output", default=str(REPO_ROOT / "bls_out_sc2"))
     ap.add_argument("--verify", action="store_true")
     args = ap.parse_args(argv)
+    if not args.all and not args.family:
+        ap.error("pass --family <name> or --all")
 
     out_root = args.output + "_1_14"
+    families = sorted(cfg.load_families()) if args.all else [args.family]
     stages = [args.stage] if args.stage else ["vs", "ps"]
-    print("building %s -> %s" % (args.family, out_root))
+    print("building %s -> %s" % (", ".join(families), out_root))
     rc = 0
-    for st in stages:
-        r = build_stage(args.family, st, args.slang_out, out_root)
-        if r is None:
-            continue
-        path, n = r
-        if args.verify:
-            ok, msg = verify_bls(path, n)
-            print("    verify %s: %s" % ("OK" if ok else "FAIL", msg))
-            if not ok:
-                rc = 1
+    bundles = perms = 0
+    for fam in families:
+        for st in stages:
+            r = build_stage(fam, st, args.slang_out, out_root)
+            if r is None:
+                continue
+            path, n = r
+            bundles += 1
+            perms += n
+            if args.verify:
+                ok, msg = verify_bls(path, n)
+                print("    verify %s: %s" % ("OK" if ok else "FAIL", msg))
+                if not ok:
+                    rc = 1
+    if args.all:
+        print("\n%d bundles, %d permutation slots -> %s" % (bundles, perms, out_root))
     return rc
 
 

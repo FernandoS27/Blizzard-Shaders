@@ -211,8 +211,14 @@ def gen_preamble(stage, live, b_values, entry_text, entry, uv_mappings=None,
                 m.append("#define WRITE_INTERPOLANT_SWIZZLE_%s(s,v)" % n)
         if has_uv:
             m.append("#define WRITE_INTERPOLANT_UV(i,v) vertOut.sc2UV[i] = (v)")
+            # The swizzled form the SPLAT roots use — splatdeferred.fx writes only the
+            # .xy of each emitter slot (`WRITE_INTERPOLANT_SWIZZLE_UV(i, xy, ...)`).
+            # Without it fxc sees an undeclared *function* call and rejects the
+            # ORIGINAL, i.e. the family has no reference at all.
+            m.append("#define WRITE_INTERPOLANT_SWIZZLE_UV(i,s,v) vertOut.sc2UV[i].s = (v)")
         else:
             m.append("#define WRITE_INTERPOLANT_UV(i,v)")
+            m.append("#define WRITE_INTERPOLANT_SWIZZLE_UV(i,s,v)")
         # BackBufferUV / Downscale write no-ops unless live
         for n in ("BackBufferUV", "DownscaleUV0", "DownscaleUV1"):
             if n not in live:

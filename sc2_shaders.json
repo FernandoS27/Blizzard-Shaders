@@ -86,7 +86,14 @@
     },
     "SplatDirect": {
       "fx": "splatdirect.fx",
-      "_comment_ps": "SplatDirectPixelMain: stencil-fill wrapper over DefaultPixelMain (own axis b_stencilFillPass). Model PS schema; validated bit-exact in M2.3. VS not yet ported.",
+      "_comment_ps": "SplatDirectPixelMain: stencil-fill wrapper over DefaultPixelMain (own axis b_stencilFillPass). Model PS schema; validated bit-exact in M2.3.",
+      "_comment_vs": "SplatDirectVertexMain (M5): own ROOT on the SHARED transport. Same family schema as the PS (own axis b_stencilFillPass@104 + Model's sections, minus VertexWarp -- splatdirect.fx includes neither VSVertexWarp.fx nor VSSkinning.fx). SPLAT_VERTEX_FORMAT makes vBlendIndices a true uint4, and it indexes the per-splat uniform arrays through p_fBatchIndexRemappingTable -- both pinned by VS_INPUT_DOMAINS / VS_CONST_DOMAINS.",
+      "vs": {
+        "fx_entry": "SplatDirectVertexMain",
+        "slang_entry": "splatdirect_vs_main",
+        "perm_count": 196,
+        "bls_name": "splatdirect.bls"
+      },
       "ps": {
         "fx_entry": "SplatDirectPixelMain",
         "slang_entry": "splatdirect_ps_main",
@@ -96,7 +103,14 @@
     },
     "SplatDeferred": {
       "fx": "splatdeferred.fx",
-      "_comment_ps": "SplatDeferredPixelMain: depth-reconstruction box-render preamble over DefaultPixelMain (3 own axes). Validated bit-exact in M2.3. VS not yet ported.",
+      "_comment_ps": "SplatDeferredPixelMain: depth-reconstruction box-render preamble over DefaultPixelMain (3 own axes). Validated bit-exact in M2.3.",
+      "_comment_vs": "SplatDeferredVertexMain (M5): own ROOT on the SHARED transport, position+normal stream only. Same family schema as the PS; none of its three own axes reaches the vertex closure. Every retail VS perm has b_iUVEmitterCount=0 and b_iLayoutHasColor=0 -- the latter matters, because the original's HasColor_ block reads a cColor its SplatVertIn does not declare.",
+      "vs": {
+        "fx_entry": "SplatDeferredVertexMain",
+        "slang_entry": "splatdeferred_vs_main",
+        "perm_count": 12,
+        "bls_name": "splatdeferred.bls"
+      },
       "ps": {
         "fx_entry": "SplatDeferredPixelMain",
         "slang_entry": "splatdeferred_ps_main",
@@ -106,7 +120,15 @@
     },
     "TerrainBlend": {
       "fx": "terrainblend.fx",
-      "_comment_ps": "TerrainBlendPixelMain: own-IO terrain/projector texture blending (own schema \u00e2\u20ac\u201d 3 axes + Common, 9 blend modes). Validated bit-exact in M2.3. VS not yet ported. inject_preamble=false: terrainblend.fx declares its OWN `VertexTransport` struct, so the shared gen_preamble transport must NOT be injected into the reference compile (it would collide).",
+      "_comment_ps": "TerrainBlendPixelMain: own-IO terrain/projector texture blending (own schema \u00e2\u20ac\u201d 3 axes + Common, 9 blend modes). Validated bit-exact in M2.3. inject_preamble=false: terrainblend.fx declares its OWN `VertexTransport` struct, so the shared gen_preamble transport must NOT be injected into the reference compile (it would collide).",
+      "_comment_vs": "TerrainBlendVertexMain (M5): own IO on both stages, so inject_preamble=false here too. Its 9 perms are exactly the 9 blend modes; only b_iTerrainBlendMode reaches the vertex closure.",
+      "vs": {
+        "fx_entry": "TerrainBlendVertexMain",
+        "slang_entry": "terrainblend_vs_main",
+        "perm_count": 9,
+        "bls_name": "terrainblend.bls",
+        "inject_preamble": false
+      },
       "ps": {
         "fx_entry": "TerrainBlendPixelMain",
         "slang_entry": "terrainblend_ps_main",
@@ -117,7 +139,14 @@
     },
     "Water": {
       "fx": "water.fx",
-      "_comment_ps": "WaterPixelMain: own-root PS reusing the shared transport + body stack (own schema \u00e2\u20ac\u201d 5 axes + Common/Lighting/FOW). env/cheap/pretty branches. Validated bit-exact in M2. VS not yet ported.",
+      "_comment_ps": "WaterPixelMain: own-root PS reusing the shared transport + body stack (own schema \u00e2\u20ac\u201d 5 axes + Common/Lighting/FOW). env/cheap/pretty branches. Validated bit-exact in M2.",
+      "_comment_vs": "WaterVertexMain (M5): own ROOT on the SHARED transport. Same family schema as the PS. The Gerstner wave loop is bounded by the CONSTANT p_fNumWaveVectors.x, so VS_CONST_DOMAINS pins it to a legal wave-table index; b_iCheapWater skips the waves entirely (and packs Normal/Tangent out).",
+      "vs": {
+        "fx_entry": "WaterVertexMain",
+        "slang_entry": "water_vs_main",
+        "perm_count": 17,
+        "bls_name": "water.bls"
+      },
       "ps": {
         "fx_entry": "WaterPixelMain",
         "slang_entry": "water_ps_main",

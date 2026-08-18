@@ -420,11 +420,19 @@ public struct DefaultVSGlobalsT
     float4 vCreepTextureRotation;
     row_major float4x4 mInstanceTransform;
     float4 vVectorUIColor;
-    float4 vVectorUIInterpolant0;
-    float4 vVectorUIInterpolant1;
-    float4 vVectorUIInterpolant2;
-    float4 vSplatAttenuationPlane;
-    float2 fSplatAttenuationScalar_MinHeight;
+    // model.fx and splatdeferred.fx declare these five as SCALARS; splatdirect.fx
+    // declares the very same names as `[MAX_SPLATS]` arrays (one entry per batched
+    // splat, selected by the remapped batch index).  A name can only be one member
+    // in the shared buffer, so the ARRAY form wins and the scalar roots read element
+    // 0 — the comparator draws each constant at the REFERENCE leg's size, so a scalar
+    // reference fills exactly `[0]` of the candidate's array and leaves the rest 0.
+    // (Renaming instead would break the by-NAME alignment: each leg would get its own
+    // random draw.  See the p_mTransform note above.)
+    float4 vVectorUIInterpolant0[MAX_SPLATS];
+    float4 vVectorUIInterpolant1[MAX_SPLATS];
+    float4 vVectorUIInterpolant2[MAX_SPLATS];
+    float4 vSplatAttenuationPlane[MAX_SPLATS];
+    float2 fSplatAttenuationScalar_MinHeight[MAX_SPLATS];
     float3 vSplatTextureUVector;
 
     // foliage.fx — the per-cell wind/force offsets and the position compression.
@@ -494,5 +502,43 @@ public struct DefaultVSGlobalsT
     float2 vCameraSize;                        // p_vCameraSize
     float2 vSrcSize;                           // p_vSrcSize (vspostprocess.fx)
     float2 vBlurOffsets[b_iSampleCount + 1];   // p_vBlurOffsets (vspostprocess.fx)
+
+    // ---- M5: the four own-ROOT vertex families ------------------------------
+    // splatdirect.fx — the legacy batched splat.  Every per-splat array is indexed
+    // by the REMAPPED batch index (vBlendIndices[0] through
+    // p_fBatchIndexRemappingTable), so the harness pins both to legal ranges
+    // (sc2_shaders_cfg.VS_INPUT_DOMAINS / VS_CONST_DOMAINS).  `ArrayDecl(t)` is a
+    // plain `t` off the BSL path and `floatRef(v)` the identity, so these are scalar
+    // arrays at the HLSL 16-byte element stride.
+    float  fSplatAlphaMultiplier[MAX_SPLATS];      // p_fSplatAlphaMultiplier
+    float4 cVectorUIColors[MAX_SPLATS];            // p_cVectorUIColors
+    float  fBatchIndexRemappingTable[MAX_BATCH_INDEX_REMAPPING_TABLE_SIZE];
+    float4 vSplatVolumeCorner[8 * MAX_SPLATS];     // p_vSplatVolumeCorner
+
+    // splatdeferred.fx — the single-splat deferred variant (scalar uniforms; its
+    // p_vVectorUIInterpolant*/p_vSplatAttenuationPlane/p_fSplatAttenuationScalar_
+    // MinHeight are the arrays above, read at [0]).
+    row_major float4x4 mWorldTransform;    // p_mWorldTransform
+    float4 cVectorUIColor;                 // p_cVectorUIColor (NOT model's p_vVectorUIColor)
+    float4 vTangent;                       // p_vTangent — the splat quad's fixed tangent
+
+    // terrainblend.fx.  `p_vTiling` is ALSO water.fx's, declared float2 there — the
+    // wider float4 wins and water reads .xy (same argument as the splat arrays).
+    float4 vTiling;                        // p_vTiling      (terrainblend + water)
+    float4 vMaskTiling;                    // p_vMaskTiling
+    float3 vCenter;                        // p_vCenter  (p_vSize is renderplane's above)
+    row_major float4x4 mprojectorMatrix;   // p_mprojectorMatrix (lowercase in the .fx)
+
+    // water.fx — the Gerstner wave surface.  p_fNumWaveVectors.x is the wave LOOP
+    // BOUND, hence its VS_CONST_DOMAINS entry: an unconstrained draw would run the
+    // interpolant loop ~1e38 times.
+    row_major float3x4 mView;              // p_mView (a 3x4, applied transposed)
+    row_major float4x4 mUvMatrix;          // p_mUvMatrix
+    float4 vWaveVectors[MAX_WATER_WAVES];  // p_vWaveVectors[c_maxNumWaves]
+    float4 fNumWaveVectors;                // p_fNumWaveVectors
+    float4 vScrollVectors;                 // p_vScrollVectors
+    float3 vWaterScale;                    // p_vWaterScale
+    float  fTime;                          // p_fTime
+    float3 vWaterTranslation;              // p_vWaterTranslation
 };
 ConstantBuffer<DefaultVSGlobalsT> vsGlobals : register(b0);

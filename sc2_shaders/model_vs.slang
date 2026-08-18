@@ -208,9 +208,9 @@ float4 vsEmitModelVertexColor(ModelVSVertex vertIn)
     else if (b_splatTextureProjectorEnabled)
     {
         float a = vsSplatAttenuationProjector(
-            vertIn.vPosition.xyz, vsGlobals.vSplatAttenuationPlane,
-            vsGlobals.fSplatAttenuationScalar_MinHeight.x,
-            vsGlobals.fSplatAttenuationScalar_MinHeight.y);
+            vertIn.vPosition.xyz, vsGlobals.vSplatAttenuationPlane[0],
+            vsGlobals.fSplatAttenuationScalar_MinHeight[0].x,
+            vsGlobals.fSplatAttenuationScalar_MinHeight[0].y);
         // do not use model vertex colour
         return float4(1, 1, 1, a);
     }
@@ -535,16 +535,16 @@ public DefaultVSOutput model_vs_main(ModelVSStreamIn streamIn)
     if (b_iShadingMode == VS_SHADINGMODE_VECTORUI)
     {
 #if SC2_HAS_VectorUI0
-        vertOut.m_VectorUI0 = vsGlobals.vVectorUIInterpolant0;
+        vertOut.m_VectorUI0 = vsGlobals.vVectorUIInterpolant0[0];
 #endif
 #if SC2_HAS_VectorUI1
-        vertOut.m_VectorUI1 = vsGlobals.vVectorUIInterpolant1;
+        vertOut.m_VectorUI1 = vsGlobals.vVectorUIInterpolant1[0];
 #endif
 #if SC2_HAS_VectorUI2
-        vertOut.m_VectorUI2 = vsGlobals.vVectorUIInterpolant2;
+        vertOut.m_VectorUI2 = vsGlobals.vVectorUIInterpolant2[0];
 #endif
 #if SC2_HAS_Vector4
-        vertOut.m_Vector4 = vsGlobals.vSplatAttenuationPlane;
+        vertOut.m_Vector4 = vsGlobals.vSplatAttenuationPlane[0];
 #endif
     }
 
