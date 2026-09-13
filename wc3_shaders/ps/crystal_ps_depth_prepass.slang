@@ -6,10 +6,10 @@
 //
 // The crystal depth prepass computes the same cut-out alpha the lit pass
 // does so the depth buffer agrees with the colour pass on alpha-tested
-// edges. It differs from `depthPrepassBody` only in the Fresnel alpha
-// parameter: crystal remaps that by the refract mask so transparent
-// pixels still produce a visible rim contribution (otherwise the prepass
-// discard mask would under-cover the silhouette).
+// edges. It differs from the 2.0.0 HD alpha prepass (since deleted) only
+// in the Fresnel alpha parameter: crystal remaps that by the refract mask
+// so transparent pixels still produce a visible rim contribution
+// (otherwise the prepass discard mask would under-cover the silhouette).
 //
 // Everything else — the backface discard stub, normal decode, NdotV /
 // edge / cloak-alpha math, and the final TAlpha.test — is shared with
@@ -18,7 +18,7 @@
 
 implementing wc3_shaders;
 
-// Crystal alpha-tested depth prepass. See `depthPrepassBody` for the
+// Crystal alpha-tested depth prepass. See ps/hd_ps_prepass.slang for the
 // algorithm; the single crystal-specific delta is that the Fresnel
 // alpha parameter is remapped by `refractMask` before being used to
 // compute `fresnelContrib`.

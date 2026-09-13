@@ -65,6 +65,65 @@ public struct VSOutput
 #endif
 };
 
+// ---------------------------------------------------------------------------
+// 3.0.0 HD mesh pipeline
+// ---------------------------------------------------------------------------
+
+// HD mesh vertex stream, 3.0.0 layout.
+//
+// Two things differ from the 2.0.0 `VSInput` above and both matter:
+//
+//   * ATTR5 and ATTR6 swapped roles. 3.0.0 puts the bone INDICES on ATTR5 and
+//     the WEIGHTS on ATTR6; 2.0.0 had it the other way round.
+//   * The declaration order is the engine's binding order, with the two
+//     skinning streams sitting between position and normal. Slang assigns
+//     input registers from member order, so writing them in any other order
+//     would produce a different register layout than the shipped shader.
+//
+// As with `VSInput`, every slot is declared on every permutation so the
+// engine's vertex layout stays fixed; `TVF` gates the *reads*, which is what
+// lets the dead transforms fall out per permutation.
+public struct HDVSInput<TVF : IVertexFormat>
+{
+    public [[vk::location(0)]] float3 position    : ATTR0;
+    public [[vk::location(5)]] uint4  boneIndices : ATTR5;
+    public [[vk::location(6)]] float4 weights     : ATTR6;
+    public [[vk::location(1)]] float3 normal      : ATTR1;
+    public [[vk::location(7)]] float4 tangent     : ATTR7;
+    public [[vk::location(2)]] float4 vertColor   : ATTR2;
+    public [[vk::location(3)]] float2 uv0         : ATTR3;
+    public [[vk::location(4)]] float2 uv1         : ATTR4;
+};
+
+// HD mesh vertex-to-pixel payload, 3.0.0 layout.
+//
+// The cascade slots are gone: 2.0.0 projected the position through three
+// cascade matrices into TEXCOORD4-6 behind a `SHADOWS` axis, and 3.0.0 hands
+// the pixel shader the world position once on TEXCOORD10 and lets it do the
+// projection. That is why this struct has no `#if` in it at all — every
+// permutation writes the same eight slots, which is also why the 3.0.0
+// permutation count halved.
+//
+//   TEXCOORD1   .xyz view-space position, .w the signed height above the
+//               water clip plane the pixel shader discards on.
+//   TEXCOORD2   view-space normal. Declared float3, not float4, so the
+//               compiled shader emits `dcl_output o4.xyz` like the original.
+//   TEXCOORD3   .xyz view-space tangent, .w handedness for the bitangent.
+//   TEXCOORD10  world position, homogeneous — shadow cascades, volumetric
+//               fog and the debug stripe all reproject from it.
+//   TEXCOORD11  .xy blight-map UV, .zw zero.
+public struct HDVSOutput
+{
+    public float4 position  : SV_Position;
+    public float4 color     : COLOR0;
+    public float4 texCoord  : TEXCOORD0;
+    public float4 viewPos   : TEXCOORD1;
+    public float3 normalWS  : TEXCOORD2;
+    public float4 tangentWS : TEXCOORD3;
+    public float4 worldPos  : TEXCOORD10;
+    public float4 blightUV  : TEXCOORD11;
+};
+
 // Compact payload used by the SD classic pipeline, which does all
 // lighting in the vertex shader and therefore only needs the lit color,
 // the transformed UVs and a world-space position for fog.

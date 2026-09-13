@@ -25,6 +25,25 @@ public struct PSInput
 #endif
 };
 
+// HD mesh pixel shader input, 3.0.0 layout. Mirrors `HDVSOutput` slot for
+// slot; see vs_io.slang for what each one carries.
+//
+// `viewPos.z` is the view depth every fog mode is evaluated against, and
+// `viewPos.w` the water-clip distance the shader discards on — the two jobs
+// 2.0.0 packed into a single `worldPos.w` scalar, now separated because the
+// real world position travels on its own slot.
+public struct HDPSInput
+{
+    public float4 svPosition : SV_Position;
+    public float4 vertColor  : COLOR0;
+    public float4 uv         : TEXCOORD0;
+    public float4 viewPos    : TEXCOORD1;
+    public float3 normalWS   : TEXCOORD2;
+    public float4 tangentWS  : TEXCOORD3;
+    public float4 worldPos   : TEXCOORD10;
+    public float4 blightUV   : TEXCOORD11;
+};
+
 // HD pixel shader output. When the MRT path is disabled the specular and
 // normal targets are compiled out entirely thanks to `Conditional`, so
 // the shader binds a single render target just like the non-MRT builds.

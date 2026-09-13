@@ -1682,9 +1682,10 @@ def main():
     for fam in family_names:
         cfg = FAMILIES[fam]
         num_perms = cfg.perm_count
-        # `toon_hd_*` ships no dedicated BLS — effective_template falls
-        # back to the HD template for its resource/binding metadata while
-        # the rebuilt file is still written under the family's own name.
+        # A variant family ships no BLS of its own — effective_template falls
+        # back to the template it declares (the shipped family it clones) for
+        # resource/binding metadata, while the rebuilt file is still written
+        # under the variant's own name.
         template_name = cfg.effective_template
 
         # ---------- DX (D3D11 SM5) ----------

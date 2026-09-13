@@ -1,4 +1,4 @@
-"""MADD (Material Additional Data) decoder for Heroes of the Storm .m3 models.
+"""MADD (Data-Driven Material) decoder for Heroes of the Storm .m3 models.
 
 MADD's `valuePath` field is not a path. It is a Ref<CHAR> pointing at a binary
 blob that holds a **two-level, CRC32-keyed property dictionary**:
@@ -54,13 +54,20 @@ class M3:
         return list(struct.unpack_from('<%dI' % count, self.d, e['off']))
 
 
-# MADD record: 8 (v0-v1) or 9 (v2+) References, then trailing scalars.
+# MADD record = SDataDrivenMaterialData (the engine's own name for the chunk).
+#
+# The v3 loader fixup (Heroes.decrypted, sub_1027987E0) resolves exactly FIVE
+# References -- at bytes 0, 12, 24, 36, 48 -- and never touches bytes 60..107,
+# which are zero in all 2,132 v3 records. WhiteoutLib declares 9 refs; both
+# readings sum to 160, but the engine only treats five as references.
 MADD_ELEM_SIZE = {0: 140, 1: 140, 2: 152, 3: 160}
-MADD_NREF = {0: 8, 1: 8, 2: 9, 3: 9}
-MADD_FIELDS_V2 = ['keyName', 'keyHash', 'extraHash', 'blob', 'valueData',
-                  'reserved0', 'reserved1', 'reserved2', 'reserved3']
-MADD_FIELDS_V1 = ['keyName', 'keyHash', 'blob', 'valueData',
-                  'reserved0', 'reserved1', 'reserved2', 'reserved3']
+MADD_NREF = {0: 4, 1: 4, 2: 5, 3: 5}
+MADD_FIELDS_V2 = ['keyName', 'keyHash', 'extraHash', 'blob', 'texturePaths']
+MADD_FIELDS_V1 = ['keyName', 'keyHash', 'blob', 'texturePaths']
+
+# Material type, record byte 150. Prefixes the shader permutation name.
+MATERIAL_TYPE = {0: 'Material', 1: 'MaterialMedium', 2: 'MaterialSimple',
+                 3: 'MaterialParticle', 4: 'MaterialSplat'}
 
 
 # ---------------------------------------------------------------------------
@@ -203,14 +210,36 @@ def property_of(h):
 # Each size corresponds to one rollout of the Art Tools `SC2 Bitmap` map, which
 # is what a material layer actually is (see docs/HOTS_M3_MADD_STRATEGIES.md).
 VALUE_SHAPES = {
-    4:  'Coordinates.Mapping: u32 enum (UV set)',
-    8:  'Bitmap Parameters: u32 bitmap, u32 render-to-texture source',
-    12: 'f32 x3',
+    4:  'scalar: f32, u32 enum, or BGRA colour -- depends on the property',
+    8:  'Tex<X>: u32 index into texturePaths, u32 texture/RTT source',
+    12: 'f32 x3 (triplanar offset / scale)',
     16: 'f32 x4',
-    20: 'Color Operations: u32 UseRGBA, f32 RGB-multiply, f32 RGB-add, f32 (1.0), u32 invert/clamp flags',
-    32: 'Coordinates: offset UV, tiling UV, angle UVW (f32 x7) + packed tile flags',
-    48: 'Fresnel: u32 mode, f32 exponent, min, max, rotation, mask x3 (= p_m<Layer>FresnelTransform, 0x30)',
+    20: '<X>ChannelSelection: u32 selector, f32 multiply, f32 add, f32 (1.0), u16 flags + 2 STALE bytes',
+    32: '<X>UVTransform: offset UV, tiling UV, angle UVW (f32 x7) + packed tile flags',
+    48: 'FresnelParams<X>: u32 mode, f32 exponent, min, max, rotation, mask x3',
 }
+
+# 4-byte values are not one type. These are the ones confirmed against the corpus.
+FOUR_BYTE_KIND = {
+    'AlphaTestThreshold': 'f32 (normalised 0..1; SMaterialData stores 0..255)',
+    'DepthBlendThreshhold': 'f32',
+    'Specularity': 'f32',
+    'HeightMapScale': 'f32',
+    'EmissiveControl': 'u32 LayerBlendOp',
+    'Emissive2Control': 'u32 LayerBlendOp',
+    'EnvioControl': 'u32 LayerBlendOp',
+}
+
+
+def four_byte_kind(name):
+    """f32 / u32-enum / BGRA colour, by property name."""
+    if name in FOUR_BYTE_KIND:
+        return FOUR_BYTE_KIND[name]
+    if name and name.endswith('Constant'):
+        return 'BGRA colour'
+    if name and name.endswith('UVSelection'):
+        return 'u32 UV-set index (0..3)'
+    return None
 
 
 def madd_records(m):

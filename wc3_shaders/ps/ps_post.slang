@@ -12,6 +12,11 @@
 // readable colored imagery for the artist/engineer debug HUD; the
 // actual values don't need to match any engine convention beyond
 // "distinct per mode".
+//
+// NOTE: this is the 2.0.0-era HD stack. `hd_ps` moved to 3.0.0 and routes
+// through ps/hd_ps_*.slang instead; what still builds against the helpers here
+// is the crystal / SD-on-HD pipelines, which read the 2.0.0 `PSInput` and
+// `psCB2` layouts.
 
 implementing wc3_shaders;
 

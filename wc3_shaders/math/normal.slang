@@ -54,3 +54,27 @@ public float3 orientNormal(float3 normal, bool isFrontFace)
 {
     return isFrontFace ? normal : -normal;
 }
+
+// Renormalise a vector, falling back when the transform that produced it
+// collapsed it to nothing.
+//
+// The guard is on the pre-normalisation LENGTH, not on some epsilon: a vector
+// a millionth of a unit long still normalises cleanly, and only an exactly
+// zero one takes the fallback. That distinction is invisible in ordinary
+// rendering and very visible in a differential test, which is the only place
+// a `length > 0` guard and a `length > 0.001` guard can be told apart.
+public float3 normalizeOrFallback(float3 v, float3 fallback)
+{
+    float len2 = dot(v, v);
+    return (sqrt(len2) > 0) ? (v * rsqrt(len2)) : fallback;
+}
+
+// Build a tangent frame from a normal alone, for meshes with no tangent
+// stream — and as the fallback when a supplied tangent transforms to zero
+// length. The reference axis is whichever of world Z / world Y the normal is
+// not parallel to, so the cross product never degenerates.
+public float3 generatedTangent(float3 n)
+{
+    float3 up = (abs(n.z) < 0.999) ? float3(0, 0, 1) : float3(0, 1, 0);
+    return normalize(cross(up, n));
+}

@@ -1570,6 +1570,15 @@ def t3b_class_delivery(family, stage, classes, slots, sample=0):
     defs = [set(struct_defines(family, stage, K)) for K in classes]
     const = const_axes(family, stage)
     by_slot = {s: c for s, c, _p in slots}
+    # DEAD axes are exempt, and this is not a loophole: `classify` only calls an axis
+    # dead when `probe_irrelevant` measured the compiled DXBC BYTE-IDENTICAL at every
+    # base permutation it tried.  Members may disagree on such an axis precisely
+    # because the blob cannot tell.  Without this the gate fails Image_ps on
+    # b_iUse8BitHDR -- an axis image.fx never reads -- which is a false positive, and a
+    # gate that cries wolf on a proven no-op gets switched off.
+    _k, _p, _d, dead = classify(family, stage,
+                                inventory()["%s_%s" % (family, stage)]["varying"])
+    dead = set(dead)
 
     it = list(iter_slots_fast(family, stage))
     if sample and len(it) > sample:
@@ -1587,6 +1596,8 @@ def t3b_class_delivery(family, stage, classes, slots, sample=0):
         for _s, bv in members:
             axes |= set(bv)
         for a in sorted(axes):
+            if a in dead:
+                continue                       # provably cannot affect the blob
             vals = {int(bv.get(a, const.get(a, 0))) for _s, bv in members}
             if len(vals) < 2:
                 continue                       # members agree: pinning is safe

@@ -4,7 +4,8 @@
 //
 // Non-IBL crystal pixel shader bodies.
 //
-// These mirror `psStandardBody` / `psMultiLayerBody` but with the crystal
+// These mirror the 2.0.0 HD standard / multi-layer bodies (since deleted
+// along with the entry points that used them) but with the crystal
 // albedo-refraction path in place of the usual `t_albedo.Sample()` and
 // the refract-modulated Fresnel alpha in place of the authored one. The
 // BRDF math itself is trivial for the non-IBL crystal paths — the

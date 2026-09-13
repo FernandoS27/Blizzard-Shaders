@@ -200,6 +200,286 @@ public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_iblFrom   
 public [[vk::binding(PsSamplerBindingOffset + 14, 2)]] SamplerState s_iblTo     : register(s14);
 public [[vk::binding(PsSamplerBindingOffset + 15, 2)]] SamplerState s_brdfLut   : register(s15);
 
+// ===========================================================================
+// Warcraft III 3.0.0 HD mesh pipeline
+// ===========================================================================
+//
+// Everything above this point is the 2.0.0-era HD binding set, still used by
+// the SD-on-HD, crystal and user-variant pipelines. Everything below is the
+// 3.0.0 HD mesh pair (`hd_vs` / `hd_ps`), rebuilt from the shipped BLS
+// permutations. The two layouts coexist rather than one replacing the other
+// because 3.0.0 renumbered b2, moved the shadow cascades out of the vertex
+// stage and swapped the per-draw light array for a clustered light buffer —
+// the families still on 2.0.0 would not survive the edit. They claim the same
+// registers, which is fine: slang only emits the resources an entry point
+// actually reaches, exactly as `t_albedo` and `t_waterScene` already share t0.
+
+// One bone, as both palettes store it: the three rows of an affine 3x4.
+//
+// Spelled as three explicit rows rather than a `float4x3` because the same
+// type has to describe a constant-buffer palette AND a 48-byte structured
+// buffer element, and only the row form has a layout that is obviously
+// identical on both sides. Row `k` dotted with `float4(pos, 1)` gives
+// component `k` of the transformed point.
+public struct BoneTransform
+{
+    public float4 row0;
+    public float4 row1;
+    public float4 row2;
+};
+
+// Constant-buffer bone palette (b3): 256 bones x three rows == the 768
+// float4s the shipped shader declares.
+public struct HDBonePalette
+{
+    public BoneTransform bones[256];
+};
+
+// Per-draw vertex constants for the 3.0.0 HD mesh shader (b2).
+//
+// Register map, in the shipped order:
+//   [ 0- 3]  world          — object -> world; .z feeds the water clip test
+//                             and the whole vector goes out on TEXCOORD10.
+//   [ 4- 7]  worldView      — object -> view; its 3x3 is also the basis the
+//                             normal and tangent are rotated by.
+//   [ 8-11]  worldViewProj  — object -> clip.
+//   [12-15]  not read by this stage (the pixel shader's projection matrix
+//            lands here; the vertex stage just skips over it).
+//   [16].zw  water clip height / under-water sign.
+//   [17].x   bone-buffer base index, an int in float clothing.
+//   [18]     diffuse tint.
+//   [19-22]  the two 2x3 UV matrices, two float4 rows each.
+public struct HDVSPerDraw
+{
+    public float4x4 world;
+    public float4x4 worldView;
+    public float4x4 worldViewProj;
+    public float4x4 _padProjection;
+    public float   _p16_x;          public float _p16_y;
+    public float   clipHeight;      public float underWater;
+    public float   boneBufferBase;  public float _p17_y;
+    public float   _p17_z;          public float _p17_w;
+    public float4  diffuseColor;
+    public float4  texMtx0Row0;
+    public float4  texMtx0Row1;
+    public float4  texMtx1Row0;
+    public float4  texMtx1Row1;
+};
+
+// Blight-map placement (b1). The vertex shader turns the world XY into a
+// [0,1] lookup for the pixel shader's blight mask.
+public struct HDVSBlight
+{
+    // .xy = world-space origin of the blight rect, .zw = 1 / its extent.
+    public float4 rect;
+};
+
+public [[vk::binding(1, 0)]] ConstantBuffer<HDVSBlight>    hdVsCB1 : register(b1);
+public [[vk::binding(2, 0)]] ConstantBuffer<HDVSPerDraw>   hdVsCB2 : register(b2);
+public [[vk::binding(3, 0)]] ConstantBuffer<HDBonePalette> hdVsCB3 : register(b3);
+
+// Alternative bone palette: one structured buffer shared by many draws,
+// indexed from a per-draw base in `hdVsCB2.boneBufferBase`. Selected by the
+// BONE_BUFFER permutation axis, which is only observable on skinned meshes.
+public [[vk::binding(16, 1)]] StructuredBuffer<BoneTransform> t_hdBones : register(t16);
+
+// Per-draw pixel constants for the 3.0.0 HD mesh shader (b2).
+//
+// Nothing is a `float3` on purpose: Slang's Metal and WGSL buffer layouts give
+// a `float3` 16-byte alignment, which would shift every field after it away
+// from the offsets the engine writes. `.xyz + scalar` groups are therefore
+// declared as one `float4`, and pure padding as scalar lanes.
+//
+// Register map, in the shipped order:
+//   [ 0].x  alpha reference    .y  material blend mode (an int; picks how fog
+//           is applied, so an additive material fades to black rather than
+//           toward the fog colour)
+//   [ 1]    .xyz linear fog colour, .w fog start
+//   [ 2]    fog end / density / volumetric height band
+//   [ 3]    volumetric radial band + the "fog everywhere" flag (an int)
+//   [ 4- 7] worldView     — not read by this stage
+//   [ 8-11] inverse view  — rows 8..10 rotate view space into IBL probe space
+//   [12-15] projection    — not read by this stage
+//   [16-19] viewport / misc — not read by this stage
+//   [20]    .xyz volumetric fog centre (the camera)
+//   [22]    output alpha scale / cloak / fresnel team colour / blight enable
+//   [23].w  manual depth-test enable
+//   [24]    .xyz fresnel tint, .w fresnel alpha
+//   [25]    IBL "from" and "to" mip ends + the transition between them
+//   [26].y  emissive gain  .z shadow depth bias  .w specular-AA enable
+//   [27].x  normal-map strength  .y main light enable  .z fog mode (an int)
+//   [28]    .xyz ambient add, .w IBL intensity
+//   [29]    .xyz ambient colour
+//   [30]    .xyz main light direction (world)
+public struct HDPSPerDraw
+{
+    public float   alphaRef;         public float  blendMode;
+    public float   _p0_z;            public float  _p0_w;
+    public float4  fogColorStart;
+    public float   fogEnd;           public float  fogDensity;
+    public float   heightTop;        public float  heightBottom;
+    public float   radialInner;      public float  radialOuter;
+    public float   radialStrength;   public float  fogEverywhere;
+    public float4x4 _padWorldView;
+    public float4x4 invView;
+    public float4x4 _padProjection;
+    public float4  _pad16;
+    public float4  _pad17;
+    public float4  _pad18;
+    public float4  _pad19;
+    public float4  fogCentre;
+    public float4  _pad21;
+    public float   outputAlphaScale; public float  cloakAmount;
+    public float   fresnelTeamColor; public float  blightEnable;
+    public float   _p23_x;           public float  _p23_y;
+    public float   _p23_z;           public float  depthTestEnable;
+    public float4  fresnelColor;
+    public float   envFromMipEnd;    public float  envToMipEnd;
+    public float   envTransitionT;   public float  _p25_w;
+    public float   _p26_x;           public float  emissiveGain;
+    public float   shadowDepthBias;  public float  useNdf;
+    public float   normalStrength;   public float  mainLightEnable;
+    public float   fogMode;          public float  _p27_w;
+    public float4  ambientAdd;
+    public float4  ambientColor;
+    public float4  mainLightDir;
+};
+
+// One cube-shadow record: 26 float4s, from cb1[43] on.
+//
+// Only `.zw` of each face row is ever read — the pair is the clip-space z and
+// w the depth comparison needs, and the engine does not bother uploading the
+// xy the projection would otherwise produce.
+public struct HDCubeShadow
+{
+    public float4   position;       // +0   .xyz light position, world space
+    public float4   range;          // +1   .x near, .y far, .z strength
+    public float4x4 faces[6];       // +2   six faces x four rows
+};
+
+// Clustered-lighting constants for the 3.0.0 HD mesh shader (b1). Only the
+// LIGHTING permutations bind it.
+//
+//   [ 0-35]  three cascade sets of three matrices. Set 0 is reserved and never
+//            referenced; set 1 backs SHADOW_CASCADE2, set 2 the main cascade.
+//            Held as one array so the cascade walk indexes it the way the
+//            shipped shader does: one base plus the loop counter.
+//   [36].x   cascade count     .y  shadow-casting light count
+//   [39].w   light debug mode (0 off, >=1 sentinel colours, >=2 overlay)
+//   [40].xy  inverse cluster grid dimensions
+//   [40].zw  light-array base / light-index-list base
+//   [41].x   cluster base      .yz cluster grid stride / rows
+//   [42]     viewport rect (x0, y0, x1, y1)
+//   [43+]    four cube-shadow records
+public struct HDPSClustered
+{
+    public float4x4 cascadeSets[9];
+    public float  cascadeCount;      public float shadowLightCount;
+    public float  _p36_z;            public float _p36_w;
+    public float4 _pad37;
+    public float4 _pad38;
+    public float  _p39_x;            public float _p39_y;
+    public float  _p39_z;            public float lightDebugMode;
+    public float2 invClusterDims;
+    public float  lightArrayBase;    public float lightIndexBase;
+    public float  clusterBase;       public float gridStride;
+    public float  gridRows;          public float _p41_w;
+    public float4 viewportRect;
+    public HDCubeShadow cubeShadows[4];
+};
+
+// One clustered light, as the engine packs it into t16 — stride 40 bytes.
+//
+// Ten SCALARS, not the `float4 + float4 + float2` the layout reads like, and
+// not the `float3 colour; int shadowIndex;` it describes. Both of those give
+// the struct a 16-byte alignment, and every backend except D3D then rounds the
+// array stride from 40 up to 48 — after which every light but the first is
+// read from the wrong offset. Concretely: SPIR-V is rejected outright (the
+// array stride must be 16-aligned unless the device turns on
+// `scalarBlockLayout`), and GLSL std430, WGSL and Metal all silently stride by
+// 48. All-scalar members drop the alignment to 4 and every target lands on 40.
+//
+// It costs nothing on D3D: fxc coalesces the ten member reads straight back
+// into the three `ld_structured stride=40` at offsets 0 / 16 / 32 that retail
+// emits, byte for byte. The accessors below are the shape the shader thinks in.
+public struct HDClusterLight
+{
+    // Linear radiance, and the shadow index reinterpreted as an int
+    // (-1 = no shadow, -2 = a debug gizmo the overlay draws specially).
+    public float colorR;    public float colorG;
+    public float colorB;    public float shadowIdx;
+    // View-space position, and the quadratic attenuation coefficient.
+    public float posX;      public float posY;
+    public float posZ;      public float quadAtten;
+    // Linear attenuation, and the exponential (Gaussian) falloff.
+    public float linAtten;  public float expAtten;
+
+    public float3 color()       { return float3(colorR, colorG, colorB); }
+    public int    shadowIndex() { return asint(shadowIdx); }
+    public float3 position()    { return float3(posX, posY, posZ); }
+    public float  attenQuad()   { return quadAtten; }
+    public float  attenLinear() { return linAtten; }
+    public float  attenExp()    { return expAtten; }
+};
+
+public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<HDPSClustered> hdPsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<HDPSPerDraw>   hdPsCB2 : register(b2);
+
+// Material maps. t2 does triple duty: .yz are roughness / metalness, .w is the
+// team-colour blend weight, and .x sampled at UV1 is the ambient-occlusion map.
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_hdAlbedo     : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_hdNormal     : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4> t_hdOrm        : register(t2);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4> t_hdEmissive   : register(t3);
+public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4> t_hdTeamColor  : register(t4);
+
+// Scene-wide inputs. t7 is the depth target the shader manually tests against
+// (it is `Load`ed, never sampled, so it has no sampler); t6/t8 are the blight
+// mask and the colour ramp its value looks up.
+public [[vk::binding(PsSrvBindingOffset + 6, 1)]] Texture2D<float4> t_hdBlightMask : register(t6);
+public [[vk::binding(PsSrvBindingOffset + 7, 1)]] Texture2D<float4> t_hdSceneDepth : register(t7);
+public [[vk::binding(PsSrvBindingOffset + 8, 1)]] Texture2D<float4> t_hdBlightRamp : register(t8);
+
+// Shadow maps: a cube array for the cluster lights, a 2D array for the main
+// light's cascades.
+public [[vk::binding(PsSrvBindingOffset + 9, 1)]]  TextureCubeArray<float4> t_hdCubeShadow    : register(t9);
+public [[vk::binding(PsSrvBindingOffset + 10, 1)]] Texture2DArray<float4>   t_hdCascadeShadow : register(t10);
+
+// IBL probes. Slice 0 of each cube array is the irradiance convolution, slice
+// 1 the pre-filtered radiance; the pair is blended so the runtime can fade
+// between environments.
+public [[vk::binding(PsSrvBindingOffset + 11, 1)]] TextureCubeArray<float4> t_hdIblFrom : register(t11);
+public [[vk::binding(PsSrvBindingOffset + 12, 1)]] TextureCubeArray<float4> t_hdIblTo   : register(t12);
+public [[vk::binding(PsSrvBindingOffset + 13, 1)]] Texture2D<float4>        t_hdBrdfLut : register(t13);
+
+// The clustered light set: the lights themselves, a packed list of 16-bit
+// indices into them, and the screen-space grid that says which slice of that
+// list a pixel's cluster owns.
+//
+// Carried through `PsSrvBindingOffset` like every other PS resource, NOT bound
+// at a raw 16/17/18. On D3D the register is what counts and the offset is
+// irrelevant, but Vulkan / OpenGL / WebGPU share one binding-index namespace
+// per group across textures and storage buffers — and the offset is 16 there
+// (12 under WGSL), so a raw 16 lands exactly on `t_hdAlbedo` / `t_hdTeamColor`
+// and a raw 18 on `t_hdOrm` / `t_hdBlightMask`. Three resources, three
+// collisions, in the same descriptor set as the textures they collide with.
+public [[vk::binding(PsSrvBindingOffset + 16, 1)]] StructuredBuffer<HDClusterLight> t_hdLights       : register(t16);
+public [[vk::binding(PsSrvBindingOffset + 17, 1)]] StructuredBuffer<uint>           t_hdLightIndices : register(t17);
+public [[vk::binding(PsSrvBindingOffset + 18, 1)]] StructuredBuffer<uint>           t_hdClusters     : register(t18);
+
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_hdAlbedo     : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_hdNormal     : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_hdOrm        : register(s2);
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_hdEmissive   : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_hdTeamColor  : register(s4);
+public [[vk::binding(PsSamplerBindingOffset + 6, 2)]] SamplerState s_hdBlightMask : register(s6);
+public [[vk::binding(PsSamplerBindingOffset + 8, 2)]] SamplerState s_hdBlightRamp : register(s8);
+public [[vk::binding(PsSamplerBindingOffset + 9, 2)]]  SamplerComparisonState s_hdCubeShadow    : register(s9);
+public [[vk::binding(PsSamplerBindingOffset + 10, 2)]] SamplerComparisonState s_hdCascadeShadow : register(s10);
+public [[vk::binding(PsSamplerBindingOffset + 11, 2)]] SamplerState s_hdIblFrom : register(s11);
+public [[vk::binding(PsSamplerBindingOffset + 12, 2)]] SamplerState s_hdIblTo   : register(s12);
+public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_hdBrdfLut : register(s13);
+
 // Per-draw constants for the SD-on-HD pixel shader (b2).
 // The layout mirrors the original SD engine CB, so most fields are
 // preserved as padding; only the values that are actually consumed by the

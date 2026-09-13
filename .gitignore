@@ -18,9 +18,15 @@ research
 *.hlsl
 *.air
 *.err
-tools\_sc2*
+# NOT `tools\_sc2*`: in a gitignore pattern the backslash is an ESCAPE
+# character, so that unescapes to `tools_sc2*` and matched nothing -- which is
+# why tools/_sc2_perm_cache/ kept showing up in `git status` despite the comment
+# in sc2_perm_reduce.py claiming it was covered.
+tools/_sc2*
 *.bls
 wow_re_shaders
+wc3_re_shaders
+re_shaders_old
 agent_logs
 # crc_collide: generated wordlists and the compiled CUDA kernel
 tools/crc_collide/words.txt

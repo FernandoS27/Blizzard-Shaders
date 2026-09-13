@@ -2,103 +2,111 @@
 // Copyright (c) 2026, Fernando Sahmkow
 // See LICENSE in the repository root for full terms.
 //
-// HD vertex shader entry point.
+// HD mesh vertex shader entry point — Warcraft III Reforged 3.0.0.
 //
 // Specialisation space:
-//   TSkin         — ISkinning policy (rigid or four-bone).
-//   TVF           — IVertexFormat (which optional attribs are live).
-//   HAS_SHADOWS   — whether the three cascade clip coords need computing.
+//   TSkin — IHDSkinning policy. `HDRigid`, or `HDFourBoneSkinning<TBones>`
+//           where TBones is `ConstantBonePalette` (b3) or
+//           `StructuredBonePalette` (t16).
+//   TVF   — IVertexFormat: which optional attributes are live.
 //
-// The VS is intentionally thin: all non-trivial work lives in the
-// helpers in vs/ and interfaces/, so each permutation is a small linear
-// sequence of transforms.
+// The engine indexes its 72 permutations with a MIXED-RADIX counter, not the
+// bit mask the pixel shader uses:
+//
+//   index = BONE_BUFFER * 1 + TANGENT * 2 + WEIGHT_INDEX * 4
+//         + VERTEX_COLOR * 12 + UV_COUNT * 24
+//
+// with radices 2, 2, 3, 2, 3. Two of those digits are not what they look like:
+// WEIGHT_INDEX 0 and 1 both mean "no skinning", and BONE_BUFFER is invisible
+// unless the mesh is skinned. 72 slots therefore collapse to 36 distinct
+// programs, which is exactly the number the shipped BLS carries.
+//
+// What 3.0.0 changed against 2.0.0 — the vertex stage got SMALLER:
+//   * The shadow cascades left. 2.0.0 projected through three cascade matrices
+//     into TEXCOORD4-6 behind a `SHADOWS` axis; 3.0.0 emits the world position
+//     once on TEXCOORD10 and the pixel shader projects. `SHADOWS` and the
+//     depth-prepass axis went with it, halving 144 permutations to 72.
+//   * A tangent frame is ALWAYS produced. 2.0.0 wrote zeros into TEXCOORD3 for
+//     meshes with no tangent stream; 3.0.0 generates one from the normal, and
+//     falls back to it even when ATTR7 is present but transforms to nothing.
+//   * One UV stream now duplicates into TEXCOORD0.zw instead of zeroing it.
+//   * The bone palette can come from a shared structured buffer.
+//
+// The body is deliberately a flat sequence of transforms; anything with a
+// decision in it lives in a policy type or a named helper.
 
 implementing wc3_shaders;
 
 [shader("vertex")]
-public VSOutput vs_main<
-    TSkin : ISkinning,
+public HDVSOutput vs_main<
+    TSkin : IHDSkinning,
     TVF   : IVertexFormat
->(VSInput<TVF> input)
+>(HDVSInput<TVF> input)
 {
-    VSOutput output;
+    HDVSOutput output;
 
-    // Step 1: skinning. Rigid passes the attributes through; FourBone
-    // performs a 4-bone linear blend against the bone palette (vsCB3).
-    float3 skinnedPos, skinnedNormal, skinnedTangent;
+    // Step 1: object space. Rigid forwards the attributes untouched; the
+    // four-bone policy blends whichever palette this permutation was built
+    // with and applies the result to all three attributes.
+    float3 objectPos, objectNormal, objectTangent;
     TSkin.transform(
-        input.position, input.normal, input.tangent,
-        input.weights, input.boneIndices, vsCB3,
-        skinnedPos, skinnedNormal, skinnedTangent);
+        input.position, input.normal, input.tangent.xyz,
+        input.weights, input.boneIndices,
+        objectPos, objectNormal, objectTangent);
 
-    // Step 2: view-space position (emitted as the PS's "worldPos" input
-    // — the PS transforms it back through `invView` as needed) + clip
-    // position. Clip comes directly from object space via worldViewProj
-    // to avoid losing precision to the intermediate pos.
-    output.worldPos.xyz = transformByWorldView(skinnedPos, vsCB2.worldView);
-    output.position     = transformClipPos(skinnedPos, vsCB2.worldViewProj);
+    // Step 2: clip position, taken straight from object space rather than
+    // through the intermediate world position, which would cost precision.
+    output.position = transformClipPos(objectPos, hdVsCB2.worldViewProj);
 
-    // Step 3: view-space normal (renormalised — HD PS assumes it's
-    // unit-length before any BRDF work). Lives in the same space as
-    // `worldPos` above; the PS co-rotates both with `invView`.
-    output.normalWS = transformNormal(skinnedNormal, vsCB2.worldView);
+    // Step 3: per-vertex tint. `diffuseColor` is the material tint; a mesh
+    // that carries a colour stream (baked AO, hero tints) modulates it.
+    if (TVF.hasVertexColor)
+        output.color = hdVsCB2.diffuseColor * input.vertColor;
+    else
+        output.color = hdVsCB2.diffuseColor;
 
-    // Tangent only when the vertex format advertises one; `tangent.w`
-    // carries the handedness sign for bitangent reconstruction in the
-    // pixel shader (see tangentToWorld).
+    // Step 4: the two 2x3 UV matrices (scrolling / tiling animation). Dead
+    // streams compile out; a single stream feeds both halves.
+    output.texCoord = transformMeshUVs<TVF>(
+        input.uv0, input.uv1,
+        hdVsCB2.texMtx0Row0, hdVsCB2.texMtx0Row1,
+        hdVsCB2.texMtx1Row0, hdVsCB2.texMtx1Row1);
+
+    // Step 5: view-space position, plus the world position 3.0.0 now always
+    // needs — the pixel shader reprojects it for shadow cascades, volumetric
+    // fog and the blight lookup, so 2.0.0's "read only the Z row of `world`"
+    // shortcut has nothing left to save.
+    float4 worldPos = computeWorldPos4(objectPos, hdVsCB2.world);
+    output.viewPos.xyz = transformByWorldView(objectPos, hdVsCB2.worldView);
+    output.viewPos.w = computeWaterClipDistance(
+        worldPos.z, hdVsCB2.clipHeight, hdVsCB2.underWater);
+
+    // Step 6: view-space normal. The upper 3x3 of `worldView` can be
+    // degenerate (a flattened or zero-scaled bone), so the renormalise has a
+    // fallback rather than dividing by zero.
+    float3 n = normalizeOrFallback(
+        transformNormalRaw(objectNormal, hdVsCB2.worldView), float3(0, 1, 0));
+    output.normalWS = n;
+
+    // Step 7: tangent frame. The generated frame is built either way — with a
+    // tangent stream it is the fallback for a tangent that transformed to zero
+    // length, without one it IS the frame.
+    float3 genTangent = generatedTangent(n);
     if (TVF.hasTangent)
     {
-        output.tangentWS.xyz = transformNormal(skinnedTangent, vsCB2.worldView);
+        output.tangentWS.xyz = normalizeOrFallback(
+            transformNormalRaw(objectTangent, hdVsCB2.worldView), genTangent);
+        // Handedness for the pixel shader's bitangent reconstruction.
         output.tangentWS.w = input.tangent.w;
     }
     else
     {
-        output.tangentWS = float4(0, 0, 0, 0);
+        output.tangentWS = float4(genTangent, 1);
     }
 
-#if WC3_HAS_SHADOWS
-    {
-        // When shadows are needed, compute the world-space position
-        // once and reuse it for both fog altitude and the three cascade
-        // clip-space projections (the cascade matrices take world pos).
-        float4 worldPos4 = computeWorldPos4(skinnedPos, vsCB2.world);
-        output.worldPos.w = computeFogDepth(worldPos4.z, vsCB2.clipHeight, vsCB2.underWater);
-
-        // Pass local temps through the `out float4` helper; the cascade
-        // path must go through a concrete float4 before assigning, since
-        // some downstream slang lowering rejected direct out-param binds
-        // to struct fields in previous Conditional<>-gated versions.
-        float4 sc0, sc1, sc2;
-        computeShadowCascades(worldPos4, vsCB1, sc0, sc1, sc2);
-        output.shadowClip0 = sc0;
-        output.shadowClip1 = sc1;
-        output.shadowClip2 = sc2;
-    }
-#else
-    {
-        // Non-shadow path skips the full world transform and only reads
-        // the Z row of `world` — cheaper by 3 multiplies + an adder. The
-        // shadowClip fields don't exist on this perm (gated by #if above
-        // on the VSOutput struct), so no writes needed.
-        float worldZ = computeScalarWorldZ(skinnedPos, vsCB2.world);
-        output.worldPos.w = computeFogDepth(worldZ, vsCB2.clipHeight, vsCB2.underWater);
-    }
-#endif
-
-    // Step 4: per-vertex tint. `diffuseColor` is the material tint;
-    // when the format carries a per-vertex color (e.g. AO from the
-    // baker) we modulate the two together.
-    if (TVF.hasVertexColor)
-        output.color = vsCB2.diffuseColor * input.vertColor;
-    else
-        output.color = vsCB2.diffuseColor;
-
-    // Step 5: transform the UVs through the two 2x3 UV matrices (used
-    // for scrolling / tiling animations). Dead UV slots compile out.
-    output.texCoord = transformUVs<TVF>(
-        input.uv0, input.uv1,
-        vsCB2.texMtx0Row0, vsCB2.texMtx0Row1,
-        vsCB2.texMtx1Row0, vsCB2.texMtx1Row1);
+    // Step 8: world position and the blight-map lookup built from its XY.
+    output.worldPos = worldPos;
+    output.blightUV = float4(blightMapUV(worldPos.xy, hdVsCB1.rect), 0, 0);
 
     return output;
 }

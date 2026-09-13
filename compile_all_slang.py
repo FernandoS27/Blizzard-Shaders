@@ -5,9 +5,8 @@ Runs independently of the current working directory — paths resolve
 relative to this script's location.
 
     --target {d3d11,d3d12,vulkan,opengl,metal,webgpu,all}  (default: d3d11)
-    --family {hd_vs,hd_ps,toon_hd_vs,toon_hd_ps,gritty_hd_vs,gritty_hd_ps,
-              crystal_ps,sd_on_hd_vs,sd_on_hd_ps,sd_highspec_vs,sd_classic_ps,
-              water_vs,water_ps,tonemap_ps,all}
+    --family {hd_vs,hd_ps,crystal_ps,sd_on_hd_vs,sd_on_hd_ps,sd_highspec_vs,
+              sd_classic_ps,water_vs,water_ps,tonemap_ps,all}
     --slangc PATH   explicit slangc.exe override
 """
 
@@ -19,6 +18,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -181,6 +181,28 @@ class SweepResult:
     fail_list: List[str] = field(default_factory=list)
 
 
+def unlink_retry(path: Path, attempts: int = 10) -> None:
+    """Delete a file, tolerating Windows' brief post-exec handle hold.
+
+    slangc and dxc have both already exited when we clean up their
+    intermediates, but Windows can keep the image handle mapped for a few
+    milliseconds afterwards and `unlink` then raises WinError 32. With many
+    parallel jobs that is rare per call and near-certain across a 1024-perm
+    sweep, and it used to abort the whole run. Retry briefly, then give up
+    quietly: a leftover intermediate is harmless, an aborted sweep is not.
+    """
+    for i in range(attempts):
+        try:
+            path.unlink(missing_ok=True)
+            return
+        except PermissionError:
+            time.sleep(0.02 * (i + 1))
+    try:
+        path.unlink(missing_ok=True)
+    except PermissionError:
+        pass
+
+
 def invoke_slangc(entry: str, target: str, profile: str,
                   specialize: List[str], out_path: Path,
                   shader_path: Path,
@@ -251,9 +273,9 @@ def invoke_slangc(entry: str, target: str, profile: str,
     # Delete any stale output up front so a failed compile can't
     # masquerade as success via a leftover .dxbc from a prior run.
     if out_path.exists():
-        out_path.unlink()
+        unlink_retry(out_path)
     if metal_via_xcrun and slangc_out.exists():
-        slangc_out.unlink()
+        unlink_retry(slangc_out)
 
     proc = subprocess.run(args, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -274,8 +296,21 @@ def invoke_slangc(entry: str, target: str, profile: str,
                     str(slangc_out), "-Fo", str(out_path)]
         if DEBUG_BUILD:
             dxc_args += ["-Zi", "-Qembed_debug", "-Od"]
-        dxc_proc = subprocess.run(dxc_args, capture_output=True, text=True)
-        slangc_out.unlink(missing_ok=True)
+        # Retry a failed dxc the same way we retry unlink: under parallel
+        # jobs Windows occasionally still holds the freshly written .hlsl
+        # open, and dxc's loader reports the sharing violation as "cannot
+        # find the file specified" even though the file is plainly there
+        # (we stat it two lines up). Only that message is retried — a real
+        # compile error is returned on the first attempt, unchanged.
+        for attempt in range(4):
+            dxc_proc = subprocess.run(dxc_args, capture_output=True, text=True)
+            if dxc_proc.returncode == 0:
+                break
+            msg = (dxc_proc.stderr or "") + (dxc_proc.stdout or "")
+            if "cannot find the file" not in msg.lower():
+                break
+            time.sleep(0.05 * (attempt + 1))
+        unlink_retry(slangc_out)
         if dxc_proc.returncode != 0:
             err_path = out_path.with_suffix(out_path.suffix + ".err")
             err_path.write_text("dxc failed:\n" +
@@ -295,15 +330,15 @@ def invoke_slangc(entry: str, target: str, profile: str,
             err_path.write_text(
                 "xcrun metal failed:\n" +
                 (metal_proc.stderr or metal_proc.stdout or ""))
-            slangc_out.unlink(missing_ok=True)
+            unlink_retry(slangc_out)
             return False
         lib_proc = subprocess.run(
             ["xcrun", "metallib", str(air_path), "-o", str(out_path)],
             capture_output=True, text=True)
         # Intermediates aren't useful to keep around — they confuse the
         # incremental mtime check on the next run and clutter slang_out/.
-        slangc_out.unlink(missing_ok=True)
-        air_path.unlink(missing_ok=True)
+        unlink_retry(slangc_out)
+        unlink_retry(air_path)
         if lib_proc.returncode != 0:
             err_path = out_path.with_suffix(out_path.suffix + ".err")
             err_path.write_text(
@@ -313,6 +348,8 @@ def invoke_slangc(entry: str, target: str, profile: str,
     elif target == "wgsl" and out_path.exists() and out_path.stat().st_size > 0:
         fix_wgsl_depth_textures(out_path)
         rename_wgsl_entry_to_main(out_path)
+    elif target == "glsl" and out_path.exists() and out_path.stat().st_size > 0:
+        fix_glsl_shadow_lod_extension(out_path)
     return out_path.exists() and out_path.stat().st_size > 0
 
 
@@ -414,14 +451,47 @@ def fix_wgsl_depth_textures(wgsl_path: Path) -> None:
             break
 
 
+    # Longest shape first: `texture_2d` is a prefix of `texture_2d_array`,
+    # and `texture_cube` of `texture_cube_array`.
     name_alt = "|".join(re.escape(n) for n in sorted(depth_names))
-    new_text = re.sub(
-        rf"\b({name_alt})\b(\s*:\s*)texture_2d<\s*f32\s*>",
-        r"\1\2texture_depth_2d",
-        text,
-    )
+    new_text = text
+    for sampled, depth in (("texture_2d_array",   "texture_depth_2d_array"),
+                           ("texture_cube_array", "texture_depth_cube_array"),
+                           ("texture_2d",         "texture_depth_2d"),
+                           ("texture_cube",       "texture_depth_cube")):
+        new_text = re.sub(
+            rf"\b({name_alt})\b(\s*:\s*){sampled}<\s*f32\s*>",
+            rf"\1\2{depth}",
+            new_text,
+        )
     if new_text != text:
         wgsl_path.write_text(new_text, encoding="utf-8")
+
+
+# A `textureLod` on a shadow sampler needs GL_EXT_texture_shadow_lod: core GLSL
+# has no explicit-LOD overload for the *Shadow sampler types. slangc 2026.x
+# requests it when the call is on a `samplerCubeArrayShadow` but NOT when it is
+# on a `sampler2DArrayShadow`, so a shader that only samples the main light's
+# cascade array (HD 3.0.0 with SHADOW_CASCADE but not POINT_SHADOWS — 64 of the
+# 1024 pixel permutations) emits a call it never declares the extension for, and
+# glslangValidator rejects it. Adding the line is always safe: it is a no-op on a
+# shader that doesn't make the call, and we only add it when one does.
+_GLSL_SHADOW_LOD_RE = re.compile(r"\btextureLod\s*\(\s*sampler\w*Shadow\s*\(")
+_GLSL_SHADOW_LOD_EXT = "#extension GL_EXT_texture_shadow_lod : require"
+
+
+def fix_glsl_shadow_lod_extension(glsl_path: Path) -> None:
+    text = glsl_path.read_text(encoding="utf-8")
+    if _GLSL_SHADOW_LOD_EXT in text or not _GLSL_SHADOW_LOD_RE.search(text):
+        return
+    lines = text.splitlines(keepends=True)
+    # `#extension` must precede every non-preprocessor token, so it goes
+    # directly after `#version`, which must itself be the first directive.
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("#version"):
+            lines.insert(i + 1, _GLSL_SHADOW_LOD_EXT + "\n")
+            glsl_path.write_text("".join(lines), encoding="utf-8")
+            return
 
 
 def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
@@ -535,47 +605,61 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
     return result
 
 
+
 def map_hd_vs(idx: int) -> PermSpec:
-    tang     = idx % 2
-    weight   = (idx // 2) % 3
-    color    = (idx // 6) % 2
-    texcoord = (idx // 12) % 3
-    prepass  = (idx // 36) % 2
-    shadows  = (idx // 72) % 2
+    """3.0.0 HD mesh vertex shader — 72 perms on a MIXED-RADIX index.
 
-    skin  = "FourBoneSkinning" if weight == 2 else "Rigid"
-    hasT  = "true" if tang == 1 else "false"
-    hasC  = "true" if color == 1 else "false"
-    hasU0 = "true" if texcoord >= 1 else "false"
-    hasU1 = "true" if texcoord >= 2 else "false"
-    shad  = "true" if (shadows == 1 and prepass == 0) else "false"
+    Unlike the pixel shader (whose index is a feature bit mask), the engine
+    counts the vertex permutations in mixed radix:
 
-    # HAS_SHADOWS is no longer a slang `let HAS_SHADOWS : bool` template
-    # parameter — VSOutput dropped the template so its WGSL emit doesn't
-    # tunnel `Conditional<float4, HAS_SHADOWS>` through `array<float4, 1>`
-    # (rejected on @location varyings). We pass it as a preprocessor `-D`
-    # define instead; types/vs_io.slang gates the shadowClip fields on
-    # `#if HAS_SHADOWS`, and hd_vs.slang's body switches between the
-    # shadow and non-shadow paths with the same #if.
-    # Match popcorn's pattern: only emit -D when the flag is true (slangc
-    # rejects `-D NAME=0` in this build); the #if HAS_SHADOWS gate evaluates
-    # to 0 when the define is absent (slangc warns 15205 but still compiles).
-    defines: List[str] = []
-    if shad == "true":
-        defines.append("WC3_HAS_SHADOWS=1")
+        index = BONE_BUFFER * 1 + TANGENT * 2 + WEIGHT_INDEX * 4
+              + VERTEX_COLOR * 12 + UV_COUNT * 24        radices 2/2/3/2/3
+
+    Two digits do not mean what they look like. WEIGHT_INDEX 0 and 1 both mean
+    "no skinning" and produce identical bytecode (the engine's vertex-format
+    table only ever yields a weight count of 0 or 4, so the middle class is
+    unreachable), and BONE_BUFFER is only reachable through the skinned policy
+    — so the 72 slots collapse to the 36 distinct programs the shipped BLS
+    actually carries.
+
+    Confirmed against the engine: GetShaderIndices case 1 in the 3.0.0 binary
+    computes this exact expression. BONE_BUFFER is `boneCount > 256`, which is
+    the condition XformSetBones uses to bind the palette as a structured buffer
+    instead of the 256-bone constant buffer. See docs/WC3_HD_PERMUTATIONS.md.
+    """
+    bone_buffer  = idx % 2
+    tangent      = (idx // 2) % 2
+    weight_index = (idx // 4) % 3
+    color        = (idx // 12) % 2
+    uv_count     = (idx // 24) % 3
+
+    if weight_index == 2:
+        palette = "StructuredBonePalette" if bone_buffer else "ConstantBonePalette"
+        skin = f"HDFourBoneSkinning<{palette}>"
+    else:
+        # Both non-skinning weight indices, and with them both palette
+        # sources, fold into one program.
+        skin = "HDRigid"
+
+    hasT  = "true" if tangent else "false"
+    hasC  = "true" if color else "false"
+    hasU0 = "true" if uv_count >= 1 else "false"
+    hasU1 = "true" if uv_count >= 2 else "false"
     return PermSpec(
         entry="vs_main",
         types=[skin, f"VertexFormat<{hasT},{hasC},{hasU0},{hasU1}>"],
-        defines=defines,
-        label=f"{skin}+T={hasT}+C={hasC}+UV={texcoord}+SH={shad}",
+        defines=[],
+        label=f"{skin}+T={hasT}+C={hasC}+UV={uv_count}",
     )
 
 
 def _hd_ps_bits(idx: int):
-    """Shared 9-bit feature encoding for hd_ps and crystal_ps. Bit 2 /
-    EXTRA_VERTS toggles the shadow cascade inputs the VS writes on
-    TEXCOORD4-6; the HD IBL PS consumes them for the 3-cascade PCF
-    shadow lookup."""
+    """The 2.0.0 9-bit feature encoding, now used only by crystal_ps.
+
+    hd_ps moved to the 3.0.0 10-bit mask (see map_hd_ps); crystal is still
+    the 2.0.0 reconstruction and keeps this. Bit 2 / EXTRA_VERTS toggles the
+    shadow cascade inputs the VS writes on TEXCOORD4-6, which the crystal
+    IBL body consumes for its 3-cascade PCF lookup."""
     return {
         "mrt":  bool(idx & 1),
         "dp":   bool(idx & 2),
@@ -608,65 +692,68 @@ def _hd_ps_types(b):
     return fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS
 
 
+
 def map_hd_ps(idx: int) -> PermSpec:
-    b = _hd_ps_bits(idx)
-    fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS = _hd_ps_types(b)
+    """3.0.0 HD mesh pixel shader — 1024 perms on a 10-bit feature mask.
+
+    Several bits only mean anything under another one, and the engine emits
+    identical bytecode for the permutations that differ only in a dead bit. The
+    folding below reproduces that: a depth prepass ignores every shading axis,
+    the four lighting sub-axes need LIGHTING, and the second cascade set needs
+    the first.
+
+    MULTI_TARGET and DEPTH_PREPASS are preprocessor defines rather than slang
+    generics because they reshape PSOutput itself — see types/ps_io.slang.
+
+    Confirmed against the engine: GetShaderIndices case 1 in the 3.0.0 binary
+    builds this exact mask, bit for bit. See docs/WC3_HD_PERMUTATIONS.md for
+    where each bit comes from in the render state.
+    """
+    ao   = bool(idx & 1)      # AO_MAP
+    sc2  = bool(idx & 2)      # SHADOW_CASCADE2
+    mrt  = bool(idx & 4)      # MULTI_TARGET
+    dp   = bool(idx & 8)      # DEPTH_PREPASS
+    dbg  = bool(idx & 16)     # LIGHT_DEBUG
+    pts  = bool(idx & 32)     # POINT_SHADOWS
+    sc   = bool(idx & 64)     # SHADOW_CASCADE
+    lit  = bool(idx & 128)    # LIGHTING
+    at   = bool(idx & 256)    # ALPHA_TEST
+    ml   = bool(idx & 512)    # MULTI_LAYER
+
+    if dp:
+        lit = False
+        mrt = False
+    if not lit:
+        ao = sc = pts = dbg = False
+    if not sc:
+        sc2 = False
+
+    alpha = "AlphaTestOn" if at else "AlphaTestOff"
+    mat = "MultiLayerMaterial" if ml else "StandardMaterial"
+    s = lambda v: "true" if v else "false"
+
     defines: List[str] = []
-    if b["dp"]:
+    if dp:
         defines.append("WC3_IS_DEPTH_PREPASS=1")
-    if b["mrt"]:
+    if mrt:
         defines.append("WC3_IS_MRT=1")
-    # `ev` (HAS_EXTRA_VERTS) gates the shadowClip0..2 fields in PSInput.
-    # Must mirror the VS-side WC3_HAS_SHADOWS so the @location indices
-    # align across VS-output / PS-input on WGSL (the renderer pairs the
-    # VS perm with shadows=true to the PS perm with ev=true).
-    if b["ev"]:
-        defines.append("WC3_HAS_SHADOWS=1")
+
+    flags = "+".join(n for n, v in (("LIT", lit), ("AO", ao), ("SC", sc),
+                                    ("SC2", sc2), ("PS", pts), ("DBG", dbg),
+                                    ("DP", dp), ("MRT", mrt)) if v)
     return PermSpec(
         entry="ps_main",
-        types=[fog, alpha, mat, iblS, evS, dbgS],
+        types=[alpha, mat, s(lit), s(ao), s(sc), s(sc2), s(pts), s(dbg)],
         defines=defines,
-        label=f"{fog}+{alpha}+{mat}+IBL={iblS}+EV={evS}+DP={dpS}+MRT={mrtS}+DBG={dbgS}",
+        label=f"{alpha}+{mat}" + (f"+{flags}" if flags else ""),
     )
 
 
-def map_toon_hd_vs(idx: int) -> PermSpec:
-    # Toon-HD shares the HD vertex-format encoding 1:1 — same 144 perms,
-    # same specialisation types + defines, different entry point.
-    spec = map_hd_vs(idx)
-    return PermSpec(entry="toon_vs_main", types=spec.types, defines=spec.defines,
-                    label=spec.label)
-
-
-def map_toon_hd_ps(idx: int) -> PermSpec:
-    # Toon-HD shares the HD pixel-shader 9-bit feature encoding 1:1 —
-    # same 512 perms, same specialisation types, different entry point.
-    spec = map_hd_ps(idx)
-    return PermSpec(entry="toon_ps_main", types=spec.types, defines=spec.defines,
-                    label=spec.label)
-
-
-def map_gritty_hd_vs(idx: int) -> PermSpec:
-    # Gritty-HD shares the HD vertex-format encoding 1:1 — same 144
-    # perms, same specialisation types + defines, different entry point.
-    spec = map_hd_vs(idx)
-    return PermSpec(entry="gritty_vs_main", types=spec.types, defines=spec.defines,
-                    label=spec.label)
-
-
-def map_gritty_hd_ps(idx: int) -> PermSpec:
-    # Gritty-HD shares the HD pixel-shader 9-bit feature encoding 1:1 —
-    # same 512 perms, same specialisation types, different entry point.
-    spec = map_hd_ps(idx)
-    return PermSpec(entry="gritty_ps_main", types=spec.types, defines=spec.defines,
-                    label=spec.label)
-
-
 def map_crystal_ps(idx: int) -> PermSpec:
-    # Crystal shares hd_ps's 9-bit encoding. Bit 2 / EXTRA_VERTS gates the
+    # Crystal is on the 2.0.0 9-bit encoding. Bit 2 / EXTRA_VERTS gates the
     # 3-cascade PCF shadow path, which crystal now implements (mirroring the
-    # HD IBL body). IS_DEPTH_PREPASS / IS_MRT migrated to preprocessor
-    # defines (see map_hd_ps).
+    # 2.0.0 HD IBL body). IS_DEPTH_PREPASS / IS_MRT are preprocessor defines
+    # because they reshape PSOutput (see types/ps_io.slang).
     b = _hd_ps_bits(idx)
     fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS = _hd_ps_types(b)
     defines: List[str] = []
@@ -1252,10 +1339,6 @@ def map_sd_classic_ps(idx: int) -> PermSpec:
 MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "hd_vs":          map_hd_vs,
     "hd_ps":          map_hd_ps,
-    "toon_hd_vs":     map_toon_hd_vs,
-    "toon_hd_ps":     map_toon_hd_ps,
-    "gritty_hd_vs":   map_gritty_hd_vs,
-    "gritty_hd_ps":   map_gritty_hd_ps,
     "crystal_ps":     map_crystal_ps,
     "sd_on_hd_vs":    map_sd_on_hd_vs,
     "sd_on_hd_ps":    map_sd_on_hd_ps,

@@ -71,6 +71,31 @@ def load(path, decompiler=None):
 # input mapping — semantic values -> per-shader input registers
 # --------------------------------------------------------------------------
 
+def is_x10_inflated(signature):
+    """Is this signature's semantic numbering slang's x10 form?
+
+    Slang's HLSL emit concatenates a field's semantic index onto the name it
+    was written with, so a source ``TEXCOORD1`` reaches fxc as ``TEXCOORD10``
+    and is stored with ``sem_idx = 10``. EVERY index in such a signature is
+    therefore a multiple of ten; a retail signature is not.
+
+    Deciding this per program rather than per entry matters, because the two
+    numberings genuinely collide. The 3.0.0 HD pixel shader carries a real
+    ``TEXCOORD10`` (the world position) alongside ``TEXCOORD1`` (the view
+    position) -- and slang compiles those to indices 100 and 10. Looking each
+    index up as-is first would hand slang's TEXCOORD1 the world position that
+    belongs to TEXCOORD10, and both legs of the comparison would silently
+    disagree about which varying is which.
+
+    The rule needs at least one index of ten or more to fire: a signature whose
+    indices are all zero is ambiguous, and deflating zero is the identity
+    anyway. This is the same recovery ``build_bls.fix_dxbc_signatures`` applies
+    when it packs slang output into a BLS, and the two must agree.
+    """
+    indices = [idx for _, idx, _, _ in signature]
+    return bool(indices) and max(indices) >= 10 and all(i % 10 == 0 for i in indices)
+
+
 def map_inputs(program, semantic_values, sysvals=None):
     """Build ``{register: [4 lanes]}`` for ``program`` from per-semantic values.
 
@@ -80,11 +105,17 @@ def map_inputs(program, semantic_values, sysvals=None):
                          (raw index; the x10 slang naming is handled here).
         sysvals:         ``{sysval_name: bits}`` e.g. ``{"is_front_face": 0xFFFFFFFF}``.
     """
+    inflated = is_x10_inflated(program.input_sig)
     inp = {}
     for name, idx, mask, reg in program.input_sig:
+        if inflated:
+            idx //= 10
         v = semantic_values.get((name, idx))
         if v is None and idx >= 10 and idx % 10 == 0:
-            v = semantic_values.get((name, idx // 10))   # slang x10 naming
+            # A mixed signature (some entries inflated, some not) should not
+            # happen, but falling back costs nothing and keeps older callers
+            # that relied on this rule working.
+            v = semantic_values.get((name, idx // 10))
         if v is None:
             v = [0, 0, 0, 0]
         inp.setdefault(reg, [0, 0, 0, 0])
@@ -161,17 +192,21 @@ def output_diff(out_a, out_b, regs):
     """Worst per-channel |a-b| over the given output registers.
 
     NaN==NaN and same-signed inf==inf are treated as equal (they signal the
-    same degenerate input, not a divergence). Returns ``(worst, (reg, ch, a, b))``.
+    same degenerate input, not a divergence). NaN on ONE side is a divergence
+    and scores +inf: ``abs(nan - x)`` is NaN and ``nan > worst`` is False, so
+    without this it would score zero and a shader that turned a finite result
+    into NaN would pass. Returns ``(worst, (reg, ch, a, b))``.
     """
     worst = 0.0; where = None
     for reg in regs:
         for k in range(4):
             a = out_a.f(reg, k); b = out_b.f(reg, k)
-            if math.isnan(a) and math.isnan(b):
+            na, nb = math.isnan(a), math.isnan(b)
+            if na and nb:
                 continue
+            d = math.inf if (na or nb) else abs(a - b)
             if math.isinf(a) and math.isinf(b) and (a > 0) == (b > 0):
                 continue
-            d = abs(a - b)
             if d > worst:
                 worst = d; where = (reg, k, a, b)
     return worst, where
@@ -192,7 +227,7 @@ class CompareResult:
 
 def compare(prog_a, prog_b, *, trials=200, output_regs=(0,), tol=1e-3,
             inputs_fn=None, cbufs_fn=None, sysvals_fn=None,
-            texture=None, deriv_scale=0.0, seed0=0):
+            texture=None, structured=None, deriv_scale=0.0, seed0=0):
     """Run both programs over ``trials`` random draws and collect the worst diff.
 
     Args:
@@ -203,6 +238,10 @@ def compare(prog_a, prog_b, *, trials=200, output_regs=(0,), tol=1e-3,
         cbufs_fn:       ``seed -> cbufs`` (default: :class:`RandomCBufs`).
         sysvals_fn:     ``seed -> {name: bits}`` (default: random front-face).
         texture:        a :class:`TextureModel` shared by both shaders.
+        structured:     a :class:`dxbc_interp.StructuredModel` shared by both
+                        shaders, for ``ld_structured`` reads (clustered light
+                        lists and the like). Defaults to the smooth stand-in,
+                        whose garbage-as-int values overrun data-driven loops.
         deriv_scale:    synthetic-derivative magnitude (keep 0 unless testing
                         specular-AA-style paths, which can't be matched exactly).
     """
@@ -219,8 +258,11 @@ def compare(prog_a, prog_b, *, trials=200, output_regs=(0,), tol=1e-3,
         sysv = sysvals_fn(seed)
         ia = map_inputs(prog_a, sv, sysv)
         ib = map_inputs(prog_b, sv, sysv)
-        oa = execute(prog_a, ia, cb, texture=tex, deriv_scale=deriv_scale)
-        ob = execute(prog_b, ib, cb, texture=tex, deriv_scale=deriv_scale)
+        sb = structured(seed) if callable(structured) else structured
+        oa = execute(prog_a, ia, cb, texture=tex, structured=sb,
+                     deriv_scale=deriv_scale)
+        ob = execute(prog_b, ib, cb, texture=tex, structured=sb,
+                     deriv_scale=deriv_scale)
         res.trials += 1
         if oa.discarded != ob.discarded:
             res.discard_mismatches += 1

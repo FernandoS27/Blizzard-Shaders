@@ -132,3 +132,129 @@ public struct SDFourBoneSkinning : ISkinning
         }
     }
 };
+
+// ---------------------------------------------------------------------------
+// 3.0.0 HD mesh skinning
+// ---------------------------------------------------------------------------
+//
+// Two axes instead of one. `IHDSkinning` still picks rigid vs four-bone, but
+// 3.0.0 added a second choice — where the bone palette lives — so the skinned
+// policy is generic over an `IBoneSource`. Nesting it inside the skinning
+// policy rather than putting it beside it mirrors what the engine does: the
+// palette source is invisible on an unskinned mesh, which is exactly why the
+// 72 permutation slots collapse to 36 distinct programs.
+
+// Apply a blended bone to a point. Row `k` dotted with the homogeneous
+// position gives component `k` — the affine translation rides in row.w.
+public float3 applyBoneToPoint(BoneTransform m, float3 p)
+{
+    float4 p4 = float4(p, 1.0);
+    return float3(dot(m.row0, p4), dot(m.row1, p4), dot(m.row2, p4));
+}
+
+// Apply a blended bone to a direction: the same rows minus the translation
+// column, so normals and tangents rotate without being displaced.
+public float3 applyBoneToDirection(BoneTransform m, float3 d)
+{
+    return float3(dot(m.row0.xyz, d), dot(m.row1.xyz, d), dot(m.row2.xyz, d));
+}
+
+// Where the bone palette for this draw comes from.
+public interface IBoneSource
+{
+    static BoneTransform fetch(int index);
+};
+
+// 256-bone constant buffer at b3 — the classic palette.
+public struct ConstantBonePalette : IBoneSource
+{
+    static BoneTransform fetch(int index)
+    {
+        return hdVsCB3.bones[index];
+    }
+};
+
+// Shared structured buffer at t16. One buffer serves many draws, so the index
+// is biased by a per-draw base. That base is already an integer sitting in a
+// float slot, hence `asint` rather than a numeric cast — reading it as a float
+// would truncate every base above 2^24 and silently mis-skin the mesh.
+public struct StructuredBonePalette : IBoneSource
+{
+    static BoneTransform fetch(int index)
+    {
+        return t_hdBones[index + asint(hdVsCB2.boneBufferBase)];
+    }
+};
+
+public interface IHDSkinning
+{
+    static const bool isSkinned;
+
+    static void transform(
+        float3 objectPos, float3 objectNormal, float3 objectTangent,
+        float4 weights, uint4 boneIndices,
+        out float3 skinnedPos, out float3 skinnedNormal, out float3 skinnedTangent);
+};
+
+// Unskinned geometry: the object-space attributes are forwarded as-is. The
+// bone source never appears here, so both BONE_BUFFER values compile to the
+// same program.
+public struct HDRigid : IHDSkinning
+{
+    static const bool isSkinned = false;
+
+    static void transform(
+        float3 objectPos, float3 objectNormal, float3 objectTangent,
+        float4 weights, uint4 boneIndices,
+        out float3 skinnedPos, out float3 skinnedNormal, out float3 skinnedTangent)
+    {
+        skinnedPos     = objectPos;
+        skinnedNormal  = objectNormal;
+        skinnedTangent = objectTangent;
+    }
+};
+
+// Four-bone linear blend against `TBones`.
+//
+// The weights are summed and compared against zero before anything is read:
+// a vertex with no weights is unskinned, and because the palette is then not
+// touched at all a mesh may legitimately leave the bone streams as garbage on
+// those vertices. Testing `!= 0` rather than `> 0` is deliberate — it is what
+// the shipped shader does, and weights that cancel out reach the same arm.
+public struct HDFourBoneSkinning<TBones : IBoneSource> : IHDSkinning
+{
+    static const bool isSkinned = true;
+
+    static void transform(
+        float3 objectPos, float3 objectNormal, float3 objectTangent,
+        float4 weights, uint4 boneIndices,
+        out float3 skinnedPos, out float3 skinnedNormal, out float3 skinnedTangent)
+    {
+        skinnedPos     = objectPos;
+        skinnedNormal  = objectNormal;
+        skinnedTangent = objectTangent;
+
+        if (dot(weights, float4(1, 1, 1, 1)) != 0.0)
+        {
+            int4 b = int4(boneIndices);
+            BoneTransform b0 = TBones.fetch(b.x);
+            BoneTransform b1 = TBones.fetch(b.y);
+            BoneTransform b2 = TBones.fetch(b.z);
+            BoneTransform b3 = TBones.fetch(b.w);
+
+            // Blend row by row, so the four fetched bones collapse into one
+            // affine that is then applied once to each attribute.
+            BoneTransform m;
+            m.row0 = b0.row0 * weights.x + b1.row0 * weights.y
+                   + b2.row0 * weights.z + b3.row0 * weights.w;
+            m.row1 = b0.row1 * weights.x + b1.row1 * weights.y
+                   + b2.row1 * weights.z + b3.row1 * weights.w;
+            m.row2 = b0.row2 * weights.x + b1.row2 * weights.y
+                   + b2.row2 * weights.z + b3.row2 * weights.w;
+
+            skinnedPos     = applyBoneToPoint(m, objectPos);
+            skinnedNormal  = applyBoneToDirection(m, objectNormal);
+            skinnedTangent = applyBoneToDirection(m, objectTangent);
+        }
+    }
+};

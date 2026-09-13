@@ -980,10 +980,22 @@ def _do_op(vm, node):
         vm.write_bits(dest, out, False); return
 
     # ---- screen-space derivatives (single-pixel stand-in; see module docstring) ----
+    #
+    # A pure function of the VALUE, and of nothing else. It used to add a
+    # `1.3 * k` lane term to decorrelate the four components, which made the
+    # stand-in depend on where in a register the operand happened to land --
+    # and two shaders that compute the same thing do not agree about that. A
+    # candidate whose world normal ends up in `r6.yzw, r4.xxyz` where the
+    # reference used `r6.xyz, r1.xyzx` would get a different fake derivative
+    # for the same logical component, and the specular-AA roughness computed
+    # from it would differ by ~1e-3 -- a phantom divergence with no cause in
+    # either shader. The lane term is therefore gone: keying only on the value
+    # makes the stand-in invariant under register allocation, which is the one
+    # property a differential harness actually needs from it.
     if base in ('deriv_rtx', 'deriv_rty', 'deriv_rtx_coarse', 'deriv_rty_coarse',
                 'deriv_rtx_fine', 'deriv_rty_fine'):
         a = vm.fread(srcs[0]); ph = 0.7 if 'rtx' in base else 2.1
-        vm.write_f(dest, [vm.deriv_scale * 0.03 * math.sin(3.1 * a[k] + 1.3 * k + ph) for k in range(4)], False); return
+        vm.write_f(dest, [vm.deriv_scale * 0.03 * math.sin(3.1 * a[k] + ph) for k in range(4)], False); return
 
     raise NotImplementedError("opcode " + op)
 

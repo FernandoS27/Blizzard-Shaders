@@ -2,163 +2,181 @@
 // Copyright (c) 2026, Fernando Sahmkow
 // See LICENSE in the repository root for full terms.
 //
-// HD pixel shader entry point.
+// HD mesh pixel shader entry point — Warcraft III Reforged 3.0.0.
 //
-// Specialisation space:
-//   TFog              — fog-mode policy.
-//   TAlpha            — alpha-test policy.
-//   TMat              — material policy (standard vs. multi-layer).
-//   HAS_IBL           — route to the full IBL / Cook-Torrance body.
-//   HAS_EXTRA_VERTS   — VS passed shadowClip0-2 cascade coords; the IBL
-//                        body samples the three shadow cascades and
-//                        attenuates the main directional light.
-//   IS_DEPTH_PREPASS  — depth-only pass (no color).
-//   IS_MRT            — also write the deferred-G-buffer targets.
-//   HAS_DEBUG_VIS     — debug visualisation enabled.
+// Specialisation space. The engine's 1024 permutations ARE a 10-bit feature
+// mask (unlike the vertex shader, whose index is a mixed-radix counter):
 //
-// The body dispatches to one of {psIBLBody, psMultiLayerBody,
-// psStandardBody} based on the flags, then performs post-processing
-// (alpha test, fog, color matrix, MRT normal pack, debug overlay) in
-// the order the original shader used.
+//   bit 0 (  1)  AO_MAP          -> HAS_AO_MAP
+//   bit 1 (  2)  SHADOW_CASCADE2 -> HAS_SHADOW_CASCADE2
+//   bit 2 (  4)  MULTI_TARGET    -> WC3_IS_MRT (a define: it reshapes PSOutput)
+//   bit 3 (  8)  DEPTH_PREPASS   -> WC3_IS_DEPTH_PREPASS (likewise)
+//   bit 4 ( 16)  LIGHT_DEBUG     -> HAS_LIGHT_DEBUG
+//   bit 5 ( 32)  POINT_SHADOWS   -> HAS_POINT_SHADOWS
+//   bit 6 ( 64)  SHADOW_CASCADE  -> HAS_SHADOW_CASCADE
+//   bit 7 (128)  LIGHTING        -> HAS_LIGHTING
+//   bit 8 (256)  ALPHA_TEST      -> TAlpha
+//   bit 9 (512)  MULTI_LAYER     -> TMat
+//
+// Several bits only exist under another: a depth prepass ignores every shading
+// axis, the four lighting sub-axes need LIGHTING, and the second cascade set
+// needs the first. compile_all_slang.py folds those dependencies before it
+// picks the types, so the permutations that differ only in a dead bit compile
+// to the same program — exactly as the shipped BLS does.
+//
+// What 3.0.0 changed against 2.0.0:
+//   * Lighting is CLUSTERED FORWARD. The per-draw light array in b2 is gone;
+//     lights live in a structured buffer reached through a screen-space
+//     cluster grid. See ps/hd_ps_lighting.slang.
+//   * Shadows are per-light and per-pixel: a cube-map array for the cluster
+//     lights and a 2D array for the main light's cascades, both projected in
+//     the pixel shader from the world position the VS now hands over.
+//   * Fog is RUNTIME-selected from seven modes instead of two compile-time
+//     axes, and how it is applied depends on the material's blend mode. See
+//     ps/hd_ps_post.slang.
+//   * New blight mask + colour ramp, a manual depth test against the scene
+//     depth target, and a per-draw normal-map strength.
+//
+// The body below is the shipped shader's order of operations: sample, depth
+// test, shadow, shade, finish, clip, blight, fog. That order is not arbitrary
+// — the discards sit where they do so that a fragment about to be thrown away
+// does not pay for the blight and fog work behind them.
 
 implementing wc3_shaders;
 
-// IS_DEPTH_PREPASS / IS_MRT migrated from `let X : bool` template
-// params to `WC3_IS_DEPTH_PREPASS` / `WC3_IS_MRT` preprocessor defines
-// (see types/ps_io.slang for the reasoning). The struct gates use
-// derived flags WC3_HAS_COLOR (= !WC3_IS_DEPTH_PREPASS) and WC3_HAS_MRT
-// (= WC3_IS_MRT && !WC3_IS_DEPTH_PREPASS), both set by the script.
 [shader("fragment")]
 public PSOutput ps_main<
-    TFog     : IFogMode,
-    TAlpha   : IAlphaTest,
-    TMat     : IMaterialLayer,
-    let HAS_IBL            : bool,
-    let HAS_EXTRA_VERTS    : bool,
-    let HAS_DEBUG_VIS      : bool
->(PSInput input, uint frontFace : SV_IsFrontFace)
+    TAlpha : IAlphaTest,
+    TMat   : IMaterialLayer,
+    let HAS_LIGHTING        : bool,
+    let HAS_AO_MAP          : bool,
+    let HAS_SHADOW_CASCADE  : bool,
+    let HAS_SHADOW_CASCADE2 : bool,
+    let HAS_POINT_SHADOWS   : bool,
+    let HAS_LIGHT_DEBUG     : bool
+>(HDPSInput input, uint frontFace : SV_IsFrontFace)
 {
     PSOutput output;
     bool isFrontFace = frontFace != 0;
 
 #if WC3_IS_DEPTH_PREPASS
     {
-        // Depth-only path: either run the alpha-tested prepass or the
-        // cheap stub. Both branches discard internally; the rasterizer
-        // writes depth from SV_Position. No color write — the PSOutput
-        // has no fields on this perm.
+        // Depth-only: both bodies discard internally and write nothing. On
+        // this permutation PSOutput has no fields at all.
         if (!TAlpha.enabled)
-            depthPrepassStub(input);
+            hdDepthPrepassStub(input);
         else
-            depthPrepassBody<TAlpha, TMat>(input, isFrontFace);
+            hdDepthPrepassAlpha<TAlpha, TMat>(input, isFrontFace);
         return output;
     }
 #else
     {
 
-    // Non-IBL draws discard fragments flagged by the VS as "behind the
-    // fog-clip plane" before doing any further work. The IBL path
-    // delays this until after the body (it needs the world-space
-    // normal anyway).
-    if (!HAS_IBL)
-        backfaceDiscard(input.worldPos.w);
+    // Step 1: the material set, with the team layer already folded in.
+    HDMaterial mat = sampleHDMaterial<TMat, HAS_LIGHTING>(input.uv.xy);
+    float2 enc = encodeScaledNormal(
+        t_hdNormal.Sample(s_hdNormal, input.uv.xy).xyw, hdPsCB2.normalStrength);
 
-    // Dispatch to the appropriate lit body. Only the IBL body produces the
-    // modes 5-7 debug overlay; the others leave it black.
-    float4 result;
-    float3 iblDbgOverlay = float3(0, 0, 0);
-    if (HAS_IBL)
-        result = psIBLBody<TMat, HAS_EXTRA_VERTS, HAS_DEBUG_VIS>(input, isFrontFace, iblDbgOverlay);
-    else if (TMat.hasMultiLayer)
-        result = psMultiLayerBody<HAS_DEBUG_VIS>(input, isFrontFace);
+    // Ambient occlusion rides in t2.x at UV1 — the one thing in the material
+    // set that is not sampled at UV0.
+    float ao = 1;
+    if (HAS_AO_MAP)
+        ao = t_hdOrm.Sample(s_hdOrm, input.uv.zw).x;
+
+    // Step 2: the engine's software depth test, before any shading work.
+    hdDepthTestDiscard(input.svPosition.xy, input.viewPos.z);
+
+    // Step 3: main-light shadow, projected from the world position.
+    float mainShadow = 1;
+    if (HAS_SHADOW_CASCADE)
+        mainShadow = hdMainLightShadow<HAS_SHADOW_CASCADE2>(input.worldPos);
+
+    // Step 4: the shading basis.
+    float3 N = hdWorldNormal(input, enc, isFrontFace);
+    float3 V = normalize(-input.viewPos.xyz);
+
+    float3 shadedRGB;
+    float ndv;
+
+    if (!HAS_LIGHTING)
+    {
+        // Unlit: emissive plus albedo, tinted by the vertex colour. Used for
+        // UI props, fully-baked scenery and anything the clustered pass would
+        // be pure cost on.
+        shadedRGB = mat.emissive * hdPsCB2.emissiveGain + mat.albedo.xyz;
+        shadedRGB = srgbToLinear(input.vertColor.xyz) * shadedRGB;
+        ndv = saturate(dot(V, N));
+    }
     else
-        result = psStandardBody<HAS_DEBUG_VIS>(input, isFrontFace);
+    {
+        HDSurface surf;
+        surf.N = N;
+        surf.V = V;
+        surf.albedo = mat.albedo.xyz;
+        surf.metal = mat.roughMetal.y;
 
-    // MRT path: alpha test, extra "are we opaque enough for the
-    // G-buffer" test, and G-buffer payloads.
-    float3 mrtNormal = float3(0, 0, 0);
-    float preAlpha = 0;
+        // Authored roughness is remapped away from both extremes: a perfectly
+        // smooth surface has no stable specular lobe, and a perfectly rough
+        // one loses the highlight entirely.
+        float roughness = saturate(mat.roughMetal.x);
+        roughness = roughness * HD_ROUGHNESS_SCALE + HD_ROUGHNESS_BIAS;
+        // Geometric specular anti-aliasing: sub-pixel normal variance is
+        // folded into the roughness so high-frequency normals stop sparkling.
+        surf.rough = (asuint(hdPsCB2.useNdf) != 0) ? specularAA(roughness, N)
+                                                   : roughness;
+
+        surf.F0 = surf.metal * surf.albedo;
+        surf.diffColor = (surf.albedo - surf.metal * surf.albedo) * INV_PI;
+
+        float rr = surf.rough * surf.rough;
+        surf.a2 = rr * rr;
+        float kSq = (1 + surf.rough) * (1 + surf.rough);
+        surf.kDirect = SCHLICK_K_FACTOR * kSq;
+        surf.kInv = -kSq * SCHLICK_K_FACTOR + 1;
+
+        // The main directional light carries the IBL probe and the ambient
+        // mix with it; the draw can switch it off and keep the cluster lights.
+        float3 lit = float3(0, 0, 0);
+        if (asint(hdPsCB2.mainLightEnable) != 0)
+            lit = hdMainLight(surf, input.viewPos.xyz, mainShadow);
+
+        lit = hdClusterLights<HAS_POINT_SHADOWS, HAS_LIGHT_DEBUG>(
+            surf, input.viewPos.xyz, input.worldPos.xyz, input.svPosition.xy, lit);
+
+        if (HAS_AO_MAP)
+            lit = lit * ao;
+
+        // Undo the 1/PI the Lambertian diffuse carried through the lights.
+        shadedRGB = PI * lit;
+        shadedRGB = mat.emissive * hdPsCB2.emissiveGain + shadedRGB;
+        shadedRGB = srgbToLinear(input.vertColor.xyz) * shadedRGB;
+        ndv = saturate(dot(N, V));
+    }
+
+    // Step 5: fresnel rim and cloak, which together decide the final alpha.
+    float4 shaded = hdFresnelAndCloak<TMat>(shadedRGB, ndv, mat, input.vertColor.w);
+
+    // Step 6: the clips. Water clipping first, then the material's own alpha
+    // test — both before the blight and fog work so a doomed fragment pays for
+    // neither.
+    if (input.viewPos.w < 0)
+        discard;
+    TAlpha.test(shaded.w, hdPsCB2.alphaRef);
+
+    if (0.5 < hdPsCB2.blightEnable)
+        shaded.xyz = hdApplyBlight(shaded.xyz, input.blightUV.xy);
+
+    // Step 7: fog, colour grade and the blend-mode-aware application.
+    output.color = hdApplyFog(shaded, hdFogFactor(input.viewPos.z, input.worldPos.xyz));
+
 #if WC3_IS_MRT
     {
-        TAlpha.test(result.w, psCB2.alphaRef);
-
-        // Deferred-only alpha gate — avoids writing partial-coverage
-        // pixels to the opaque G-buffer.
-        float mrtAlpha = t_albedo.Sample(s_albedo, input.uv.xy).w;
-        mrtAlphaTest(mrtAlpha, psCB2.inverseSoftness);
-
-        mrtNormal = computeMRTNormal(input, isFrontFace);
-
-        // Store the pre-fog alpha — used by the deferred resolver to
-        // reconstruct the surface opacity.
-        preAlpha = result.w;
-    }
-#else
-    {
-        // Non-MRT path runs the alpha test here since the MRT block
-        // would have run it above. Running it before fog avoids paying
-        // the fog apply() cost on discarded pixels.
-        TAlpha.test(result.w, psCB2.alphaRef);
-    }
-#endif
-
-    // When fog is active we pre-multiply by inverseSoftness now so the
-    // fog apply() doesn't further modulate alpha. The non-fog branch
-    // applies this multiply down below after the color matrix.
-    if (TFog.hasFog)
-        result.w = psCB2.inverseSoftness * result.w;
-
-    if (!HAS_DEBUG_VIS)
-    {
-        // Release: fog, then the post color-matrix grade, then finish the
-        // alpha scale if fog was off. Fog and the matrix are BOTH skipped
-        // under DEBUG_VIS — the debug overlay emits already-displayable
-        // colours, matching the retail shader (its DBG perms emit no fog).
-        result.xyz = TFog.apply(result.xyz, psCB2.fogColor.xyz,
-                                input.worldPos.z, psCB2.fogStart, psCB2.fogEnd, psCB2.fogDensity);
-        result.xyz = applyColorMatrix(result.xyz);
-        if (!TFog.hasFog)
-            result.w = psCB2.inverseSoftness * result.w;
-    }
-
-    if (HAS_DEBUG_VIS)
-    {
-        // Debug overlay needs the world-space normal + its pre-
-        // normalisation length; recompute from the normal map rather
-        // than storing it through the lit bodies.
-        float3 nSample = t_normal.Sample(s_normal, input.uv.xy).xyw;
-        float3 tsN = decodeNormalMap(nSample);
-        float3 wn = tangentToWorld(tsN, input.tangentWS.xyz, input.normalWS.xyz, input.tangentWS.w);
-        float normalLen = length(wn);
-        wn = normalize(wn);
-        wn = orientNormal(wn, isFrontFace);
-
-        // Effective albedo for DEBUG mode 1: the centre sample after
-        // the bit-0 override has been applied, matching what the lit
-        // body shaded with.
-        float3 effectiveAlbedo = t_albedo.Sample(s_albedo, input.uv.xy).xyz;
-        if ((asuint(psCB3.enabledShaders) & 1) != 0)
-            effectiveAlbedo = psCB3.overrideAlbedo.xyz;
-
-        result = debugVisualize(result, input, wn, normalLen, effectiveAlbedo,
-                                iblDbgOverlay, HAS_IBL);
-        if (!TFog.hasFog)
-            result.w = psCB2.inverseSoftness * result.w;
-    }
-
-    // The IBL path defers its backface discard to the very end —
-    // matches the retail shader, where `discard_nz` is the last
-    // instruction before the SV_Target writes.
-    if (HAS_IBL)
-        backfaceDiscard(input.worldPos.w);
-
-    output.color = result;
-#if WC3_IS_MRT
-    {
-        // specular.x carries view-space Z for SSR / resolve effects;
-        // normal.w carries the pre-fog alpha for coverage.
-        output.specular = float4(input.worldPos.z, 0, 0, 1);
-        output.normal = float4(mrtNormal, preAlpha);
+        // The G-buffer has a stricter coverage test than the colour buffer.
+        hdMRTSoftnessDiscard(mat.albedo.w);
+        // specular.x carries view-space Z for the screen-space resolve passes;
+        // normal.w carries the pre-fog alpha as the surface's coverage.
+        output.specular = float4(input.viewPos.z, 0, 0, 1);
+        output.normal = float4(N * HD_NORMAL_PACK + HD_NORMAL_PACK, shaded.w);
     }
 #endif
 

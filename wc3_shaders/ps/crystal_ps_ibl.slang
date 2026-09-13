@@ -4,7 +4,8 @@
 //
 // IBL crystal pixel shader body.
 //
-// Mirrors `psIBLBody` but threads the crystal albedo refraction into the
+// Mirrors the 2.0.0 HD IBL body (since deleted along with the entry points
+// that used it) but threads the crystal albedo refraction into the
 // shading pipeline:
 //   1. Refract-sample the albedo (centre + offset lerp by 1-refractMask).
 //   2. Fetch the full ORM vector (refract, roughness, metalness, blend).
@@ -17,7 +18,8 @@
 //
 // The IBL sample, analytical-light loop, Blizzard ambient blend, fresnel
 // overlay, multi-layer blend, and cloak are all shared verbatim with
-// `psIBLBody` — see their respective files for the algorithm details.
+// the 2.0.0 HD IBL body — see their respective files for the algorithm
+// details.
 
 implementing wc3_shaders;
 
@@ -59,9 +61,9 @@ public float4 crystalIBLBody<
     float3 normalSample = t_normal.Sample(s_normal, input.uv.xy).xyw;
     float3 emissive = t_emissive.Sample(s_emissive, input.uv.xy).xyz;
 
-    // Multi-layer team blend — identical to `psIBLBody` once albedo has
-    // been produced, so we pipe the refracted albedo through the shared
-    // `multiLayerBlend` helper.
+    // Multi-layer team blend — identical to the 2.0.0 HD IBL body once
+    // albedo has been produced, so we pipe the refracted albedo through
+    // the shared `multiLayerBlend` helper.
     float3 teamAlbedo  = float3(0, 0, 0);
     float  teamLuma    = 0.0;
     if (TMat.hasMultiLayer)

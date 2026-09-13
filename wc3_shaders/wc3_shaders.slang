@@ -68,10 +68,22 @@ __include "effects/fresnel_overlay";
 __include "effects/multi_layer";
 __include "effects/crystal_refract";
 
-// HD pixel-shader bodies (shared among ps_main permutations).
+// HD mesh pixel-shader bodies, 3.0.0: material sampling + the fresnel/cloak
+// finish, the two shadow lookups, clustered-forward lighting, the runtime fog
+// stack, and the two depth-prepass bodies.
+__include "ps/hd_ps_material";
+__include "ps/hd_ps_shadows";
+__include "ps/hd_ps_lighting";
+__include "ps/hd_ps_post";
+__include "ps/hd_ps_prepass";
+
+// What survives of the 2.0.0 HD pixel-shader stack. `hd_ps` no longer routes
+// through any of it, but the crystal and SD-on-HD pipelines still call into
+// these helpers (and read the 2.0.0 `PSInput` / `psCB2` layouts), so they stay
+// until those families are re-reversed against 3.0.0 too. The bodies that only
+// `hd_ps` and the deleted toon / gritty variants used are gone.
 __include "ps/ps_depth_prepass";
 __include "ps/ps_ibl";
-__include "ps/ps_standard";
 __include "ps/ps_post";
 
 // Terrain pixel-shader bodies (splat blend + cascaded shadow + lit
@@ -113,6 +125,7 @@ __include "ps/tonemap_ps_body";
 
 // Vertex-shader helpers.
 __include "vs/vs_body";
+__include "vs/hd_vs_body";
 __include "vs/sd_vs_lighting";
 __include "vs/terrain_vs_body";
 __include "vs/foliage_vs_body";

@@ -1,33 +1,4 @@
 {
-  "_comment": "User-editable variant shaders backed by custom_shaders/custom_shaders.slang. Each entry adds a new BLS family that slangc compiles from custom_shaders.slang (with wc3_shaders on the include path). A family whose bls_name matches a shipped BLS must provide `template_override` to point at the shipped file it clones for binding metadata — variant shaders must not alter the VS/PS layout, only the shader body.",
-  "families": {
-    "toon_hd_vs": {
-      "stage": "vs",
-      "entry": "toon_vs_main",
-      "perm_count": 144,
-      "bls_name": "toon_hd.bls",
-      "template_override": "hd.bls"
-    },
-    "toon_hd_ps": {
-      "stage": "ps",
-      "entry": "toon_ps_main",
-      "perm_count": 512,
-      "bls_name": "toon_hd.bls",
-      "template_override": "hd.bls"
-    },
-    "gritty_hd_vs": {
-      "stage": "vs",
-      "entry": "gritty_vs_main",
-      "perm_count": 144,
-      "bls_name": "gritty_hd.bls",
-      "template_override": "hd.bls"
-    },
-    "gritty_hd_ps": {
-      "stage": "ps",
-      "entry": "gritty_ps_main",
-      "perm_count": 512,
-      "bls_name": "gritty_hd.bls",
-      "template_override": "hd.bls"
-    }
-  }
+  "_comment": "User-editable variant shaders backed by custom_shaders/custom_shaders.slang. Each entry adds a new BLS family that slangc compiles from custom_shaders.slang (with wc3_shaders on the include path). A family whose bls_name matches a shipped BLS must provide `template_override` to point at the shipped file it clones for binding metadata - variant shaders must not alter the VS/PS layout, only the shader body. Ships empty: the toon and gritty HD variants that used to be here were 2.0.0 and were removed when hd_vs / hd_ps moved to 3.0.0.",
+  "families": {}
 }
