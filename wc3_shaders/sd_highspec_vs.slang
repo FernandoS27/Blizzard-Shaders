@@ -19,14 +19,17 @@ public SDVSOutput sd_highspec_vs_main<
     TSkin : ISkinning,
     TVF   : IVertexFormat,
     let NUM_LIGHTS : int
->(VSInput<TVF> input)
+>(SDHighspecVSInput<TVF> input)
 {
     SDVSOutput output;
 
-    // Skinning (rigid / four-bone), identical to the HD entry.
+    // Skinning (rigid / four-bone), identical to the HD entry — except that
+    // this family has no tangent attribute at all (no shipped permutation
+    // declares ATTR7), so a constant is passed and the skinned tangent is
+    // discarded. It folds out: G4 still lands on retail's 108 classes.
     float3 skinnedPos, skinnedNormal, skinnedTangent;
     TSkin.transform(
-        input.position, input.normal, input.tangent,
+        input.position, input.normal, float4(0, 0, 0, 1),
         input.weights, input.boneIndices, vsCB3,
         skinnedPos, skinnedNormal, skinnedTangent);
 

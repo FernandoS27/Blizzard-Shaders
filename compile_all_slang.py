@@ -653,44 +653,38 @@ def map_hd_vs(idx: int) -> PermSpec:
     )
 
 
-def _hd_ps_bits(idx: int):
-    """The 2.0.0 9-bit feature encoding, now used only by crystal_ps.
+def _hd_ps_fold(*, ao, sc2, mrt, dp, dbg, pts, sc, lit, at, ml):
+    """The 3.0.0 feature-mask dependency fold, shared by `hd_ps` and `crystal_ps`.
 
-    hd_ps moved to the 3.0.0 10-bit mask (see map_hd_ps); crystal is still
-    the 2.0.0 reconstruction and keeps this. Bit 2 / EXTRA_VERTS toggles the
-    shadow cascade inputs the VS writes on TEXCOORD4-6, which the crystal
-    IBL body consumes for its 3-cascade PCF lookup."""
-    return {
-        "mrt":  bool(idx & 1),
-        "dp":   bool(idx & 2),
-        "ev":   bool(idx & 4),
-        "ibl":  bool(idx & 8),
-        "fogL": bool(idx & 16),
-        "fogE": bool(idx & 32),
-        "at":   bool(idx & 64),
-        "ml":   bool(idx & 128),
-        "dbg":  bool(idx & 256),
-    }
+    Several bits only mean anything under another one, and the engine emits
+    identical bytecode for the permutations that differ only in a dead bit. The
+    folding below reproduces that: a depth prepass ignores every shading axis,
+    the four lighting sub-axes need LIGHTING, and the second cascade set needs
+    the first.
 
-
-def _hd_ps_types(b):
-    if b["fogL"] and b["fogE"]:
-        fog = "FogExp2"
-    elif b["fogL"]:
-        fog = "FogLinear"
-    elif b["fogE"]:
-        fog = "FogExponential"
-    else:
-        fog = "FogNone"
-    alpha = "AlphaTestOn" if b["at"] else "AlphaTestOff"
-    mat   = "MultiLayerMaterial" if b["ml"] else "StandardMaterial"
-    iblS  = "true" if b["ibl"] else "false"
-    evS   = "true" if b["ev"] else "false"
-    dpS   = "true" if b["dp"] else "false"
-    mrtS  = "true" if b["mrt"] else "false"
-    dbgS  = "true" if b["dbg"] else "false"
-    return fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS
-
+    Kept as one function because `crystal_ps` is `hd_ps`'s mask with the AO_MAP
+    axis deleted (see map_crystal_ps) -- the two families must fold identically
+    or one of them stops matching retail, and duplicating the rules is how that
+    drifts.
+    """
+    if dp:
+        # A depth prepass does not shade, so the material axis is dead -- but
+        # only when there is no alpha test. An alpha-tested prepass still has
+        # to sample alpha to decide `discard`, and MULTI_LAYER changes how that
+        # alpha is composed, so retail keeps those two apart. Retail therefore
+        # ships ONE blob for the plain-prepass perms and TWO for the
+        # alpha-tested ones; folding unconditionally gives hd_ps 202 classes,
+        # not folding at all gives 204, and this gives retail's 203.
+        lit = False
+        mrt = False
+        if not at:
+            ml = False
+    if not lit:
+        ao = sc = pts = dbg = False
+    if not sc:
+        sc2 = False
+    return dict(ao=ao, sc2=sc2, mrt=mrt, dp=dp, dbg=dbg,
+                pts=pts, sc=sc, lit=lit, at=at, ml=ml)
 
 
 def map_hd_ps(idx: int) -> PermSpec:
@@ -709,24 +703,21 @@ def map_hd_ps(idx: int) -> PermSpec:
     builds this exact mask, bit for bit. See docs/WC3_HD_PERMUTATIONS.md for
     where each bit comes from in the render state.
     """
-    ao   = bool(idx & 1)      # AO_MAP
-    sc2  = bool(idx & 2)      # SHADOW_CASCADE2
-    mrt  = bool(idx & 4)      # MULTI_TARGET
-    dp   = bool(idx & 8)      # DEPTH_PREPASS
-    dbg  = bool(idx & 16)     # LIGHT_DEBUG
-    pts  = bool(idx & 32)     # POINT_SHADOWS
-    sc   = bool(idx & 64)     # SHADOW_CASCADE
-    lit  = bool(idx & 128)    # LIGHTING
-    at   = bool(idx & 256)    # ALPHA_TEST
-    ml   = bool(idx & 512)    # MULTI_LAYER
-
-    if dp:
-        lit = False
-        mrt = False
-    if not lit:
-        ao = sc = pts = dbg = False
-    if not sc:
-        sc2 = False
+    f = _hd_ps_fold(
+        ao =bool(idx &   1),   # AO_MAP
+        sc2=bool(idx &   2),   # SHADOW_CASCADE2
+        mrt=bool(idx &   4),   # MULTI_TARGET
+        dp =bool(idx &   8),   # DEPTH_PREPASS
+        dbg=bool(idx &  16),   # LIGHT_DEBUG
+        pts=bool(idx &  32),   # POINT_SHADOWS
+        sc =bool(idx &  64),   # SHADOW_CASCADE
+        lit=bool(idx & 128),   # LIGHTING
+        at =bool(idx & 256),   # ALPHA_TEST
+        ml =bool(idx & 512),   # MULTI_LAYER
+    )
+    ao, sc2, mrt, dp = f["ao"], f["sc2"], f["mrt"], f["dp"]
+    dbg, pts, sc, lit = f["dbg"], f["pts"], f["sc"], f["lit"]
+    at, ml = f["at"], f["ml"]
 
     alpha = "AlphaTestOn" if at else "AlphaTestOff"
     mat = "MultiLayerMaterial" if ml else "StandardMaterial"
@@ -750,24 +741,72 @@ def map_hd_ps(idx: int) -> PermSpec:
 
 
 def map_crystal_ps(idx: int) -> PermSpec:
-    # Crystal is on the 2.0.0 9-bit encoding. Bit 2 / EXTRA_VERTS gates the
-    # 3-cascade PCF shadow path, which crystal now implements (mirroring the
-    # 2.0.0 HD IBL body). IS_DEPTH_PREPASS / IS_MRT are preprocessor defines
-    # because they reshape PSOutput (see types/ps_io.slang).
-    b = _hd_ps_bits(idx)
-    fog, alpha, mat, iblS, evS, dpS, mrtS, dbgS = _hd_ps_types(b)
+    """3.0.0 crystal pixel shader -- 512 perms: hd_ps's mask with AO_MAP deleted.
+
+    Crystal is not a cousin of the HD mesh shader, it IS the HD mesh shader with
+    one axis removed and three pieces of material math swapped in. Its 9-bit
+    index is hd_ps's 10-bit index with bit 0 (AO_MAP) struck out and everything
+    above it shifted down one, so crystal index `c` denotes exactly the feature
+    set of hd index `2 * c`:
+
+        bit 0 (  1)  SHADOW_CASCADE2      bit 5 ( 32)  SHADOW_CASCADE
+        bit 1 (  2)  MULTI_TARGET         bit 6 ( 64)  LIGHTING
+        bit 2 (  4)  DEPTH_PREPASS        bit 7 (128)  ALPHA_TEST
+        bit 3 (  8)  LIGHT_DEBUG          bit 8 (256)  MULTI_LAYER
+        bit 4 ( 16)  POINT_SHADOWS
+
+    Three independent confirmations, each actually run against the extraction:
+    the two retail class partitions are EQUAL AS INDEX SETS under c -> 2c (107
+    classes each, not merely the same count); crystal/perm_004 is byte-identical
+    to hd/perm_0008, declarations included; and no crystal permutation samples
+    t2 at UV1, which is the single instruction hd's AO axis adds. Crystal's
+    declarations and input signature are byte-for-byte hd's on the lit perms
+    too -- same cb1[43]/cb2[31], same t0-t3/t6-t8/t11-t13, same t16/t17/t18
+    light buffers, same eight interpolants.
+
+    Because the axes are hd's, the FOLD is hd's: `_hd_ps_fold` is shared rather
+    than restated, `dp and not at -> keep MULTI_LAYER` included. AO is pinned
+    off, which is what takes hd's 203 classes down to crystal's 107.
+
+    What the shader body does differently is three things and no more -- the
+    refracted albedo, the raw (unscaled) normal-map decode, and the
+    refract-modulated fresnel alpha. See ps/crystal_ps_body.slang.
+    """
+    f = _hd_ps_fold(
+        ao =False,             # crystal has no AO_MAP axis at all
+        sc2=bool(idx &   1),   # SHADOW_CASCADE2
+        mrt=bool(idx &   2),   # MULTI_TARGET
+        dp =bool(idx &   4),   # DEPTH_PREPASS
+        dbg=bool(idx &   8),   # LIGHT_DEBUG
+        pts=bool(idx &  16),   # POINT_SHADOWS
+        sc =bool(idx &  32),   # SHADOW_CASCADE
+        lit=bool(idx &  64),   # LIGHTING
+        at =bool(idx & 128),   # ALPHA_TEST
+        ml =bool(idx & 256),   # MULTI_LAYER
+    )
+    sc2, mrt, dp, dbg = f["sc2"], f["mrt"], f["dp"], f["dbg"]
+    pts, sc, lit, at, ml = f["pts"], f["sc"], f["lit"], f["at"], f["ml"]
+
+    alpha = "AlphaTestOn" if at else "AlphaTestOff"
+    mat = "MultiLayerMaterial" if ml else "StandardMaterial"
+    s = lambda v: "true" if v else "false"
+
+    # MULTI_TARGET and DEPTH_PREPASS reshape PSOutput itself, so they are
+    # preprocessor defines rather than generics -- see types/ps_io.slang.
     defines: List[str] = []
-    if b["dp"]:
+    if dp:
         defines.append("WC3_IS_DEPTH_PREPASS=1")
-    if b["mrt"]:
+    if mrt:
         defines.append("WC3_IS_MRT=1")
-    if b["ev"]:
-        defines.append("WC3_HAS_SHADOWS=1")
+
+    flags = "+".join(n for n, v in (("LIT", lit), ("SC", sc), ("SC2", sc2),
+                                    ("PS", pts), ("DBG", dbg), ("DP", dp),
+                                    ("MRT", mrt)) if v)
     return PermSpec(
         entry="crystal_ps_main",
-        types=[fog, alpha, mat, iblS, evS, dbgS],
+        types=[alpha, mat, s(lit), s(sc), s(sc2), s(pts), s(dbg)],
         defines=defines,
-        label=f"{fog}+{alpha}+{mat}+IBL={iblS}+EV={evS}+DP={dpS}+MRT={mrtS}+DBG={dbgS}",
+        label=f"{alpha}+{mat}" + (f"+{flags}" if flags else ""),
     )
 
 
@@ -801,50 +840,67 @@ def map_sd_on_hd_vs(idx: int) -> PermSpec:
 
 
 def map_sd_on_hd_ps(idx: int) -> PermSpec:
-    base       = idx & 0x3F
-    high_field = idx // 64
+    """3.0.0 SD-on-HD pixel shader — 384 perms, 6 outer blocks x 64 bits.
 
-    mrt  = bool(base & 1)
-    dp   = bool(base & 2)
-    ev   = bool(base & 4)
-    ibl  = bool(base & 8)
-    fogL = bool(base & 16)
-    fogE = bool(base & 32)
+    Same clustered-forward pipeline as `hd_ps`, same HD vertex shader, same
+    constant buffers and the same t16/t17/t18 light buffers — the difference is
+    the material: SD assets carry albedo only, so t1/t2/t3/t4 (normal, ORM,
+    emissive, team) are never sampled and the shading normal is the
+    interpolated one.
 
-    if fogL and fogE:
-        fog = "FogExp2"
-    elif fogL:
-        fog = "FogLinear"
-    elif fogE:
-        fog = "FogExponential"
-    else:
-        fog = "FogNone"
+    Fog is NOT an axis any more. 2.0.0 spent low bits 4 and 5 on FOG_LINEAR /
+    FOG_EXPONENTIAL; 3.0.0 evaluates fog from constants at runtime and spends
+    those bits on the two shadow axes instead.
 
-    at   = high_field in (1, 4)
-    srgb = high_field in (2, 5)
-    dbg  = high_field in (3, 4, 5)
+    The outer field is `lit + 2 * sub`, where sub picks the output transform:
+    0 = plain, 1 = alpha test, 2 = sRGB encode. Under a depth prepass both
+    LIGHTING and the sRGB encode are dead (there is no colour target), which is
+    what collapses the outer field to 3 distinct programs there; ALPHA_TEST
+    stays live because the prepass still has to punch the same holes.
+
+    Derived from the retail partition: this folding reproduces all 80 of the
+    distinct programs in ps/sd_on_hd.bls exactly
+    (`tools/wc3_perm_partition.py sd_on_hd_ps`).
+    """
+    sc2 = bool(idx & 1)      # SHADOW_CASCADE2 — needs SHADOW_CASCADE
+    mrt = bool(idx & 2)      # MULTI_TARGET
+    dp  = bool(idx & 4)      # DEPTH_PREPASS
+    dbg = bool(idx & 8)      # LIGHT_DEBUG
+    pts = bool(idx & 16)     # POINT_SHADOWS
+    sc  = bool(idx & 32)     # SHADOW_CASCADE
+
+    outer = idx // 64
+    lit   = bool(outer % 2)
+    sub   = outer // 2
+    at    = sub == 1
+    srgb  = sub == 2
+
+    if dp:
+        lit = False
+        mrt = False
+        srgb = False          # no colour target to encode into
+    if not lit:
+        sc = pts = dbg = sc2 = False
+    if not sc:
+        sc2 = False
 
     alpha = "AlphaTestOn" if at else "AlphaTestOff"
-    iblS  = "true" if ibl else "false"
-    evS   = "true" if ev else "false"
-    dpS   = "true" if dp else "false"
-    mrtS  = "true" if mrt else "false"
-    srgbS = "true" if srgb else "false"
-    dbgS  = "true" if dbg else "false"
+    s = lambda v: "true" if v else "false"
 
     defines: List[str] = []
     if dp:
         defines.append("WC3_IS_DEPTH_PREPASS=1")
     if mrt:
         defines.append("WC3_IS_MRT=1")
-    if ev:
-        defines.append("WC3_HAS_SHADOWS=1")
+
+    flags = "+".join(n for n, v in (("LIT", lit), ("SC", sc), ("SC2", sc2),
+                                    ("PS", pts), ("DBG", dbg), ("SRGB", srgb),
+                                    ("DP", dp), ("MRT", mrt)) if v)
     return PermSpec(
         entry="sd_on_hd_ps_main",
-        types=[fog, alpha, iblS, evS, srgbS, dbgS],
+        types=[alpha, s(lit), s(sc), s(sc2), s(pts), s(dbg), s(srgb)],
         defines=defines,
-        label=(f"{fog}+{alpha}+IBL={iblS}+EV={evS}+DP={dpS}"
-               f"+MRT={mrtS}+SRGB={srgbS}+DBG={dbgS}"),
+        label=alpha + (f"+{flags}" if flags else ""),
     )
 
 
@@ -1213,32 +1269,55 @@ def map_popcorn_vs(idx: int) -> PermSpec:
 
 
 def map_popcorn_ps(idx: int) -> PermSpec:
-    # 1152 perms = 9 outer blocks × 128 inner bits.
-    #   inner bits (0..127):
-    #     bit 0 (0x01) — HAS_GBUFFER         (COLOR pass only)
-    #     bit 1 (0x02) — FOG_LINEAR          (COLOR pass only)
-    #     bit 2 (0x04) — FOG_EXP             (COLOR pass only;
-    #                                         set with bit 1 → FogExp2)
-    #     bit 3 (0x08) — HAS_SOFT_PARTICLES  (both passes)
-    #     bit 4 (0x10) — HAS_ALPHA_LUT       (COLOR pass only)
-    #     bit 5 (0x20) — HAS_VC              (both passes)
-    #     bit 6 (0x40) — HAS_LIT             (COLOR pass only)
+    # 3.0.0: 288 perms = 9 outer blocks x 32 inner bits. 2.0.0 had 1152 = 9 x
+    # 128; the two deleted bits are the fog pair (2.0.0 inner bits 1 and 2),
+    # because 3.0.0 selects all seven fog modes from a constant at runtime
+    # instead of compiling one arm per blob. The five survivors kept their
+    # relative order and compacted DOWNWARD into bits 0..4.
     #
-    #   outer (0..8) = mode_idx * 3 + uv_variant:
-    #     mode 0 = basic, 1 = billboard, 2 = atlas
-    #     variant 0 = no UV         → PopcornNoUV       (COLOR pass)
-    #     variant 1 = COLOR pass    → PopcornBasicUV / Billboard / Atlas
-    #     variant 2 = MOTION pass   → same modes, IS_MOTION_PASS = true
+    #   idx = inner | 32 * outer        outer = mode_idx * 3 + uv_var
     #
-    # Note: many bit combinations collapse semantically (e.g. all the
-    # COLOR-pass-only bits are no-ops in MOTION_PASS) but the engine
-    # still compiles every variant so its perm-table stays a fixed grid.
-    # We mirror that 1:1 here so the Slang specialisations line up
-    # perm-for-perm with the original BLS bundle.
-    inner    = idx & 0x7F
-    outer    = idx // 128
+    #   inner bit 0 (0x01) — HAS_GBUFFER         (COLOR pass only)
+    #         bit 1 (0x02) — HAS_SOFT_PARTICLES  (both passes)
+    #         bit 2 (0x04) — HAS_ALPHA_LUT       (needs a UV stream)
+    #         bit 3 (0x08) — HAS_VC              (both passes)
+    #         bit 4 (0x10) — HAS_LIT             (COLOR pass only)
+    #
+    #   mode_idx 0 = basic, 1 = billboard, 2 = atlas
+    #   uv_var   0 = no UV     -> PopcornNoUV       (COLOR pass)
+    #            1 = COLOR pass -> PopcornBasicUV / Billboard / Atlas
+    #            2 = MOTION pass -> same modes, IS_MOTION_PASS = true
+    #
+    # Two folds, derived from the retail blobs by asking of each equivalence
+    # class which axes vary INSIDE it — an axis that varies within a class is
+    # one the engine folded away for that combination:
+    #
+    #   uv_var == 0  ->  mode_idx and HAS_ALPHA_LUT both fold away
+    #   uv_var == 2  ->  HAS_GBUFFER folds away
+    #
+    # 16 + 96 + 48 = 160 classes, which is what retail ships.
+    #
+    # Note what does NOT fold in the motion pass: HAS_ALPHA_LUT and HAS_LIT
+    # still split it, even though `diff perm_064 perm_068` has zero body lines
+    # differing. They are live through the INPUT SIGNATURE alone — the engine
+    # keeps the interpolants bound so the pass switch does not have to relink —
+    # so the mapper must still specialise on them.
+    inner    = idx & 0x1F
+    outer    = idx // 32
     mode_idx = outer // 3
     uv_var   = outer %  3
+
+    has_gbuf = bool(inner & 0x01)
+    has_sp   = bool(inner & 0x02)
+    has_alut = bool(inner & 0x04)
+    has_vc   = bool(inner & 0x08)
+    has_lit  = bool(inner & 0x10)
+
+    if uv_var == 0:          # no UV stream: nothing to look a LUT up against,
+        has_alut = False     # and no per-mode UV to resolve
+        mode_idx = 0
+    if uv_var == 2:          # the motion pass writes one target, never a g-buffer
+        has_gbuf = False
 
     if uv_var == 0:
         mode = "PopcornNoUV"
@@ -1251,30 +1330,16 @@ def map_popcorn_ps(idx: int) -> PermSpec:
 
     is_motion = "true" if uv_var == 2 else "false"
 
-    fogL = bool(inner & 0x02)
-    fogE = bool(inner & 0x04)
-    if fogL and fogE:
-        fog = "FogExp2"
-    elif fogL:
-        fog = "FogLinear"
-    elif fogE:
-        fog = "FogExponential"
-    else:
-        fog = "FogNone"
-
-    has_gbuf = "true" if (inner & 0x01) else "false"
-    has_sp   = "true" if (inner & 0x08) else "false"
-    has_alut = "true" if (inner & 0x10) else "false"
-    has_vc   = "true" if (inner & 0x20) else "false"
-    has_lit  = "true" if (inner & 0x40) else "false"
+    def b(v: bool) -> str:
+        return "true" if v else "false"
 
     # PopcornPSInput is gated by the same POPCORN_HAS_* defines that
-    # gate PopcornVSOutput so d3d12 PSO validation (PS ISG1 ⊆ VS OSG1)
+    # gate PopcornVSOutput so d3d12 PSO validation (PS ISG1 subset of VS OSG1)
     # accepts the link. The engine is expected to pair PS perms with VS
     # perms that have matching gating:
-    #   HAS_LIT (PS)        ↔ HAS_NT (VS)
-    #   HAS_ALPHA_LUT (PS)  ↔ HAS_RANDOM (VS)   when there's a UV stream
-    #   HAS_VC, UV, mode    ↔ same on both sides
+    #   HAS_LIT (PS)        <-> HAS_NT (VS)
+    #   HAS_ALPHA_LUT (PS)  <-> HAS_RANDOM (VS)   when there's a UV stream
+    #   HAS_VC, UV, mode    <-> same on both sides
     defines: List[str] = []
     if uv_var != 0:
         defines.append("POPCORN_HAS_UV=1")
@@ -1284,50 +1349,71 @@ def map_popcorn_ps(idx: int) -> PermSpec:
         elif mode_idx == 2:
             defines.append("POPCORN_ATLAS=1")
             defines.append("POPCORN_HAS_BB_OR_ATLAS=1")
-    if inner & 0x20:
+    if has_vc:
         defines.append("POPCORN_HAS_VC=1")
-    if inner & 0x40:
+    if has_lit:
         defines.append("POPCORN_HAS_NT=1")
-    if (inner & 0x10) and uv_var != 0:
+    if has_alut:
         defines.append("POPCORN_HAS_RANDOM_UV=1")
-    # HAS_GBUFFER && !IS_MOTION_PASS migrated to WC3_POPCORN_HAS_GBUFFER
-    # preprocessor define so the deferred-targets struct fields can be
-    # #if-gated (see popcorn_ps.slang for the WGSL emit rationale).
-    if (inner & 0x01) and uv_var != 2:
+    # HAS_GBUFFER migrated to the WC3_POPCORN_HAS_GBUFFER preprocessor define so
+    # the deferred-targets struct fields can be #if-gated (see popcorn_ps.slang
+    # for the WGSL emit rationale).
+    if has_gbuf:
         defines.append("WC3_POPCORN_HAS_GBUFFER=1")
 
     return PermSpec(
         entry="popcorn_ps_main",
-        types=[mode, fog, is_motion, has_sp, has_alut, has_vc, has_lit],
-        label=(f"{mode}+M={is_motion}+{fog}+G={has_gbuf}+SP={has_sp}"
-               f"+ALUT={has_alut}+VC={has_vc}+LIT={has_lit}"),
+        types=[mode, is_motion, b(has_sp), b(has_alut), b(has_vc), b(has_lit)],
+        label=(f"{mode}+M={is_motion}+G={b(has_gbuf)}+SP={b(has_sp)}"
+               f"+ALUT={b(has_alut)}+VC={b(has_vc)}+LIT={b(has_lit)}"),
         defines=defines,
     )
 
 
+# The 3.0.0 fog enum, indexed by the engine's own mode number. Mode 4 is
+# volumetric and has no entry: the classic pipeline never implemented it, so
+# retail emits mode 0's bytecode there (see `map_sd_classic_ps`).
+FOG30_NAMES = {
+    0: "FogMode0None",
+    1: "FogMode1Linear",
+    2: "FogMode2Exp",
+    3: "FogMode3ExpSq",
+    5: "FogMode5ExpBand",
+    6: "FogMode6ExpSqBand",
+}
+
+
 def map_sd_classic_ps(idx: int) -> PermSpec:
-    low     = idx & 7
-    t0stage = (idx // 8) % 5
-    t1stage = (idx // 40) % 5
+    # 3.0.0 layout — MIXED RADIX, not a bitmask (2.0.0 packed fog+alpha into
+    # the low 3 bits and strode the stages by 8/40):
+    #
+    #   idx = fog + 7*alpha + 14*t0stage + 70*t1stage
+    #         fog in [0,7)   alpha in [0,2)   t0stage, t1stage in [0,5)
+    #
+    # 7*2*5*5 = 350 slots. The fog radix is what widened (4 -> 7); the stage
+    # enum is unchanged, which is why 92 of the 168 2.0.0 classes survive.
+    fog     = idx % 7
+    alpha   = (idx // 7) % 2
+    t0stage = (idx // 14) % 5
+    t1stage = (idx // 70) % 5
 
-    fogL = bool(low & 1)
-    fogE = bool(low & 2)
-    at   = bool(low & 4)
+    # Fold 1 — mode 4 is VOLUMETRIC fog, which needs a world position and a fog
+    # volume the classic pipeline does not have. Retail emits mode 0's bytecode
+    # for it in all 50 (alpha, t0, t1) combinations, unconditionally; the same
+    # missing implementation is why `fog_ps` ships 7 perms but only 6 blobs.
+    if fog == 4:
+        fog = 0
+    # Fold 2 — a disabled stage 0 short-circuits the chain, so stage 1 is
+    # unreachable and every retail class with t0 == 0 varies only in t1.
+    if t0stage == 0:
+        t1stage = 0
 
-    if fogL and fogE:
-        fog = "FogExp2"
-    elif fogL:
-        fog = "FogLinear"
-    elif fogE:
-        fog = "FogExponential"
-    else:
-        fog = "FogNone"
-    alpha = "AlphaTestOn" if at else "AlphaTestOff"
-
+    alpha_t = "AlphaTestOn" if alpha else "AlphaTestOff"
     return PermSpec(
         entry="sd_classic_ps_main",
-        types=[STAGE_NAMES[t0stage], STAGE_NAMES[t1stage], fog, alpha],
-        label=f"T0={t0stage}+T1={t1stage}+{fog}+{alpha}",
+        types=[STAGE_NAMES[t0stage], STAGE_NAMES[t1stage],
+               FOG30_NAMES[fog], alpha_t],
+        label=f"T0={t0stage}+T1={t1stage}+fog{fog}+{alpha_t}",
     )
 
 
@@ -1378,6 +1464,65 @@ if _missing_mappers or _orphan_mappers:
         f"missing mappers for {sorted(_missing_mappers)}, "
         f"orphan mappers for {sorted(_orphan_mappers)}"
     )
+
+# Which folder of the 3.0.0 retail extraction each family mirrors. Used only by
+# the staleness check below — the tree itself is gitignored and often absent.
+RETAIL_DIRS: dict[str, str] = {
+    "hd_vs": "hd_vs", "hd_ps": "hd", "crystal_ps": "crystal",
+    "sd_on_hd_vs": "sd_on_hd_vs", "sd_on_hd_ps": "sd_on_hd",
+    "sd_highspec_vs": "sd_highspec_vs", "sd_classic_ps": "sd",
+    "water_vs": "water_vs", "water_ps": "water",
+    "popcorn_vs": "popcornfx_vs", "popcorn_ps": "popcornfx",
+    "tonemap_ps": "tonemap", "sprite_vs": "sprite_vs", "sprite_ps": "sprite",
+    "terrain_vs": "terrain_vs", "terrain_ps": "terrain",
+    "foliage_vs": "foliage_vs", "foliage_ps": "foliage",
+    "distortion_ps": "distortion", "imgui_vs": "imgui_vs", "imgui_ps": "imgui",
+    "ffxcmaaedge0": "ffxcmaaedge0", "ffxcmaaedge1": "ffxcmaaedge1",
+    "ffxcmaaedgecombine": "ffxcmaaedgecombine",
+    "ffxcmaaprocessandapply": "ffxcmaaprocessandapply",
+    "bloomextract": "bloomextract", "bloomcombine": "bloomcombine",
+    "gaussianblur": "gaussianblur", "depthoffield": "depthoffield",
+}
+
+
+def warn_stale_perm_counts(retail_root: Path | None = None) -> List[str]:
+    """Warn where `perm_count` disagrees with the 3.0.0 retail blob count.
+
+    A family whose count is still the 2.0.0 one builds *quietly* and wrongly:
+    too low and the tail of the grid is never compiled, too high and the mapper
+    is called with indices outside the domain it was written for, which folds
+    back onto low perms instead of raising. Neither shows up as a build failure,
+    which is exactly how five families sat on 2.0.0 counts while every gate was
+    green.
+
+    A count and its mapper have to move together, so this only *reports* — it is
+    the milestone that ports the mapper which also bumps the count. Returns the
+    warning lines so callers can assert on them; prints nothing when the retail
+    tree is absent (it is gitignored, so most checkouts will not have it).
+    """
+    root = retail_root or (REPO_ROOT / "wc3_re_shaders")
+    if not root.is_dir():
+        return []
+    lines: List[str] = []
+    for name, cfg in FAMILY_CONFIGS.items():
+        sub = RETAIL_DIRS.get(name)
+        if not sub:
+            continue
+        d = root / sub
+        if not d.is_dir():
+            continue
+        actual = len(list(d.glob("perm_*.dxbc")))
+        if actual and actual != cfg.perm_count:
+            lines.append(f"  {name:<24} config={cfg.perm_count:<5} retail={actual:<5} "
+                         f"({'under' if cfg.perm_count < actual else 'over'}-building)")
+    if lines:
+        print("WARNING: perm_count disagrees with the 3.0.0 retail extraction —")
+        print("         these families are still on their 2.0.0 grid:")
+        for ln in lines:
+            print(ln)
+        print("         Bump each count in wc3_shaders.json only alongside its mapper.")
+    return lines
+
 
 # Iteration order matches wc3_shaders.json (i.e. FAMILY_CONFIGS insertion order).
 SWEEPS = [
@@ -1433,6 +1578,9 @@ def main() -> int:
     args = parser.parse_args()
     if args.jobs < 1:
         args.jobs = 1
+
+    # Loud, non-fatal: a family still on its 2.0.0 grid builds quietly and wrongly.
+    warn_stale_perm_counts()
 
     # --debug retargets the whole run: bytecode goes to slang_out_debug/
     # and invoke_slangc switches on the -g2 / -O0 / -emit-spirv-directly

@@ -67,6 +67,29 @@ def load(path, decompiler=None):
     return Program.from_file(path)
 
 
+def perm_path(directory, idx, ext):
+    """Resolve ``<directory>/perm_<idx>.<ext>``, whatever the zero-padding is.
+
+    ``tools/extract_wc3_bls.py`` pads the perm number to the width of the
+    family's perm count, so the SAME family can be 3 digits in one retail tree
+    and 4 in another: 2.0.0 popcornfx shipped 1152 perms (``perm_0000``) and
+    3.0.0 ships 288 (``perm_000``). Hardcoding either width silently turns a
+    real comparison into ``FileNotFoundError`` -- which is how the 3.0.0
+    popcornfx blobs looked missing when they were sitting right there.
+
+    Widest first, so a directory that somehow holds both naming schemes
+    resolves the way the extractor most recently wrote it.
+    """
+    directory = Path(directory)
+    for width in (5, 4, 3):
+        cand = directory / f"perm_{idx:0{width}d}.{ext}"
+        if cand.exists():
+            return cand
+    # Nothing matched: hand back the conventional name so the caller raises a
+    # FileNotFoundError naming a path a human can go look for.
+    return directory / f"perm_{idx:03d}.{ext}"
+
+
 # --------------------------------------------------------------------------
 # input mapping — semantic values -> per-shader input registers
 # --------------------------------------------------------------------------
@@ -188,14 +211,29 @@ def default_sysvals(seed):
 # output comparison
 # --------------------------------------------------------------------------
 
-def output_diff(out_a, out_b, regs):
-    """Worst per-channel |a-b| over the given output registers.
+def output_diff(out_a, out_b, regs, rel_scale=0.0):
+    """Worst per-channel difference over the given output registers.
 
     NaN==NaN and same-signed inf==inf are treated as equal (they signal the
     same degenerate input, not a divergence). NaN on ONE side is a divergence
     and scores +inf: ``abs(nan - x)`` is NaN and ``nan > worst`` is False, so
     without this it would score zero and a shader that turned a finite result
     into NaN would pass. Returns ``(worst, (reg, ch, a, b))``.
+
+    ``rel_scale`` puts a floor under the divisor: the score becomes
+    ``|a-b| / max(rel_scale, |a|, |b|)``, which is plain absolute error while
+    the values stay below the floor and relative error above it. Left at its
+    default of 0 the score is exactly ``|a-b|`` and nothing changes.
+
+    It exists because a fixed absolute threshold tests large outputs far more
+    strictly than small ones, which silently makes a gate's strictness depend on
+    how bright the pixel is. `hd_ps`'s light-complexity overlay ADDS a light
+    count to the output, so its debug permutations carry values around 13 where
+    the shaded ones sit near 3; at 128 trials all 64 LIGHT_DEBUG permutations
+    crossed 1e-3 absolute while their non-debug siblings passed, on the same
+    seed, at the same output lane, with the SAME relative error (1.45e-04 vs
+    1.27e-04). Nothing was wrong with the overlay. Pass ``rel_scale=1.0`` for
+    any family whose outputs are not confined to roughly [0,1].
     """
     worst = 0.0; where = None
     for reg in regs:
@@ -207,6 +245,8 @@ def output_diff(out_a, out_b, regs):
             d = math.inf if (na or nb) else abs(a - b)
             if math.isinf(a) and math.isinf(b) and (a > 0) == (b > 0):
                 continue
+            if rel_scale > 0 and not math.isinf(d):
+                d = d / max(rel_scale, abs(a), abs(b))
             if d > worst:
                 worst = d; where = (reg, k, a, b)
     return worst, where
@@ -227,7 +267,8 @@ class CompareResult:
 
 def compare(prog_a, prog_b, *, trials=200, output_regs=(0,), tol=1e-3,
             inputs_fn=None, cbufs_fn=None, sysvals_fn=None,
-            texture=None, structured=None, deriv_scale=0.0, seed0=0):
+            texture=None, structured=None, deriv_scale=0.0, seed0=0,
+            rel_scale=0.0):
     """Run both programs over ``trials`` random draws and collect the worst diff.
 
     Args:
@@ -244,6 +285,9 @@ def compare(prog_a, prog_b, *, trials=200, output_regs=(0,), tol=1e-3,
                         whose garbage-as-int values overrun data-driven loops.
         deriv_scale:    synthetic-derivative magnitude (keep 0 unless testing
                         specular-AA-style paths, which can't be matched exactly).
+        rel_scale:      magnitude floor for the diff score; see
+                        :func:`output_diff`. 0 (the default) keeps the score a
+                        plain absolute difference.
     """
     inputs_fn = inputs_fn or (lambda s: RandomSemantics(s))
     cbufs_fn = cbufs_fn or (lambda s: RandomCBufs(s))
@@ -266,7 +310,7 @@ def compare(prog_a, prog_b, *, trials=200, output_regs=(0,), tol=1e-3,
         res.trials += 1
         if oa.discarded != ob.discarded:
             res.discard_mismatches += 1
-        w, where = output_diff(oa, ob, output_regs)
+        w, where = output_diff(oa, ob, output_regs, rel_scale=rel_scale)
         if w > res.worst:
             res.worst = w; res.worst_where = where; res.worst_seed = seed
     return res

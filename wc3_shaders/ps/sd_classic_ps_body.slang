@@ -9,13 +9,25 @@
 // the compile-time policies `T0`, `T1`; lighting is already baked into
 // `input.vertColor` by the vertex shader, so the body just applies the
 // combiner chain to it, runs the alpha test, and applies fog.
+//
+// 3.0.0 changed exactly one thing here: the fog axis went from three modes
+// (`IFogMode`) to the engine-wide seven (`IFogMode30`), whose arms are shared
+// with the HD families — see ps/fog_factor.slang. The stage chain, the
+// stage ops themselves, and the order (stages, then alpha test, then fog) are
+// all unchanged, which is why 92 of the 168 2.0.0 classes survive byte for
+// byte into 3.0.0.
+//
+// The APPLICATION stays local. HD runs an 11-case blend-mode switch so
+// additive materials fade to black; the classic pipeline has no blend-mode
+// constant and always lerps plainly toward the fog colour, leaving alpha
+// alone.
 
 implementing wc3_shaders;
 
 public float4 sdClassicPsBody<
     T0    : ITextureStage,
     T1    : ITextureStage,
-    TFog  : IFogMode,
+    TFog  : IFogMode30,
     TAlpha: IAlphaTest
 >(SDPSInput input)
 {
@@ -44,11 +56,15 @@ public float4 sdClassicPsBody<
     TAlpha.test(current.w, sdClassicPsCB0.alphaRef);
 
     // Fog is applied on view-space Z (packed in worldPos.z by the VS).
-    current.xyz = TFog.apply(current.xyz, sdClassicPsCB0.fogColor.xyz,
-                             input.worldPos.z,
-                             sdClassicPsCB0.fogStart,
-                             sdClassicPsCB0.fogEnd,
-                             sdClassicPsCB0.fogDensity);
+    if (TFog.hasFog)
+    {
+        float f = TFog.factor(input.worldPos.z,
+                              sdClassicPsCB0.fogColorStart.w,
+                              sdClassicPsCB0.fogEnd,
+                              sdClassicPsCB0.fogDensity);
+        float3 fogColor = sdClassicPsCB0.fogColorStart.xyz;
+        current.xyz = f * (current.xyz - fogColor) + fogColor;
+    }
 
     return current;
 }

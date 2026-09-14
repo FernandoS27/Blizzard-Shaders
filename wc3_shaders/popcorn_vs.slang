@@ -29,8 +29,15 @@
 //
 // The VS body is a small linear stack: pivot-blend the per-vertex
 // position toward the particle origin, scale uniformly, transform to
-// clip + world, then forward the active mode's per-vertex auxiliaries
-// (UV variants, axis vectors, random, normal/tangent).
+// clip / view / world, then forward the active mode's per-vertex
+// auxiliaries (UV variants, axis vectors, random, normal/tangent).
+// Branch-free — all 72 shipped permutations contain a single `ret` and
+// no control flow whatsoever.
+//
+// 3.0.0 changed two things here and nothing else: b2 became the shared
+// `HDVSPerDraw` bank (so `cb2[0..3]` went live as the world matrix and the
+// particle scale moved from `cb2[12].y` to `cb2[16].y`), and a world position
+// was added at TEXCOORD8 for the pixel shader's volumetric fog arm.
 
 implementing wc3_shaders;
 
@@ -70,11 +77,11 @@ public PopcornVSOutput popcorn_vs_main(PopcornVSInput input)
     // Step 1: pivot-blend + uniform scale gives us the local-space
     // position that everything downstream operates on.
     float3 localPos = popcornBlendPivot(
-        input.position, input.pivot, popcornVsCB2.popcornScale);
+        input.position, input.pivot, hdVsCB2.popcornScale);
 
     // Step 2: clip-space position (single-multiply object → clip
     // bypasses the world round-trip).
-    output.position = transformClipPos(localPos, popcornVsCB2.worldViewProj);
+    output.position = transformClipPos(localPos, hdVsCB2.worldViewProj);
 
     // Step 3: vertex color — straight pass-through, no remap.
 #if POPCORN_HAS_VC
@@ -108,27 +115,36 @@ public PopcornVSOutput popcorn_vs_main(PopcornVSInput input)
     output.randomOut = input.random;
 #endif
 
-    // Step 6: world-space normal + tangent. The popcorn world matrix
-    // is assumed to be a similarity transform (no shear), so we skip
-    // the renormalize step the HD pipeline runs. tangent.w carries the
-    // bitangent handedness sign passed straight through.
+    // Step 6: VIEW-space normal + tangent — rotated by `worldView`, the same
+    // matrix that produces TEXCOORD7 below, which is why the pixel shader's
+    // IBL block rotates them back out with an inverse view. The transform is
+    // assumed to be a similarity (no shear), so the renormalise the HD
+    // pipeline runs is skipped. tangent.w carries the bitangent handedness
+    // sign straight through.
 #if POPCORN_HAS_NT
-    float3 worldNormal  = transformNormalRaw(input.normal,       popcornVsCB2.world);
-    float3 worldTangent = transformNormalRaw(input.tangent.xyz,  popcornVsCB2.world);
-    output.normalWS  = worldNormal;
-    output.tangentWS = float4(worldTangent, input.tangent.w);
+    output.normalVS  = transformNormalRaw(input.normal,      hdVsCB2.worldView);
+    output.tangentVS = float4(
+        transformNormalRaw(input.tangent.xyz, hdVsCB2.worldView), input.tangent.w);
 #endif
 
-    // Step 7: world-space position, always emitted (the PS uses it
-    // for soft-particles depth reprojection, fog, IBL, etc.).
-    output.worldPos = transformByWorld(localPos, popcornVsCB2.world);
+    // Step 7: the two positions the pixel shader needs, both always emitted.
+    //
+    // VIEW space feeds the depth every fog mode is evaluated against, the
+    // soft-particle and motion depth tests, and the view direction. WORLD space
+    // is 3.0.0's addition and feeds one thing only: the volumetric fog arm,
+    // which measures a radial distance from the camera and a height above a
+    // ground plane. A view-space position can give it neither.
+    output.viewPos  = transformByWorld(localPos, hdVsCB2.worldView);
+    output.worldPos = transformByWorld(localPos, hdVsCB2.world);
 
-    // Step 8: atlas blend factor — single float at TEXCOORD1.x. fxc
-    // packs this into the same physical register as worldPos.yzw on
-    // the shipped engine, so emitting it as a scalar (rather than a
-    // wider float4) keeps register packing aligned. Emitted at the
-    // end so the `frac` instruction lands after the worldPos
-    // transform, matching the original engine's ordering.
+    // Step 8: atlas blend factor — a single float at TEXCOORD1.x. fxc packs
+    // scalar outputs into a neighbouring register's free lanes, and retail does
+    // exactly that in 32 of the 72 perms, so emitting this as a scalar (rather
+    // than a wider float4) is what keeps our output register map identical to
+    // retail's. That identity is load-bearing: `shader_diff` compares outputs
+    // POSITIONALLY by register, so a shifted map would make the gate compare
+    // unrelated lanes. Emitted last so the `frac` lands after the position
+    // transforms, matching the shipped ordering.
 #if POPCORN_ATLAS
     output.lifeOut = frac(input.modeSlot5.x);
 #endif

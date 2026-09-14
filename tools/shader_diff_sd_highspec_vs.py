@@ -31,10 +31,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dxbc_interp import f2b, i2b                         # noqa: E402
-from shader_diff import load, compare                    # noqa: E402
+from shader_diff import load, compare, perm_path                    # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
-RETAIL_DIR = REPO / "re_shaders" / "sd_highspec_vs"
+RETAIL_DIR = REPO / "wc3_re_shaders" / "sd_highspec_vs"
 SLANG_DIR  = REPO / "slang_out" / "d3d11" / "sd_highspec_vs"
 DECOMPILER = Path("C:/Tools/3Dmigoto/cmd_Decompiler/cmd_Decompiler.exe")
 NPERMS = 162
@@ -88,15 +88,24 @@ def hs_inputs(seed, skin_mode):
         ("ATTR", 2): [f2b(c) for c in vc],                               # vertColor
         ("ATTR", 3): [f2b(c) for c in uv0],                              # uv0
         ("ATTR", 4): [f2b(c) for c in uv1],                              # uv1
-        ("ATTR", 5): [f2b(c) for c in w],                               # blend weights
-        ("ATTR", 6): [i2b(int(b)) for b in bones],                      # bone indices
+        # 3.0.0 SWAPPED these two: ATTR5 is the uint bone-index vector and
+        # ATTR6 the float weights (2.0.0, and sd_on_hd_vs to this day, had it
+        # the other way round). Feeding the old order would hand both legs the
+        # same garbage -- weights reinterpreted as uint indices, which then run
+        # off the end of the bone palette -- so the comparison would "agree"
+        # without either shader doing anything meaningful.
+        ("ATTR", 5): [i2b(int(b)) for b in bones],                      # bone indices
+        ("ATTR", 6): [f2b(c) for c in w],                               # blend weights
         ("ATTR", 7): [f2b(n[0]), f2b(n[1]), f2b(n[2]), f2b(1.0)],        # tangent
     }
 
 
 # --- constant buffers with DRIVEN discriminants ---------------------------
 # cb0: world rows @0-2 + translation @3, worldViewProj @4-7, diffuseColor @8,
-# texMtx @9-12, then 8 light blocks @13+4i (ambient / diffuse / position.w=type).
+# texMtx @9-12, then 8 light blocks @13+3i (ambient / diffuse / position.w=type).
+# 3.0.0 tightened the per-light stride from 4 rows to 3 by dropping a trailing
+# pad row; at two active lights retail declares CB0[19] and reads light[1] at
+# cb0[16..18], where 2.0.0 declared CB0[20] and read cb0[17..19].
 # cb3: 256-bone palette, 3 affine rows each.
 
 def hs_cbufs(seed, light_types):
@@ -121,7 +130,7 @@ def hs_cbufs(seed, light_types):
         cb0[k] = [f2b(rng.uniform(-1, 1)) for _ in range(4)]            # texMtx
 
     for i in range(8):
-        base = 13 + 4 * i
+        base = 13 + 3 * i
         cb0[base]     = [f2b(rng.uniform(0, 1)) for _ in range(3)] + [f2b(0.0)]  # ambient
         cb0[base + 1] = [f2b(rng.uniform(0, 1)) for _ in range(3)] + [f2b(0.0)]  # diffuse
         if (light_types >> i) & 1:                                       # POINT
@@ -132,7 +141,6 @@ def hs_cbufs(seed, light_types):
             d = rand_rotation(rng)[0]
             cb0[base + 2] = [f2b(d[0]), f2b(d[1]), f2b(d[2]),
                              f2b(-rng.uniform(0.2, 3.0))]                # w<=0
-        cb0[base + 3] = [f2b(0.0)] * 4
 
     cb3 = [[f2b(0.0)] * 4 for _ in range(768)]              # 256 bones x 3 rows
     for b in range(256):
@@ -228,8 +236,8 @@ def main(argv=None):
     cov = {'evals': 0, 'skin_weighted': 0, 'skin_rigid': 0, 'pt_lights': 0, 'dir_lights': 0}
 
     for idx in perms:
-        prog_r = load(retail / f"perm_{idx:03d}.asm")
-        prog_s = load(slang / f"perm_{idx:03d}.dxbc", decompiler=args.decompiler)
+        prog_r = load(perm_path(retail, idx, "asm"))
+        prog_s = load(perm_path(slang, idx, "dxbc"), decompiler=args.decompiler)
         w, where, seed, dm = compare_perm(prog_s, prog_r, idx, args.trials, args.tol, cov)
         worst_all = max(worst_all, w)
         dm_total += dm

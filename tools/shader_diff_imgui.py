@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dxbc_interp import Program, f2b                      # noqa: E402
-from shader_diff import load, compare                     # noqa: E402
+from shader_diff import load, compare, perm_path                     # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 SLANG = REPO / "slang_out" / "d3d11"
@@ -72,8 +72,8 @@ def run_stage(name, retail_dir, slang_dir, nperms, out_regs, inputs_fn, trials, 
     # shaders see identical values.
     worst = 0.0; diverging = []
     for idx in range(nperms):
-        prog_r = load_retail(retail_dir / f"perm_{idx:03d}.asm")
-        prog_s = load(slang_dir / f"perm_{idx:03d}.dxbc", decompiler=DECOMPILER)
+        prog_r = load_retail(perm_path(retail_dir, idx, "asm"))
+        prog_s = load(perm_path(slang_dir, idx, "dxbc"), decompiler=DECOMPILER)
         res = compare(prog_s, prog_r, trials=trials, output_regs=out_regs, tol=tol,
                       inputs_fn=inputs_fn, sysvals_fn=(lambda s: {}))
         worst = max(worst, res.worst)
@@ -89,12 +89,16 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--trials', type=int, default=80)
     ap.add_argument('--tol', type=float, default=1e-3)
+    ap.add_argument('--retail-dir', default=None,
+                    help='root holding imgui/ and imgui_vs/ '
+                         '(default wc3_re_shaders/ — pass re_shaders_old/ for 2.0.0)')
     args = ap.parse_args(argv)
 
+    root = Path(args.retail_dir) if args.retail_dir else REPO / "wc3_re_shaders"
     print("=== imgui (ps + vs) ===")
-    ok_ps = run_stage("imgui_ps", REPO / "re_shaders" / "imgui", SLANG / "imgui_ps",
+    ok_ps = run_stage("imgui_ps", root / "imgui", SLANG / "imgui_ps",
                       2, (0,), ps_inputs, args.trials, args.tol)
-    ok_vs = run_stage("imgui_vs", REPO / "re_shaders" / "imgui_vs", SLANG / "imgui_vs",
+    ok_vs = run_stage("imgui_vs", root / "imgui_vs", SLANG / "imgui_vs",
                       1, (0, 1, 2), vs_inputs, args.trials, args.tol)
     ok = ok_ps and ok_vs
     print("ALL MATCH" if ok else "DIVERGING")

@@ -11,7 +11,42 @@
 
 implementing wc3_shaders;
 
-// Full HD vertex attribute stream.
+// SD highspec vertex input, 3.0.0 layout.
+//
+// Two things differ from the 2.0.0 `VSInput` below, and a third from both:
+//
+//   * ATTR5 and ATTR6 swapped FORMATS. 3.0.0 puts the uint bone indices on
+//     ATTR5 and the float weights on ATTR6; 2.0.0 had it the other way round.
+//     Visible in the shipped signature (`ATTR 5 ... uint` / `ATTR 6 ... float`)
+//     and followed through the body, where the palette-index multiply moved
+//     from v2 to v1 and the weight broadcast from v1.yyyy to v2.yyyy. It is the
+//     same swap `HDVSInput` already carries.
+//   * Member order is the engine's binding order, not a tidy ascending one.
+//     Slang assigns input registers from member order, and retail puts the two
+//     skinning streams immediately after position: `ATTR0, ATTR5, ATTR6, ATTR1,
+//     ATTR2, ATTR3, ATTR4` maps to v0..v6 in every shipped permutation. This
+//     ordering is unchanged BETWEEN versions — only the formats swapped.
+//   * There is no ATTR7. **No** sd_highspec permutation declares a tangent, in
+//     either version (0 of 162): the family has no tangent frame, because its
+//     pixel shader runs fixed-function texture stages rather than normal
+//     mapping. The entry point therefore passes a constant to the skinning
+//     policy and discards the skinned tangent.
+//
+// A separate struct rather than an edit to `VSInput`, because `sd_on_hd_vs`
+// still binds the 2.0.0 order and shares this translation unit — 54 of the 162
+// sd_highspec permutations change here, and none of sd_on_hd_vs's 144 should.
+public struct SDHighspecVSInput<TVF : IVertexFormat>
+{
+    public [[vk::location(0)]] float3 position    : ATTR0;
+    public [[vk::location(5)]] uint4  boneIndices : ATTR5;
+    public [[vk::location(6)]] float4 weights     : ATTR6;
+    public [[vk::location(1)]] float3 normal      : ATTR1;
+    public [[vk::location(2)]] float4 vertColor   : ATTR2;
+    public [[vk::location(3)]] float2 uv0         : ATTR3;
+    public [[vk::location(4)]] float2 uv1         : ATTR4;
+};
+
+// Full 2.0.0 vertex attribute stream, still bound by `sd_on_hd_vs`.
 // `weights` + `boneIndices` are only consulted when the skinning policy
 // is `FourBoneSkinning`; `tangent.w` carries the handedness sign used to
 // reconstruct the bitangent in the pixel shader.
@@ -383,12 +418,18 @@ public struct WaterVSOutput
 // and `fix_dxbc_signatures` in build_bls.py divides every sem_idx that
 // is a multiple of 10 by 10 to undo that shift in the BLS-packed DXBC
 // and DXIL.
+// Declared in RETAIL'S BINDING ORDER, which is not ascending: the normal and
+// tangent pair sits at the END, after ATTR6, in every one of the 72 shipped
+// permutations. Enumerating the distinct input signatures across the retail
+// blobs gives tuples like `(0, 2, 3, 4, 5, 6, 1, 7, 8)` — never `(0, 1, 2, …)`.
+// Ascending order was what put 42 of this family's 72 permutations in the §4b
+// mismatch list, and it is the one part of that finding that is unambiguously
+// an error rather than a pruning question: the SET is right either way, only
+// the order was wrong. The differential cannot see this (it aligns inputs by
+// semantic), so `tools/wc3_vs_signature_check.py` is what covers it.
 public struct PopcornVSInput
 {
     public [[vk::location(0)]] float3 position    : ATTR0;
-#if POPCORN_HAS_NT
-    public [[vk::location(1)]] float3 normal      : ATTR1;
-#endif
 #if POPCORN_HAS_VC
     public [[vk::location(2)]] float4 vertColor   : ATTR2;
 #endif
@@ -403,6 +444,7 @@ public struct PopcornVSInput
     public [[vk::location(6)]] float  random      : ATTR6;
 #endif
 #if POPCORN_HAS_NT
+    public [[vk::location(1)]] float3 normal      : ATTR1;
     public [[vk::location(7)]] float4 tangent     : ATTR7;
 #endif
     public [[vk::location(8)]] float4 pivot       : ATTR8;
@@ -429,9 +471,19 @@ public struct PopcornVSInput
 //                                      never binds ATTR6 without a UV
 //                                      stream, so the build collapses
 //                                      RANDOM && UV into one define)
-//   TEXCOORD4      normalWS  — POPCORN_HAS_NT
-//   TEXCOORD5      tangentWS — POPCORN_HAS_NT
-//   TEXCOORD7      worldPos  — always
+//   TEXCOORD4      normalVS  — POPCORN_HAS_NT (VIEW space)
+//   TEXCOORD5      tangentVS — POPCORN_HAS_NT (VIEW space)
+//   TEXCOORD7      viewPos   — always
+//   TEXCOORD8      worldPos  — always, 3.0.0 addition
+//
+// TEXCOORD7 was called `worldPos` under 2.0.0 and it was never a world
+// position: the matrix the VS multiplies it by is `worldView`, and the same
+// matrix rotates the normal and tangent, which is why the pixel shader's IBL
+// block rotates them back with an INVERSE VIEW. The old name was harmless
+// while only one matrix was live and actively misleading now that both are —
+// 3.0.0 added a real world position at TEXCOORD8 for the volumetric fog, which
+// measures a radial distance from the camera and a height above a ground
+// plane, neither of which a view-space position can give it.
 //
 // Two fields can share a semantic when their gates are mutually
 // exclusive (uv vs uvAtlas on TEXCOORD0, axis0Out vs lifeOut on
@@ -467,9 +519,10 @@ public struct PopcornVSOutput
 #endif
 
 #if POPCORN_HAS_NT
-    public float3 normalWS  : TEXCOORD4;
-    public float4 tangentWS : TEXCOORD5;
+    public float3 normalVS  : TEXCOORD4;
+    public float4 tangentVS : TEXCOORD5;
 #endif
 
-    public float3 worldPos : TEXCOORD7;
+    public float3 viewPos  : TEXCOORD7;
+    public float3 worldPos : TEXCOORD8;
 };

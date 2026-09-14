@@ -13,35 +13,41 @@
 //   • MOTION pass  — encodes 2D screen-space motion vectors into
 //                    RT0.xy for TAA / motion-blur reconstruction.
 //
-// Specialisation space (1152 perms = 9 outer × 128 inner; see
-// re_shaders/popcornfx/popcorn_ps.hlsl for the encoding):
+// Specialisation space (3.0.0: 288 perms = 9 outer x 32 inner; see
+// map_popcorn_ps in compile_all_slang.py for the encoding and the two
+// fold rules):
 //
 //   TMode             — IPopcornMode (NoUV, BasicUV, Billboard,
 //                        Atlas) — drives the per-mode UV resolution
 //                        in both passes.
-//   TFog              — IFogMode (None / Linear / Exp / Exp²) — only
-//                        consulted in the COLOR pass.
 //   IS_MOTION_PASS    — route to the motion-vector body. Flips off
 //                        most of the per-feature flags below at the
 //                        math level (the engine still binds them so
 //                        the input signature stays aligned across
-//                        pass switches).
+//                        pass switches — which is why ALPHA_LUT and
+//                        LIT still split the motion pass into
+//                        separate blobs that differ by signature
+//                        alone).
 //   HAS_GBUFFER       — also write SV_TARGET1 + SV_TARGET2 (deferred
-//                        depth + material payloads). COLOR pass only.
+//                        depth + material payloads). COLOR pass only;
+//                        carried as a define, not a type parameter.
 //   HAS_SOFT_PARTICLES — depth-fade against the scene depth buffer
 //                        (alpha modulation in COLOR; motion-magnitude
 //                        modulation in MOTION).
-//   HAS_ALPHA_LUT     — t1 LUT lookup for alpha (COLOR pass only;
+//   HAS_ALPHA_LUT     — t1 LUT lookup for alpha (needs a UV stream;
 //                        the engine never binds the random scalar
-//                        without a UV stream to associate it with).
+//                        without one to associate it with).
 //   HAS_VC            — modulate by per-vertex color (COLOR pass:
 //                        full RGBA; MOTION pass: vc.xy tints motion
 //                        and vc.w becomes the output alpha).
-//   HAS_LIT           — full Schlick-GGX BRDF + IBL (cubemap
-//                        diffuse / spec + BRDF LUT). Requires the
-//                        VS to have HAS_NT enabled so TEXCOORD4/5
-//                        carry the per-vertex normal + tangent.
-//                        COLOR pass only.
+//   HAS_LIT           — clustered-forward shading + IBL, shared with
+//                        the HD mesh pipeline. Requires the VS to
+//                        have HAS_NT enabled so TEXCOORD4/5 carry the
+//                        per-vertex normal + tangent. COLOR pass only.
+//
+// 2.0.0 had a seventh axis here, a two-bit compile-time fog mode.
+// 3.0.0 deleted it: fog is now selected at runtime from cb2[27].z and
+// applied through the blend-mode switch, exactly as in `hd_ps`.
 
 implementing wc3_shaders;
 
@@ -53,7 +59,6 @@ implementing wc3_shaders;
 [shader("fragment")]
 public PopcornPSOutput popcorn_ps_main<
     TMode  : IPopcornMode,
-    TFog   : IFogMode,
     let IS_MOTION_PASS     : bool,
     let HAS_SOFT_PARTICLES : bool,
     let HAS_ALPHA_LUT      : bool,
@@ -75,7 +80,7 @@ public PopcornPSOutput popcorn_ps_main<
     // COLOR pass — full surface shading.
     bool isFrontFace = frontFace != 0;
     PopcornColorOut shaded = popcornColorPassBody<
-        TMode, TFog, HAS_VC, HAS_ALPHA_LUT, HAS_SOFT_PARTICLES, HAS_LIT>(
+        TMode, HAS_VC, HAS_ALPHA_LUT, HAS_SOFT_PARTICLES, HAS_LIT>(
             input, isFrontFace);
 
     output.color = shaded.color;
@@ -85,7 +90,7 @@ public PopcornPSOutput popcorn_ps_main<
     // alpha (the deferred resolver re-applies its own alpha-blend pass).
 #if WC3_POPCORN_HAS_GBUFFER
     {
-        output.depthRT    = float4(input.worldPos.z, 0.0, 0.0, 1.0);
+        output.depthRT    = float4(input.viewPos.z, 0.0, 0.0, 1.0);
         output.materialRT = float4(shaded.gbufferMat, shaded.gbufferAlpha);
     }
 #endif

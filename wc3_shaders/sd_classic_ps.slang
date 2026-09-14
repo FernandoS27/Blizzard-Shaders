@@ -6,10 +6,10 @@
 //
 // Thin wrapper around `sdClassicPsBody` (in ps/sd_classic_ps_body.slang)
 // that just forwards the four compile-time policies (two texture-stage
-// policies, fog mode, alpha test) into the body and packs the result
-// into the SD single-target PS output. The classic pipeline has no
-// MRT / IBL / debug variants — this is the simplest entry in the
-// module.
+// policies, one of the seven 3.0.0 fog modes, alpha test) into the body
+// and packs the result into the SD single-target PS output. The classic
+// pipeline has no MRT / IBL / debug variants — this is the simplest
+// entry in the module.
 
 implementing wc3_shaders;
 
@@ -17,7 +17,7 @@ implementing wc3_shaders;
 public SDPSOutput sd_classic_ps_main<
     T0     : ITextureStage,
     T1     : ITextureStage,
-    TFog   : IFogMode,
+    TFog   : IFogMode30,
     TAlpha : IAlphaTest
 >(SDPSInput input)
 {

@@ -41,10 +41,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dxbc_interp import Program, f2b, i2b                 # noqa: E402
-from shader_diff import load, compare                     # noqa: E402
+from shader_diff import load, compare, perm_path                     # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
-RETAIL_DIR = REPO / "re_shaders" / "terrain"
+RETAIL_DIR = REPO / "wc3_re_shaders" / "terrain"
 SLANG_DIR  = REPO / "slang_out" / "d3d11" / "terrain_ps"
 DECOMPILER = Path("C:/Tools/3Dmigoto/cmd_Decompiler/cmd_Decompiler.exe")
 NPERMS = 128
@@ -194,8 +194,8 @@ def main(argv=None):
 
     worst_all = 0.0; diverging = []; dm_total = 0; empty = 0
     for idx in perms:
-        prog_r = load(retail / f"perm_{idx:03d}.asm")
-        prog_s = load(slang / f"perm_{idx:03d}.dxbc", decompiler=args.decompiler)
+        prog_r = load(perm_path(retail, idx, "asm"))
+        prog_s = load(perm_path(slang, idx, "dxbc"), decompiler=args.decompiler)
         oregs = output_regs_for(prog_r)
         if not oregs:
             empty += 1

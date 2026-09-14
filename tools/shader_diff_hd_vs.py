@@ -40,7 +40,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from shader_diff import load, compare                    # noqa: E402
+from shader_diff import load, compare, perm_path                    # noqa: E402
 from wc3_uber_validate import DRIVERS                     # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
@@ -117,8 +117,8 @@ def main(argv=None):
     seen = {}
 
     for idx in perms:
-        retail_asm = retail / f"perm_{idx:03d}.asm"
-        slang_dxbc = slang / f"perm_{idx:03d}.dxbc"
+        retail_asm = perm_path(retail, idx, "asm")
+        slang_dxbc = perm_path(slang, idx, "dxbc")
         prog_r = load(retail_asm)
         prog_s = load(slang_dxbc, decompiler=args.decompiler)
 

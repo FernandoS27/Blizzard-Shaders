@@ -22,9 +22,37 @@
 // Helpers that aren't reused outside the popcorn pipeline are kept
 // file-local (non-`public`). Helpers that map cleanly onto an
 // existing wc3_shaders building block (`decodeNormalMap`,
-// `tangentToWorld`, `orientNormal`, `ggxNDF`, `schlickGGXVisibility`,
-// `specularAA`, the `IFogMode` policies) are called through directly
-// rather than re-implemented.
+// `tangentToWorld`, `orientNormal`, `specularAA`) are called through
+// directly rather than re-implemented.
+//
+// ---------------------------------------------------------------------------
+// What 3.0.0 changed in this file
+// ---------------------------------------------------------------------------
+//
+// The COLOR pass was rewritten onto the HD pipeline's shared machinery; the
+// MOTION pass was not touched at all beyond constant-buffer renumbering.
+//
+//  * The eight per-draw analytical lights are gone. Lighting is the same
+//    clustered-forward walk `hd_ps` does — same cluster grid, same packed
+//    16-bit index list, same 40-byte light records — so it calls
+//    `hdClusterLights` rather than owning a copy. Popcorn instantiates it with
+//    both feature flags off: this family has no shadow axis (no cube array, no
+//    comparison sampler, nothing read from cb1[0..36]) and no debug overlay.
+//
+//  * The IBL block is `sampleHDIBL`, unchanged. The probes moved from
+//    t13/t14/t15 to t11/t12/t13, which is where HD's already were.
+//
+//  * Fog became the runtime seven-mode dispatch plus the eleven-case blend
+//    switch — `hdFogFactor` and `hdBlendModeFog`. The `TFog` permutation axis
+//    is gone from the family entirely, and with it two of the seven inner bits.
+//
+//  * A world position arrives at TEXCOORD8 because the volumetric fog arm needs
+//    one; TEXCOORD7 was, and still is, a VIEW position.
+//
+// What popcorn does NOT share is the main directional light. Its ambient / IBL
+// mix is exactly HD's with `shadowedNdl` pinned to zero — see
+// `popcornAmbientIBL` — because there is no sun term in the particle pipeline
+// at all: `mainLightDir` is read only to orient the probe.
 
 implementing wc3_shaders;
 
@@ -48,11 +76,6 @@ static const float MOTION_DEPTH_NUMER  = 1000.0;
 // tint + 0.5 roughness/metallic-like values matching the shipped
 // engine's deferred resolve assumptions.
 static const float3 GBUFFER_DEFAULT_MAT = float3(1.0, 0.5, 0.5);
-
-// "Tonal mix" weight used to bias the IBL diffuse irradiance toward
-// the light0 base material colour — chosen to roughly match the
-// retail engine's environment-tinting behaviour.
-static const float IBL_TONAL_MIX_T      = 0.325;
 
 // ============================================================
 // Per-mode UV resolution
@@ -102,215 +125,92 @@ public PopcornUV popcornResolveUV<TMode : IPopcornMode>(PopcornPSInput input)
 }
 
 // ============================================================
-// Albedo + diffuse texture
-// ============================================================
-
-// Sample the diffuse texture at the resolved UV, lerping between two
-// atlas frames when in ATLAS mode. Returns white when there's no UV
-// stream (the popcorn pipeline encodes "no diffuse" by simply not
-// binding a UV).
-public float4 popcornSampleDiffuse<TMode : IPopcornMode>(PopcornUV uv)
-{
-    if (TMode.isAtlas)
-    {
-        // Atlas mode: lerp between current and next frame by the
-        // life-ratio fractional part stored at TEXCOORD1.x by the VS.
-        // We re-fetch the blend factor here so the entry doesn't have
-        // to thread it through; the same lookup is dirt-cheap.
-        float4 a = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV);
-        float4 b = t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV2);
-        return a;  // overwritten by caller; see popcornColorPassBody
-        // (atlas blend lives there because it needs the slot1 input).
-    }
-    if (TMode.hasUV)
-        return t_popcornDiffuse.Sample(s_popcornDiffuse, uv.sampleUV);
-    return float4(1, 1, 1, 1);
-}
-
-// ============================================================
 // Soft-particles depth fade
 // ============================================================
 
-// Reproject worldPos through `worldToClip`, normalise to NDC, sample
-// the scene depth at the matching screen-space UV, and return
-// `(sceneZ - worldPos.z)` — the caller folds this into a saturated
-// fade scalar, or in MOTION_PASS uses it both for the discard test
-// and as the multiplier for the motion magnitude.
-public float popcornSceneDepthDelta(float3 worldPos)
+// cb2[22].x, under its popcorn meaning.
+//
+// `HDPSPerDraw` names this slot `outputAlphaScale` because that is what the HD
+// mesh shader reads out of it. The engine fills the per-draw bank differently
+// per pipeline, and for particles the same float is the soft-particle depth-fade
+// scale — a different number with a different unit. Read through this so the
+// call sites below say what they mean.
+static float popcornDepthFadeScale() { return hdPsCB2.outputAlphaScale; }
+
+
+// Project the VIEW position to clip space, normalise to the depth target's
+// texel, sample it, and return `sceneZ - viewZ`.
+//
+// The caller turns that into a saturated fade, or — in the motion pass — uses
+// it both for the discard test and as the motion multiplier.
+//
+// The v-flip and the remap are the engine's: the depth target is not
+// necessarily the same size or orientation as the render target, so the NDC
+// point goes through a scale/bias before it is a texel. Unchanged from 2.0.0
+// apart from where the two constants live: cb2[11..14] -> cb2[16..19] and
+// cb2[15] -> cb2[21].
+public float popcornSceneDepthDelta(float3 viewPos)
 {
-    float3 clip = worldPos.x * popcornPsCB2.worldToClip[0].xyw
-                + worldPos.y * popcornPsCB2.worldToClip[1].xyw
-                + worldPos.z * popcornPsCB2.worldToClip[2].xyw
-                +              popcornPsCB2.worldToClip[3].xyw;
+    float3 clip = viewPos.x * hdPsCB2.viewToClip[0].xyw
+                + viewPos.y * hdPsCB2.viewToClip[1].xyw
+                + viewPos.z * hdPsCB2.viewToClip[2].xyw
+                +             hdPsCB2.viewToClip[3].xyw;
     float2 ndc      = clip.xy / clip.z;
     ndc             = ndc * 0.5 + 0.5;
     float2 depthUV  = float2(ndc.x, 1.0 - ndc.y);
-    depthUV         = popcornPsCB2.depthUVRemap.xy * depthUV
-                    + popcornPsCB2.depthUVRemap.zw;
+    depthUV         = hdPsCB2.depthUVRemap.xy * depthUV
+                    + hdPsCB2.depthUVRemap.zw;
     float  sceneZ   = t_popcornDepth.Sample(s_popcornDepth, depthUV).x;
-    return sceneZ - worldPos.z;
+    return sceneZ - viewPos.z;
 }
 
 // ============================================================
 // LIT path
 // ============================================================
 
-// Per-particle world-space basis transform. The IBL block rotates
-// both the world position (used as a "view direction proxy" through
-// the per-particle frame) and the world-space normal into the
-// cubemap-local frame stored at cb2[7..9]. The `.xzy` swizzle on
-// each row reproduces the engine's frame layout (rows are stored
-// XZY rather than XYZ).
-float3 popcornRotateToParticleFrame(float3 v)
+// Ambient + image-based lighting.
+//
+// This is `hdMainLight` with `shadowedNdl` pinned to zero, and it is worth
+// being precise about why rather than calling it "similar". HD splits its
+// ambient into an upper term that dominates where the surface faces the sun and
+// a lower term that survives in shadow, then interpolates between them by
+// `max(0, N.L) * shadow`. A particle has no sun: `mainLightDir` is read here
+// only to build the probe's basis, and nothing in any of the 96 shipped LIT
+// permutations computes an N.L against it. Substitute `shadowedNdl = 0` into
+// HD's expression and the upper term drops out, the direct specular drops out,
+// and what is left is exactly the sequence below — including the constant,
+// which is `HD_IBL_SPLIT_LOWER` and not a separate 0.325 that happens to match.
+//
+// The probe sampling itself is `sampleHDIBL`, shared verbatim: same two cube
+// arrays, same light-oriented basis, same mip ends, same split-sum LUT.
+static float3 popcornAmbientIBL(HDSurface s, float3 viewPos)
 {
-    return v.x * popcornPsCB2.particleBasis[0].xzy
-         + v.y * popcornPsCB2.particleBasis[1].xzy
-         + v.z * popcornPsCB2.particleBasis[2].xzy;
-}
+    HDIBLSample ibl = sampleHDIBL(viewPos, s);
 
-// Reflect a normalised "view-from-particle" direction through the
-// particle-local normal — used to look up the pre-filtered specular
-// cubemap.
-float3 popcornReflectAcross(float3 viewVec, float3 normalVec)
-{
-    float vDotN = dot(viewVec, normalVec);
-    return normalize(viewVec - 2.0 * vDotN * normalVec);
-}
+    float3 ambientColor = hdPsCB2.ambientColor.xyz;
+    float maxAmb = max(ambientColor.x, max(ambientColor.y, ambientColor.z));
+    float invAmb = 1.0 / (SAFE_EPS + maxAmb);
+    float ambPlusIbl = maxAmb + ibl.weight;
+    float iblScale = hdPsCB2.ambientAdd.w * (ambPlusIbl * ibl.weight);
 
-// Karis' split-sum environment-BRDF integration result, expressed
-// per-channel because F0 is per-channel (F0 = metallic · albedo).
-float3 popcornSplitSumBRDF(float3 F0, float2 brdfLut)
-{
-    return F0 * brdfLut.x + brdfLut.y;
-}
+    // Hue-separate the probe irradiance and the analytical ambient before
+    // mixing, so the blend preserves saturation instead of washing out.
+    float maxIrr = max(ibl.irradiance.x, max(ibl.irradiance.y, ibl.irradiance.z));
+    float3 irrN = ibl.irradiance * (1.0 / (SAFE_EPS + maxIrr));
+    float3 ambDelta = ambientColor * invAmb - irrN;
 
-// Pre-filtered IBL contributions sampled from the two cubemaps and
-// blended by `iblBlend` (cb2[19].z). The two cubes use independent
-// roughness-to-mip multipliers (cb2[19].xy) so the engine can swap
-// between probes with different mip pyramids.
-struct PopcornIBLSample
-{
-    float3 diffuseCube;     // mip-0 cubemap blend (used as IBL diffuse irradiance)
-    float3 specCube;        // pre-filtered cubemap blend (specular radiance)
-    float2 brdfLUT;         // (NdotV, roughness) → split-sum LUT
-};
+    float3 ambient = ambDelta * HD_IBL_SPLIT_LOWER + irrN;
+    ambient = ambient * maxIrr;
+    ambient = ambient * iblScale + hdPsCB2.ambientAdd.xyz;
 
-PopcornIBLSample popcornSampleIBL(float3 worldNormal, float3 worldPos,
-                                  float NdotV, float roughness)
-{
-    PopcornIBLSample out_;
-
-    float3 viewRot = normalize(popcornRotateToParticleFrame(worldPos));
-    float3 nRot    = normalize(popcornRotateToParticleFrame(worldNormal));
-    float3 reflRot = popcornReflectAcross(viewRot, nRot);
-
-    // Diffuse irradiance from mip 0. The Z negation matches the
-    // engine's cubemap orientation (left-handed sample direction).
-    float4 diffDir = float4(nRot.x, nRot.y, -nRot.z, 0);
-    float3 d13 = t_popcornCubeFrom.Sample(s_popcornCubeFrom, diffDir).xyz;
-    float3 d14 = t_popcornCubeTo  .Sample(s_popcornCubeTo,   diffDir).xyz;
-    out_.diffuseCube = lerp(d13, d14, popcornPsCB2.iblBlend);
-
-    // Pre-filtered specular cubemap; each cube has its own mip range
-    // so the call uses SampleLevel with per-cube roughness scales.
-    float4 specDir = float4(reflRot.x, reflRot.y, -reflRot.z, 1);
-    float  mipFrom = popcornPsCB2.iblMipFrom * roughness;
-    float  mipTo   = popcornPsCB2.iblMipTo   * roughness;
-    float3 s13 = t_popcornCubeFrom.SampleLevel(s_popcornCubeFrom, specDir, mipFrom).xyz;
-    float3 s14 = t_popcornCubeTo  .SampleLevel(s_popcornCubeTo,   specDir, mipTo  ).xyz;
-    out_.specCube = lerp(s13, s14, popcornPsCB2.iblBlend);
-
-    // Karis split-sum BRDF LUT, indexed by (NdotV, roughness).
-    out_.brdfLUT = t_popcornBrdfLut.Sample(s_popcornBrdfLut,
-                                            float2(NdotV, roughness)).xy;
-    return out_;
-}
-
-// IBL "tonal mix" — biases the per-pixel diffuse cubemap colour
-// toward the light-0 base material colour by a fixed
-// `IBL_TONAL_MIX_T`, then composes the diffuse and specular
-// contributions into a single linear-light tint. When `iblOn` is
-// false the iblScale collapses to zero so only the ambient flows
-// through (matches the original engine's behaviour where a
-// useIbl=false branch still emits an ambient-only contribution).
-float3 popcornComposeIBLTint(
-    PopcornIBLSample ibl, float3 F0, float3 diffTerm, float iblOn)
-{
-    float3 baseMat = popcornPsCB2.lights[0].diffuse.xyz;     // cb2[22].xyz
-    float3 ambient = popcornPsCB2.lights[0].ambient.xyz;     // cb2[21].xyz
-    float  matMax    = max(baseMat.x, max(baseMat.y, baseMat.z));
-    float  invMatMax = 1.0 / (SAFE_EPS + matMax);
-    float  iblWeight = matMax + iblOn;
-    float  iblScale  = iblWeight * iblOn * popcornPsCB2.lights[0]._pad2.x;  // cb2[24].x
-
-    float3 diffCube  = ibl.diffuseCube;
-    float  diffMax   = max(diffCube.x, max(diffCube.y, diffCube.z));
-    float  invDiffMax = 1.0 / (SAFE_EPS + diffMax);
-    diffCube        *= invDiffMax;
-    float3 envTint   = baseMat * invMatMax - diffCube;
-    diffCube         = envTint * IBL_TONAL_MIX_T + diffCube;
-    // Re-apply the diffuse-cube magnitude that the hue-normalisation above
-    // divided out (matches the retail DXBC and the HD `upper *= maxDiffIBL`
-    // step) — NOT `iblWeight`, which would square the ambient weight.
-    diffCube         = diffCube * diffMax;
-    diffCube         = diffCube * iblScale + ambient;
-
-    float3 F            = popcornSplitSumBRDF(F0, ibl.brdfLUT);
-    float3 specCubeTerm = (F * iblScale) * ibl.specCube;
-    return diffCube * diffTerm + specCubeTerm;
-}
-
-// Per-light Cook-Torrance + ambient contribution. The popcorn engine
-// uses a split-colour model where `ambient` (cb2[i*4+21]) is an
-// always-on diffuse tint (no NoL gate) and `diffuse` (cb2[i*4+22])
-// is the directional / spec colour gated by NoL.
-struct PopcornLightContrib
-{
-    float3 spec;       // per-pixel light_spec · (D·F·vis + diffTerm) · NoL · atten
-    float3 diff;       // per-pixel light_amb · diffTerm · atten
-};
-
-PopcornLightContrib popcornEvalLight(
-    ShaderLight light, float3 worldPos, float3 worldN, float3 viewDir,
-    float3 F0, float3 oneMinusF0, float3 diffTerm, float roughness, float NdotV)
-{
-    float3 lightVec;
-    float  lightAtten;
-    bool   isPunctual = (light.position.w > 0.0);
-    if (isPunctual)
-    {
-        lightVec = light.position.xyz - worldPos;
-        float d2 = dot(lightVec, lightVec);
-        float d  = sqrt(d2);
-        lightAtten = pointLightAttenuation(d2);
-        lightVec  /= d;
-    }
-    else
-    {
-        lightVec   = light.position.xyz;
-        lightAtten = 1.0;
-    }
-
-    float3 halfVec = normalize(lightVec + viewDir);
-    float  vDotH   = dot(viewDir, halfVec);
-    float  nDotH   = dot(worldN, halfVec);
-    float  nDotL   = dot(worldN, lightVec);
-
-    float3 F        = schlickFresnel(F0, vDotH);
-    float  D        = ggxNDF(nDotH, roughness);
-    float  vis      = schlickGGXVisibility(nDotL, NdotV, roughness);
-    float  energy   = max(0.0, nDotL) * lightAtten;
-
-    PopcornLightContrib c;
-    c.spec = (D * F * vis + diffTerm) * light.diffuse.xyz * energy;
-    c.diff = light.ambient.xyz * diffTerm * lightAtten;
-    return c;
+    float3 iblSpec = (s.F0 * ibl.brdf.x + ibl.brdf.y) * iblScale;
+    return ambient * s.diffColor + iblSpec * ibl.radiance;
 }
 
 // Whole-LIT-pipeline body — normal map decode, tangent-space basis
-// reconstruction, specular-AA roughness, IBL block, analytic-light
-// loop. Returns the linear-RGB lit colour (the entry pairs it with
-// the pre-LIT alpha to form the final output).
+// reconstruction, specular-AA roughness, the ambient / IBL term and the
+// clustered light walk. Returns the linear-RGB lit colour; the entry pairs it
+// with the alpha the LUT and the vertex colour already settled.
 //
 // Only emitted when `POPCORN_HAS_NT` is set (i.e. the PS perm has the
 // HAS_LIT bit and the engine pairs it with a VS perm that wrote
@@ -318,80 +218,52 @@ PopcornLightContrib popcornEvalLight(
 #if POPCORN_HAS_NT
 public float3 popcornLitBody(PopcornPSInput input, PopcornUV uv,
                              bool isFrontFace, float3 albedoRGB,
-                             out float3 worldNOut)
+                             out float3 shadedNormal)
 {
-    // Tangent-space normal from the packed map. With no UV stream
-    // the maps are still bound and sampled at (0, 0) — effectively
-    // a one-texel "constant material" mode.
+    // Tangent-space normal from the packed map. With no UV stream the maps are
+    // still bound and sampled at (0, 0) — effectively a one-texel "constant
+    // material" mode, and that literal is what the shipped NoUV+LIT blobs
+    // sample at too.
     float2 litMapUV     = uv.sampleUV;
     float3 normalSample = t_popcornNormal   .Sample(s_popcornNormal,    litMapUV).xyw;
-    float2 smoothMet    = t_popcornSmoothMet.Sample(s_popcornSmoothMet, litMapUV).yz;
+    float2 roughMetal   = t_popcornSmoothMet.Sample(s_popcornSmoothMet, litMapUV).yz;
 
-    float3 tsNormal  = decodeNormalMap(normalSample);
-    float3 worldN    = tangentToWorld(tsNormal, input.tangentWS.xyz,
-                                      input.normalWS, input.tangentWS.w);
-    worldN           = orientNormal(worldN, isFrontFace);
-    worldNOut        = worldN;   // forwarded to the deferred g-buffer (RT2.xyz)
+    float3 tsNormal = decodeNormalMap(normalSample);
+    float3 N        = tangentToWorld(tsNormal, input.tangentWS.xyz,
+                                     input.normalWS, input.tangentWS.w);
+    N               = orientNormal(N, isFrontFace);
+    shadedNormal    = N;   // forwarded to the deferred g-buffer (RT2.xyz)
 
-    // Specular-AA: widen the BRDF on aliased high-frequency normals.
-    // cb2[20].w toggles between the smoothed value and the raw map
-    // sample (the engine flips this off on hardware where the
-    // ddx/ddy variance estimate is too noisy).
-    float roughnessSmoothed = specularAA(smoothMet.x, worldN);
-    float roughness         = popcornPsCB2.useSmoothedNormal != 0.0
-                                ? roughnessSmoothed : smoothMet.x;
+    HDSurface surf;
+    surf.N = N;
+    surf.V = normalize(-input.viewPos);
+    surf.albedo = albedoRGB;
+    surf.metal = roughMetal.y;
+    surf.F0 = surf.metal * albedoRGB;
+    surf.diffColor = (albedoRGB - surf.metal * albedoRGB) * INV_PI;
 
-    // Key BRDF terms.
-    float3 viewDir   = normalize(-input.worldPos);
-    float  metallic  = smoothMet.y;
-    float3 F0        = metallic * albedoRGB;
-    float3 oneMinusF0 = 1.0 - F0;
-    float3 diffTerm  = (1.0 - metallic) * albedoRGB * INV_PI;
-    float  NdotV     = dot(worldN, viewDir);
+    // Unlike HD, the authored roughness is used RAW: no 0.9 scale, no 0.05
+    // bias. Particles are authored against the value the map stores.
+    surf.rough = (asuint(hdPsCB2.useNdf) != 0) ? specularAA(roughMetal.x, N)
+                                               : roughMetal.x;
+    float rr = surf.rough * surf.rough;
+    surf.a2 = rr * rr;
+    float kSq = (1 + surf.rough) * (1 + surf.rough);
+    surf.kDirect = SCHLICK_K_FACTOR * kSq;
+    surf.kInv = -kSq * SCHLICK_K_FACTOR + 1;
 
-    // IBL block — gated on (lightCount > 0) AND light0 is directional
-    // (light0 is the special "directional sun + IBL driver" slot).
-    bool  lightsOn = (asuint(popcornPsCB2.lightCount) > 0u)
-                   && (popcornPsCB2.lights[0].position.w == 0.0);
-    float3 iblTinted = float3(0, 0, 0);
-    if (lightsOn)
-    {
-        bool useIbl = (popcornPsCB2.iblMipFrom * popcornPsCB2.iblMipTo) != 0.0;
-        PopcornIBLSample ibl;
-        float iblOn;
-        if (useIbl)
-        {
-            ibl   = popcornSampleIBL(worldN, input.worldPos, NdotV, roughness);
-            iblOn = 1.0;
-        }
-        else
-        {
-            ibl.diffuseCube = float3(0, 0, 0);
-            ibl.specCube    = float3(0, 0, 0);
-            ibl.brdfLUT     = float2(0, 0);
-            iblOn           = 0.0;
-        }
-        iblTinted = popcornComposeIBLTint(ibl, F0, diffTerm, iblOn);
-    }
+    // Same switch HD has: the draw can turn the ambient / probe term off and
+    // keep the cluster lights.
+    float3 lit = float3(0, 0, 0);
+    if (asint(hdPsCB2.mainLightEnable) != 0)
+        lit = popcornAmbientIBL(surf, input.viewPos);
 
-    // Analytic-light loop. When lightsOn is true, light 0 has been
-    // consumed by the IBL block above so the loop starts at index 1.
-    // Without IBL, the loop processes every light from 0.
-    float3 lightAccum = iblTinted;
-    uint   lightCount = asuint(popcornPsCB2.lightCount);
-    uint   startLight = lightsOn ? 1u : 0u;
-    [loop]
-    for (uint i = startLight; i < lightCount; ++i)
-    {
-        PopcornLightContrib c = popcornEvalLight(
-            popcornPsCB2.lights[i], input.worldPos, worldN, viewDir,
-            F0, oneMinusF0, diffTerm, roughness, NdotV);
-        lightAccum += c.spec + c.diff;
-    }
+    // No shadows and no debug overlay in this family — see the file header.
+    lit = hdClusterLights<false, false>(
+        surf, input.viewPos, input.worldPos, input.svPosition.xy, lit);
 
-    // Final scale: π undoes the `INV_PI` baked into the diffuse
-    // term so per-light contributions land at the right magnitude.
-    return PI * lightAccum;
+    // Undo the 1/PI the Lambertian diffuse carried through the lights.
+    return PI * lit;
 }
 #endif // POPCORN_HAS_NT
 
@@ -409,9 +281,10 @@ public struct PopcornColorOut
     public float3 gbufferMat;       // RT2.xyz — encoded world normal (LIT) or default material
 };
 
+// `TFog` is gone from this signature: 3.0.0 deleted the two fog bits from the
+// family's permutation mask and selects all seven modes at runtime instead.
 public PopcornColorOut popcornColorPassBody<
     TMode  : IPopcornMode,
-    TFog   : IFogMode,
     let HAS_VC        : bool,
     let HAS_ALPHA_LUT : bool,
     let HAS_SP        : bool,
@@ -452,7 +325,7 @@ public PopcornColorOut popcornColorPassBody<
     if (HAS_ALPHA_LUT && TMode.hasUV)
     {
         albedo.w = t_popcornAlphaLut.Sample(
-            s_popcornAlphaLut, float2(albedo.w, input.random.x)).x;
+            s_popcornAlphaLut, float2(albedo.w, input.random)).x;
     }
 #endif
 
@@ -465,9 +338,9 @@ public PopcornColorOut popcornColorPassBody<
 #if POPCORN_HAS_NT
     if (HAS_LIT)
     {
-        float3 worldN;
-        colorRGB   = popcornLitBody(input, uv, isFrontFace, albedo.xyz, worldN);
-        gbufferMat = worldN * 0.5 + 0.5;
+        float3 shadedN;
+        colorRGB   = popcornLitBody(input, uv, isFrontFace, albedo.xyz, shadedN);
+        gbufferMat = shadedN * 0.5 + 0.5;
     }
     else
 #endif
@@ -482,23 +355,24 @@ public PopcornColorOut popcornColorPassBody<
     //      matching the engine's premultiplied-alpha pattern). ----
     if (HAS_SP)
     {
-        float fade = saturate(popcornPsCB2.depthFadeScale
-                              * popcornSceneDepthDelta(input.worldPos));
+        float fade = saturate(popcornDepthFadeScale()
+                              * popcornSceneDepthDelta(input.viewPos));
         colorRGB   *= fade;
         colorAlpha *= fade;
     }
 
-    // ---- Distance fog (RGB only — alpha stays untouched) ----
-    if (TFog.hasFog)
-    {
-        colorRGB = TFog.apply(colorRGB, popcornPsCB2.fogColor.xyz,
-                              input.worldPos.z,
-                              popcornPsCB2.fogStart, popcornPsCB2.fogEnd,
-                              popcornPsCB2.fogDensity);
-    }
+    // ---- Fog ----
+    // The seven-mode runtime dispatch and the blend-mode-aware application, both
+    // shared with the HD pipeline. Note what the blend switch means here: it is
+    // the reason the fade target is not always the fog colour, and it is also
+    // why the alpha survives every case but the premultiplied one.
+    //
+    // No colour grade and no output alpha scale — `hdBlendModeFog` rather than
+    // `hdApplyFogGraded`. The particle pipeline has neither.
+    float fogFactor = hdFogFactor(input.viewPos.z, input.worldPos);
 
     PopcornColorOut out_;
-    out_.color        = float4(colorRGB, colorAlpha);
+    out_.color        = hdBlendModeFog(float4(colorRGB, colorAlpha), fogFactor);
     out_.gbufferAlpha = gbufferAlpha;
     out_.gbufferMat   = gbufferMat;
     return out_;
@@ -525,9 +399,9 @@ public float4 popcornMotionPassBody<
     // Depth re-projection + scene-depth fetch. Pre-compute the soft
     // fade scalar BEFORE the discard so SP perms can still scale by
     // it (the discard saturates depthDelta < 0 to 0 anyway).
-    float depthDelta = popcornSceneDepthDelta(input.worldPos);
+    float depthDelta = popcornSceneDepthDelta(input.viewPos);
     float softFade   = HAS_SP
-                     ? saturate(popcornPsCB2.depthFadeScale * depthDelta)
+                     ? saturate(popcornDepthFadeScale() * depthDelta)
                      : 1.0;
     if (depthDelta < 0.0) discard;
 
@@ -548,7 +422,7 @@ public float4 popcornMotionPassBody<
     // screen-space magnitude stays roughly stable as particles
     // recede from the camera.
     float2 motion = motSrc * 2.0 + MOTION_UNPACK_BIAS;
-    motion       *= sqrt(MOTION_DEPTH_NUMER / input.worldPos.z);
+    motion       *= sqrt(MOTION_DEPTH_NUMER / input.viewPos.z);
 
     // VERTEX_COLOR is the only "color" feature that meaningfully
     // affects MOTION_PASS — it tints the motion vectors by vc.xy

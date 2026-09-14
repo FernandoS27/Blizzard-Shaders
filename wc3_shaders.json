@@ -4,13 +4,13 @@
     "hd_vs": {
       "stage": "vs",
       "entry": "vs_main",
-      "perm_count": 144,
+      "perm_count": 72,
       "bls_name": "hd.bls"
     },
     "hd_ps": {
       "stage": "ps",
       "entry": "ps_main",
-      "perm_count": 512,
+      "perm_count": 1024,
       "bls_name": "hd.bls"
     },
     "crystal_ps": {
@@ -40,7 +40,7 @@
     "sd_classic_ps": {
       "stage": "ps",
       "entry": "sd_classic_ps_main",
-      "perm_count": 200,
+      "perm_count": 350,
       "bls_name": "sd.bls"
     },
     "water_vs": {
@@ -64,7 +64,7 @@
     "popcorn_ps": {
       "stage": "ps",
       "entry": "popcorn_ps_main",
-      "perm_count": 1152,
+      "perm_count": 288,
       "bls_name": "popcornfx.bls"
     },
     "tonemap_ps": {

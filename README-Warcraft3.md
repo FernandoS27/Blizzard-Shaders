@@ -5,7 +5,7 @@
 
 An open-source recreation of the shaders used by **Warcraft III: Reforged**, reverse-engineered from the game's shipped `.bls` shader bundles.
 
-This is the **complete, verified** half of the repo: every shader family the game ships — **SD**, **SD-on-HD**, **HD**, **Crystal**, **water**, **terrain**, **foliage**, **sprite**, **distortion**, **PopcornFX particles**, and the HDR→LDR **tonemap** — is reimplemented in [Slang](https://shader-slang.com/), then re-packed the compiled bytecode back into the game's `.bls` wire format so patched shaders can be dropped into the game. A separate `custom_shaders` module sits on top of the reconstruction for user-authored variants (currently a toon / cel-shaded HD variant). Both the DirectX bundles (`ps/`, `vs/`) and the Metal bundles (`mtlfs/`, `mtlvs/`) are covered; Metal packing only runs when built on macOS, where Apple's Metal compiler is available. An opt-in `--build_extra` mode also packs OpenGL (`glslvs/glslps`), Vulkan (`spvvs/spvps`) and WebGPU (`wgpuvs/wgpups`) BLS bundles for ports / re-implementations that need a non-shipped backend.
+This is the **complete, verified** half of the repo: every shader family the game ships — **SD**, **SD-on-HD**, **HD**, **Crystal**, **water**, **terrain**, **foliage**, **sprite**, **distortion**, **PopcornFX particles**, and the HDR→LDR **tonemap** — is reimplemented in [Slang](https://shader-slang.com/), then re-packed the compiled bytecode back into the game's `.bls` wire format so patched shaders can be dropped into the game. A separate `custom_shaders` module sits on top of the reconstruction for user-authored variants; it ships empty. Both the DirectX bundles (`ps/`, `vs/`) and the Metal bundles (`mtlfs/`, `mtlvs/`) are covered; Metal packing only runs when built on macOS, where Apple's Metal compiler is available. An opt-in `--build_extra` mode also packs OpenGL (`glslvs/glslps`), Vulkan (`spvvs/spvps`) and WebGPU (`wgpuvs/wgpups`) BLS bundles for ports / re-implementations that need a non-shipped backend.
 
 Correctness is proven by **bit-identical DXBC** against the retail blobs, checked per-permutation by the [tools/shader_diff_all.py](tools/shader_diff_all.py) harness and the [DXBC interpreter](tools/dxbc_interp.py).
 
@@ -14,7 +14,7 @@ Correctness is proven by **bit-identical DXBC** against the retail blobs, checke
 | Path | Contents |
 | --- | --- |
 | [wc3_shaders/](wc3_shaders/) | Slang source for the faithful reconstruction. One unified module ([wc3_shaders.slang](wc3_shaders/wc3_shaders.slang)) exposes one entry point per shipped family. |
-| [custom_shaders/](custom_shaders/) | User-facing Slang module ([custom_shaders.slang](custom_shaders/custom_shaders.slang)) that `import`s `wc3_shaders` and provides drop-in variant shader bodies (e.g. `toon_hd_ps`). |
+| [custom_shaders/](custom_shaders/) | User-facing Slang module ([custom_shaders.slang](custom_shaders/custom_shaders.slang)) that `import`s `wc3_shaders` and is where drop-in variant shader bodies go. Ships empty. |
 | [wc3_shaders.json](wc3_shaders.json) | Declarative config for the core families: stage, entry point, permutation count, shipped BLS name. Treat as read-only. |
 | [custom_shaders.json](custom_shaders.json) | Declarative config for user-authored variant families. This is the file you edit to add a new variant shader. |
 | [shader_config.py](shader_config.py) | Loads and merges both JSON files into a single `FamilyConfig` view used by the build scripts. |
@@ -29,8 +29,8 @@ Defined in [wc3_shaders.json](wc3_shaders.json). These mirror the shipped BLS la
 
 | Family | Stage | Permutations | Ships as |
 | --- | --- | --- | --- |
-| `hd_vs` | Vertex | 144 | `vs/hd.bls` |
-| `hd_ps` | Pixel | 512 | `ps/hd.bls` |
+| `hd_vs` | Vertex | 72 | `vs/hd.bls` |
+| `hd_ps` | Pixel | 1024 | `ps/hd.bls` |
 | `crystal_ps` | Pixel | 512 | `ps/crystal.bls` |
 | `sd_on_hd_vs` | Vertex | 144 | `vs/sd_on_hd.bls` |
 | `sd_on_hd_ps` | Pixel | 384 | `ps/sd_on_hd.bls` |
@@ -51,12 +51,9 @@ Defined in [wc3_shaders.json](wc3_shaders.json). These mirror the shipped BLS la
 
 ### Custom variants (backed by `custom_shaders/custom_shaders.slang`)
 
-Defined in [custom_shaders.json](custom_shaders.json). These clone a core family's BLS template so the rebuilt file remains drop-in compatible with the HD pipeline.
+Defined in [custom_shaders.json](custom_shaders.json). These clone a core family's BLS template so the rebuilt file remains drop-in compatible with the pipeline they replace.
 
-| Family | Stage | Permutations | Ships as | Template |
-| --- | --- | --- | --- | --- |
-| `toon_hd_vs` | Vertex | 144 | `vs/toon_hd.bls` | `hd.bls` |
-| `toon_hd_ps` | Pixel | 512 | `ps/toon_hd.bls` | `hd.bls` |
+**None ship.** The file is empty; see [Adding a custom shader](#adding-a-custom-shader) below.
 
 Each permutation is produced by specializing the corresponding Slang entry point on a set of interface types (skinning model, vertex format, fog mode, alpha-test, material, etc.). The permutation-index → `-specialize` tuple mapping for each family lives in the `map_*` functions of [compile_all_slang.py](compile_all_slang.py).
 
@@ -74,9 +71,9 @@ Per-entry schema:
 | Field | Required | Meaning |
 | --- | --- | --- |
 | `stage` | yes | `"vs"` or `"ps"`. Selects the profile and the BLS output directory. |
-| `entry` | yes | slangc entry-point name (e.g. `"toon_ps_main"`). |
+| `entry` | yes | slangc entry-point name (e.g. `"my_variant_ps_main"`). |
 | `perm_count` | yes | Total number of permutations — must match the range the family's `map_*` function enumerates. |
-| `bls_name` | yes | Output basename under `ps/ vs/ mtlfs/ mtlvs/` (e.g. `"toon_hd.bls"`). |
+| `bls_name` | yes | Output basename under `ps/ vs/ mtlfs/ mtlvs/` (e.g. `"my_variant_hd.bls"`). |
 | `template_override` | no | When the family reuses another shipped BLS as its binding-metadata template. Required whenever the variant's `bls_name` does not itself exist in the shipped `war3.w3mod/shaders/` tree. |
 
 The `module` field is NOT stored in the JSON — it is injected by the loader based on which file the entry came from, so users cannot accidentally desync it.
@@ -107,7 +104,7 @@ Useful flags:
 
 | Flag | Purpose |
 | --- | --- |
-| `--family <name>` | Compile only one family (e.g. `--family toon_hd_ps`). |
+| `--family <name>` | Compile only one family (e.g. `--family hd_ps`). |
 | `--target <api>` | Pick a target: `d3d11` (default), `d3d12`, `vulkan`, `opengl`, `metal`, `webgpu`, or `all`. `d3d11` output is always packable into `.bls`; `metal` (`.metallib`) packs on macOS; `opengl` / `vulkan` / `webgpu` outputs pack via `--build_extra` (see step 2). |
 | `--slangc <path>` | Explicit `slangc` path. |
 | `--metallib <macos-min>` | When targeting `metal`, emit compiled `.metallib` instead of Metal source. Requires Xcode; macOS only. |
@@ -156,7 +153,7 @@ The rest is three steps:
 
 ### 1. Write the Slang body
 
-Add your entry points to [custom_shaders/](custom_shaders/) and wire them into [custom_shaders.slang](custom_shaders/custom_shaders.slang) with `__include`. The existing [toon_hd_ps.slang](custom_shaders/toon_hd_ps.slang) / [toon_hd_vs.slang](custom_shaders/toon_hd_vs.slang) are the reference example — they reuse `hd_vs`'s vertex transform and replace only the pixel-shader lighting.
+Add your entry points to [custom_shaders/](custom_shaders/) and wire them into [custom_shaders.slang](custom_shaders/custom_shaders.slang) with `__include`. A variant must keep the VS/PS contract of the family it replaces — for the HD pipeline that means `HDVSInput` / `HDVSOutput` / `HDPSInput` and the `hdVsCB*` / `hdPsCB*` bindings — and replace only the shading body.
 
 ### 2. Register the family in `custom_shaders.json`
 
@@ -178,6 +175,6 @@ Use `template_override` whenever `bls_name` does not itself ship under `war3.w3m
 
 ### 3. Add the permutation mapper
 
-Each family needs a `map_<family>(idx) → PermSpec` function in [compile_all_slang.py](compile_all_slang.py) and an entry in the `MAPPERS` dict. The mapper translates a linear perm index into the tuple of slangc `-specialize` types. Variants that share their base family's permutation axes can delegate: see `map_toon_hd_ps` for an example that reuses `map_hd_ps`'s 9-bit feature encoding with a different entry point.
+Each family needs a `map_<family>(idx) → PermSpec` function in [compile_all_slang.py](compile_all_slang.py) and an entry in the `MAPPERS` dict. The mapper translates a linear perm index into the tuple of slangc `-specialize` types. A variant that shares its base family's permutation axes can delegate to that family's mapper and only override the entry-point name.
 
 `compile_all_slang.py` fails fast at startup if `MAPPERS` and the merged JSON disagree on the family set, so forgetting either half surfaces immediately.

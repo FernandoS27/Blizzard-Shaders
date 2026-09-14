@@ -25,34 +25,37 @@ public float3 hdApplyBlight(float3 rgb, float2 blightUV)
     return rgb * blight;
 }
 
-// The six distance-based fog modes (everything except volumetric).
+// The six distance-based fog modes (everything except volumetric), selected at
+// RUNTIME from the per-draw bank.
 //
-// Modes 3, 5 and 6 all share the same normalised distance and density, so they
-// are evaluated together and selected between — which is also how the shipped
-// bytecode does it, because a branch per mode would cost more than the three
-// exponentials.
+// The arms themselves live in ps/fog_factor.slang, shared verbatim with
+// `sd_classic_ps` — which spends the same enum as a compile-time permutation
+// axis and therefore ships one arm per blob instead of all of them. Selecting
+// differently is the only difference between the two families' fog.
+//
+// Modes 3, 5 and 6 are evaluated together and selected between rather than
+// branched on, which is how the shipped bytecode does it: a branch per mode
+// would cost more than the three exponentials.
 static float hdDistanceFog(int mode, float viewZ)
 {
     if (mode == 0)
         return 1;
 
+    float fogStart = hdPsCB2.fogColorStart.w;
+    float fogEnd = hdPsCB2.fogEnd;
+    float density = hdPsCB2.fogDensity;
+
     float f;
     if (mode == 2)
     {
-        f = 1.0 / exp(hdPsCB2.fogDensity * viewZ);
+        f = fogFactorExp(viewZ, density);
     }
     else
     {
-        float fogStart = hdPsCB2.fogColorStart.w;
-        float clampedEnd = max(hdPsCB2.fogEnd, SAFE_EPS + fogStart);
-        float invRange = 1.0 / (clampedEnd - fogStart);
-        float density2 = hdPsCB2.fogDensity * hdPsCB2.fogDensity;
-
-        float expSq = 1.0 / exp(density2 * (viewZ * viewZ));
-        float t = saturate(invRange * (viewZ - fogStart));
-        float expT = 1.0 / exp(hdPsCB2.fogDensity * t);
-        float expT2 = 1.0 / exp(density2 * (t * t));
-        float linearF = invRange * (hdPsCB2.fogEnd - viewZ);
+        float expSq = fogFactorExpSq(viewZ, density);
+        float expT = fogFactorExpBand(viewZ, fogStart, fogEnd, density);
+        float expT2 = fogFactorExpSqBand(viewZ, fogStart, fogEnd, density);
+        float linearF = fogFactorLinear(viewZ, fogStart, fogEnd);
 
         bool3 pick = int3(mode, mode, mode) == int3(3, 5, 6);
         f = pick.z ? expT2 : linearF;
@@ -60,9 +63,7 @@ static float hdDistanceFog(int mode, float viewZ)
         f = pick.x ? expSq : f;
     }
 
-    // Smoothstep the survival factor so fog does not band at its own start.
-    f = saturate(f);
-    return -f * f + (f + f);
+    return fogSmoothTail(f);
 }
 
 // Volumetric fog: a radial falloff around the camera, faded in by height.
@@ -113,7 +114,7 @@ public float hdFogFactor(float viewZ, float3 worldPos)
                        : hdVolumetricFog(viewZ, worldPos);
 }
 
-// Colour grade, alpha scale, and the blend-mode-aware fog application.
+// The blend-mode-aware fog application.
 //
 // The switch is the 3.0.0 addition. Fading an additive material toward the fog
 // colour would make it BRIGHTER in fog; fading a modulate material toward it
@@ -121,12 +122,14 @@ public float hdFogFactor(float viewZ, float3 worldPos)
 // its own identity: black for additive, white for modulate, grey for
 // modulate-2x, and the fog colour only for the ordinary opaque and
 // alpha-blended cases.
-public float4 hdApplyFog(float4 shaded, float fogFactor)
+//
+// Kept separate from the colour grade and the alpha scale because `popcorn_ps`
+// shares the switch verbatim — same eleven cases, same fade targets, same
+// `default` pass-through — and applies neither of them: its alpha has already
+// been finished by the soft-particle fade, and there is no colour matrix in the
+// particle pipeline at all.
+public float4 hdBlendModeFog(float4 result, float fogFactor)
 {
-    float4 result;
-    result.xyz = applyColorMatrix(shaded.xyz);
-    result.w = hdPsCB2.outputAlphaScale * shaded.w;
-
     switch (asint(hdPsCB2.blendMode))
     {
         case 0: case 1: case 2: case 10:   // opaque / alpha blends
@@ -151,6 +154,27 @@ public float4 hdApplyFog(float4 shaded, float fogFactor)
             break;
     }
     return result;
+}
+
+// Colour grade and alpha scale, then the switch above.
+//
+// `HAS_COLOR_GRADE` is what separates HD from SD-on-HD here. The two families
+// share this whole block verbatim — the switch, the constants, the alpha scale
+// — but the colour matrix is HD's alone: not one of the 384 shipped SD-on-HD
+// permutations contains its coefficients. It is a compile-time choice rather
+// than an identity matrix a caller could pass, because an identity matrix
+// still costs three dot products the shipped SD shader does not have.
+public float4 hdApplyFogGraded<let HAS_COLOR_GRADE : bool>(float4 shaded, float fogFactor)
+{
+    float4 result;
+    result.xyz = HAS_COLOR_GRADE ? applyColorMatrix(shaded.xyz) : shaded.xyz;
+    result.w = hdPsCB2.outputAlphaScale * shaded.w;
+    return hdBlendModeFog(result, fogFactor);
+}
+
+public float4 hdApplyFog(float4 shaded, float fogFactor)
+{
+    return hdApplyFogGraded<true>(shaded, fogFactor);
 }
 
 // Soft-edge cull for the deferred targets only.

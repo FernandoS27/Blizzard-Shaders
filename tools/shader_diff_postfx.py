@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dxbc_interp import f2b, TextureModel                 # noqa: E402
-from shader_diff import load, compare                     # noqa: E402
+from shader_diff import load, compare, perm_path                     # noqa: E402
 
 
 class _ConstTexture(TextureModel):
@@ -82,14 +82,14 @@ FAMILIES = {
 }
 
 
-def run_family(name, cfg, trials, tol):
+def run_family(name, cfg, trials, tol, retail_root=None):
     retail_sub, slang_sub, nperms, out_regs, inputs_fn, cbufs_fn, texture = cfg
-    retail = REPO / "re_shaders" / retail_sub
+    retail = Path(retail_root or (REPO / "wc3_re_shaders")) / retail_sub
     slang = SLANG / slang_sub
     worst = 0.0; diverging = []
     for idx in range(nperms):
-        prog_r = load(retail / f"perm_{idx:03d}.asm")
-        prog_s = load(slang / f"perm_{idx:03d}.dxbc", decompiler=DECOMPILER)
+        prog_r = load(perm_path(retail, idx, "asm"))
+        prog_s = load(perm_path(slang, idx, "dxbc"), decompiler=DECOMPILER)
         res = compare(prog_s, prog_r, trials=trials, output_regs=out_regs, tol=tol,
                       inputs_fn=inputs_fn, cbufs_fn=cbufs_fn, sysvals_fn=(lambda s: {}),
                       texture=texture)
@@ -108,6 +108,9 @@ def main(argv=None):
     ap.add_argument('--trials', type=int, default=80)
     ap.add_argument('--tol', type=float, default=1e-3)
     ap.add_argument('--only', default=None, help='comma-separated family names')
+    ap.add_argument('--retail-dir', default=None,
+                    help='root holding the retail family folders '
+                         '(default wc3_re_shaders/ — pass re_shaders_old/ for 2.0.0)')
     args = ap.parse_args(argv)
 
     only = set(args.only.split(',')) if args.only else None
@@ -116,7 +119,7 @@ def main(argv=None):
     for name, cfg in FAMILIES.items():
         if only and name not in only:
             continue
-        all_ok &= run_family(name, cfg, args.trials, args.tol)
+        all_ok &= run_family(name, cfg, args.trials, args.tol, args.retail_dir)
     print("ALL MATCH" if all_ok else "SOME DIVERGE")
     return 0 if all_ok else 1
 

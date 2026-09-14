@@ -144,8 +144,22 @@ public struct HDMaterial
 // wash out the base material's shading.
 public HDMaterial sampleHDMaterial<TMat : IMaterialLayer, let HAS_LIGHTING : bool>(float2 uv)
 {
+    return sampleHDMaterialFrom<TMat, HAS_LIGHTING>(uv, t_hdAlbedo.Sample(s_hdAlbedo, uv));
+}
+
+// The same, over a base albedo the caller has already produced.
+//
+// This exists for `crystal_ps`, whose albedo is a blend of two taps of the same
+// map rather than one, and which feeds the BLENDED colour into the team layer
+// -- confirmed in the shipped bytecode, where the refraction lerp lands before
+// the hue-preserving mix and the mix's `maxBase` is taken over the blended
+// value. Splitting the function rather than copying it keeps one implementation
+// of a blend that four constants and an order of operations have to match.
+public HDMaterial sampleHDMaterialFrom<TMat : IMaterialLayer, let HAS_LIGHTING : bool>(
+    float2 uv, float4 baseAlbedo)
+{
     HDMaterial m;
-    m.albedo     = t_hdAlbedo.Sample(s_hdAlbedo, uv);
+    m.albedo     = baseAlbedo;
     m.emissive   = t_hdEmissive.Sample(s_hdEmissive, uv).xyz;
     m.roughMetal = HAS_LIGHTING ? t_hdOrm.Sample(s_hdOrm, uv).yz : float2(0, 0);
     m.teamRGB    = float3(0, 0, 0);
@@ -191,9 +205,24 @@ public HDMaterial sampleHDMaterial<TMat : IMaterialLayer, let HAS_LIGHTING : boo
 public float4 hdFresnelAndCloak<TMat : IMaterialLayer>(
     float3 shadedRGB, float ndv, HDMaterial m, float vertAlpha)
 {
+    return hdFresnelAndCloakA<TMat>(shadedRGB, ndv, m, vertAlpha,
+                                    hdPsCB2.fresnelColor.w);
+}
+
+// The same, over a rim-alpha parameter the caller supplies.
+//
+// `crystal_ps` is the only family that passes anything but the per-draw
+// `fresnelColor.w`: it remaps the parameter by the refract mask so a fully
+// transparent facet still takes a visible rim. The substitution happens at the
+// PARAMETER, before the `(1 - NdotV)^2` weighting -- and it therefore also
+// reaches `plainAlpha`, which is built from the same weighted value. Both of
+// those are load-bearing; see effects/crystal_refract.slang.
+public float4 hdFresnelAndCloakA<TMat : IMaterialLayer>(
+    float3 shadedRGB, float ndv, HDMaterial m, float vertAlpha, float fresnelAlpha)
+{
     float rim  = 1.0 - ndv;
     float rim2 = rim * rim;
-    float fresnelA = hdPsCB2.fresnelColor.w * rim2;
+    float fresnelA = fresnelAlpha * rim2;
     float teamF2 = hdPsCB2.fresnelTeamColor * hdPsCB2.fresnelTeamColor;
 
     float maxF = max(hdPsCB2.fresnelColor.x,

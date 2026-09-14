@@ -155,7 +155,8 @@ public struct BonePalette
 //   bit 1 — replace the t2 control map with overrideOrm (used by crystal):
 //           scalar form (standard / ML) reads .x as a refractMask override,
 //           vector form (IBL paths) reads .xyz as a full ORM override.
-// `debugMode` selects one of the visualisation paths in debugVisualize().
+// `debugMode` selected one of the 2.0.0 debug visualisation paths; 3.0.0
+// spends the axis on LIGHT_DEBUG inside the clustered light walk instead.
 // The `overrideOrm` slot is unused by the HD pipeline and exists here so
 // the crystal pipeline shares the same b3 layout.
 public struct DebugVisCB
@@ -255,7 +256,12 @@ public struct HDVSPerDraw
     public float4x4 worldView;
     public float4x4 worldViewProj;
     public float4x4 _padProjection;
-    public float   _p16_x;          public float _p16_y;
+    // `.y` is the PopcornFX particle scale: every particle vertex position is
+    // multiplied by it before any matrix. Named here rather than left as
+    // padding because the HD mesh shader reads neither lane, so there is no
+    // competing meaning — unlike the pixel bank's cb2[22].x, which really is
+    // two different numbers in the two pipelines.
+    public float   _p16_x;          public float popcornScale;
     public float   clipHeight;      public float underWater;
     public float   boneBufferBase;  public float _p17_y;
     public float   _p17_z;          public float _p17_w;
@@ -299,10 +305,16 @@ public [[vk::binding(16, 1)]] StructuredBuffer<BoneTransform> t_hdBones : regist
 //   [ 3]    volumetric radial band + the "fog everywhere" flag (an int)
 //   [ 4- 7] worldView     — not read by this stage
 //   [ 8-11] inverse view  — rows 8..10 rotate view space into IBL probe space
-//   [12-15] projection    — not read by this stage
-//   [16-19] viewport / misc — not read by this stage
+//   [12-15] — not read by any stage that binds this bank
+//   [16-19] view → clip, the .xyw lanes only. Not read by the HD mesh shader,
+//           which already receives its clip position; `popcorn_ps` projects its
+//           own view position through it to find the depth buffer texel.
 //   [20]    .xyz volumetric fog centre (the camera)
-//   [22]    output alpha scale / cloak / fresnel team colour / blight enable
+//   [21]    depth-buffer UV remap (.xy scale, .zw bias) — popcorn only
+//   [22]    output alpha scale / cloak / fresnel team colour / blight enable.
+//           `.x` is the SOFT_PARTICLES depth-fade scale in popcorn: the engine
+//           fills this slot per pipeline, and the two are different numbers, so
+//           the name below is HD's use and the comment is popcorn's.
 //   [23].w  manual depth-test enable
 //   [24]    .xyz fresnel tint, .w fresnel alpha
 //   [25]    IBL "from" and "to" mip ends + the transition between them
@@ -322,13 +334,14 @@ public struct HDPSPerDraw
     public float   radialStrength;   public float  fogEverywhere;
     public float4x4 _padWorldView;
     public float4x4 invView;
-    public float4x4 _padProjection;
-    public float4  _pad16;
-    public float4  _pad17;
-    public float4  _pad18;
-    public float4  _pad19;
+    public float4x4 _pad12;
+    // Declared as a raw float4 array rather than a float4x4 because it is only
+    // ever addressed as `.xyw` per row: slang lowers a matrix-row swizzle to
+    // per-scalar loads, where the array gives back the single vector load and
+    // swizzle the shipped bytecode uses.
+    public float4  viewToClip[4];
     public float4  fogCentre;
-    public float4  _pad21;
+    public float4  depthUVRemap;
     public float   outputAlphaScale; public float  cloakAmount;
     public float   fresnelTeamColor; public float  blightEnable;
     public float   _p23_x;           public float  _p23_y;
@@ -480,57 +493,6 @@ public [[vk::binding(PsSamplerBindingOffset + 11, 2)]] SamplerState s_hdIblFrom 
 public [[vk::binding(PsSamplerBindingOffset + 12, 2)]] SamplerState s_hdIblTo   : register(s12);
 public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_hdBrdfLut : register(s13);
 
-// Per-draw constants for the SD-on-HD pixel shader (b2).
-// The layout mirrors the original SD engine CB, so most fields are
-// preserved as padding; only the values that are actually consumed by the
-// remastered path (fog, alpha ref, inv-view rows, env mip ranges, cloak,
-// and lights) are named. invViewRowN are the rows of the transposed
-// view-to-world rotation used to orient the IBL cubemap samples.
-public struct SDPSPerDraw
-{
-#if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // See PSPerDraw for the layout rationale behind the scalar split.
-    public float   alphaRef;
-    public float   _p0_x;            public float  _p0_y;
-    public float   _p0_z;
-#else
-    public float   alphaRef;         public float3 _p0;
-#endif
-    public float   fogStart;         public float  fogEnd;
-    public float   fogDensity;       public float  _p1;
-    public float4  fogColor;
-
-    public float4  _pad3;
-    public float4  _pad4;
-    public float4  _pad5;
-    public float4  _pad6;
-
-    public float4  invViewRow0;
-    public float4  invViewRow1;
-    public float4  invViewRow2;
-
-    public float4  _pad10;
-    public float4  _pad11;
-    public float4  _pad12;
-    public float4  _pad13;
-    public float4  _pad14;
-    public float4  _pad15;
-
-    public float   inverseSoftness;  public float  cloakAmount;
-    public float2  _p16;
-
-    public float4  _pad17;
-    public float4  _pad18;
-
-    public float   envFromMipEnd;    public float  envToMipEnd;
-    public float   envTransitionT;   public float  _p19;
-
-    // lightCountSlot.z holds the uint-reinterpreted active light count.
-    public float4  lightCountSlot;
-
-    public ShaderLight lights[8];
-};
-
 // Scalar cascade count for the shadow sampler PS path (b1).
 // Shared between the HD (IBL) and SD-on-HD pipelines — both consume the
 // same cb1[0].x active-cascade count.
@@ -546,7 +508,6 @@ public struct ShadowCascadeCount
 #endif
 };
 
-public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<SDPSPerDraw>        sdPsCB2 : register(b2);
 public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<ShadowCascadeCount> sdPsCB1 : register(b1);
 
 // Shadow cascades at t10-12 / s10-12. Bytecode must stay bit-identical
@@ -565,6 +526,25 @@ public [[vk::binding(PsSamplerBindingOffset + 10, 2)]] SamplerComparisonState sd
 public [[vk::binding(PsSamplerBindingOffset + 11, 2)]] SamplerComparisonState sd_s_shadow1 : register(s11);
 public [[vk::binding(PsSamplerBindingOffset + 12, 2)]] SamplerComparisonState sd_s_shadow2 : register(s12);
 
+// Per-light record for the SD highspec VS (b0).
+//
+// The same three rows as `ShaderLight`, in the same order, minus its trailing
+// `_pad2`: 3.0.0 tightened THIS family's per-light stride from 4 rows to 3.
+// Read off the shipped bytecode — at two active lights retail declares
+// `dcl_constantbuffer CB0[19]` and reads ambient `cb0[16].xyz`, diffuse
+// `cb0[17].xyz`, position `cb0[18].xyz` and type `cb0[18].w`; at the 2.0.0
+// stride of 4 the same permutation declared CB0[20] and read cb0[17..19].
+//
+// A separate type rather than a shrunk `ShaderLight`, because `wc3_shaders` is
+// one translation unit and every other light list (HD, water, SD-on-HD) still
+// uses the 4-row record — shrinking it would shift all of those banks.
+public struct SDHighspecLight
+{
+    public float4 ambient;       // .xyz = ambient color, .w = _pad0
+    public float4 diffuse;       // .xyz = diffuse color, .w = _pad1
+    public float4 position;      // .xyz = position/direction, .w = type
+};
+
 // Per-draw constants for the SD highspec vertex shader (b0): transforms,
 // tint, two texcoord matrices, and the light list — per-vertex lighting
 // happens entirely in the VS here, so the PS path doesn't need them.
@@ -577,12 +557,19 @@ public struct SDHighspecVSPerDraw
     public float4   texMtx0Row1;
     public float4   texMtx1Row0;
     public float4   texMtx1Row1;
-    public ShaderLight lights[8];
+    public SDHighspecLight lights[8];
 };
 
 // Per-draw constants for the SD classic pixel shader (b0): the classic
 // pipeline only needs fog and alpha-ref; everything else comes from the
 // texture-stage ops and the interpolated vertex color.
+//
+// 3.0.0 RE-ORDERED this bank. 2.0.0 packed the three fog scalars together in
+// cb0[1] and gave fogColor its own row at cb0[2]; 3.0.0 moved fogColor up into
+// cb0[1].xyz and tucked fogStart into that row's spare w, which is the same
+// (colour.xyz, start.w) + (end.x, density.y) shape the HD bank uses at cb2[1] /
+// cb2[2]. Reading the old order against a 3.0.0 blob silently swaps fogStart
+// for fogColor.x, so this is not a cosmetic rename.
 public struct SDClassicPSPerDraw
 {
 #if defined(WGSL_TARGET) || defined(METAL_TARGET)
@@ -593,9 +580,11 @@ public struct SDClassicPSPerDraw
 #else
     public float  alphaRef;     public float3 _p0;
 #endif
-    public float  fogStart;     public float  fogEnd;
-    public float  fogDensity;   public float  _p1;
-    public float4 fogColor;
+    // xyz = fog colour, w = fogStart — named like HD's cb2[1] because it is
+    // the same row, and kept as one float4 so no backend has to re-pack it.
+    public float4 fogColorStart;
+    public float  fogEnd;       public float  fogDensity;
+    public float  _p2_z;        public float  _p2_w;
 };
 
 public [[vk::binding(0, 0)]] ConstantBuffer<SDHighspecVSPerDraw>  sdHighspecVsCB0 : register(b0);
@@ -807,106 +796,48 @@ public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_splatNormal
 public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_splatMask   : register(s2);
 public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_lightmap    : register(s3);
 
-// Per-draw constants for the PopcornFX vertex shader (b2). Aliases
-// the same buffer as `vsCB2` (the engine binds them at the same
-// register slot) but exposes only the fields the popcorn pipeline
-// actually consumes:
+// 3.0.0 moved the PopcornFX VERTEX shader onto the shared per-draw bank too.
 //
-//   world         @ 0x040 — particle emitter's object → world transform.
-//                           Lives at the same offset as VSPerDraw.worldView,
-//                           because the engine binds the world matrix here
-//                           when running the particle pipeline (the HD
-//                           pipeline binds the worldView product instead).
-//   worldViewProj @ 0x080 — particle emitter's object → clip transform.
-//   popcornScale  @ 0x0C4 — scalar emitter scale applied to the local-
-//                           space position before any matrix transform
-//                           (i.e. at the .y slot of cb2[12]).
-public struct PopcornVSPerDraw
-{
-    public float4x4 _padCB0;          // cb2[0..3] — unused by the popcorn VS
-    public float4x4 world;            // cb2[4..7]
-    public float4x4 worldViewProj;    // cb2[8..11]
-    public float    _padTime;         // cb2[12].x  (the HD pipeline's `effectTime`)
-    public float    popcornScale;     // cb2[12].y
-    public float2   _padHeight;       // cb2[12].zw (HD's clipHeight / underWater)
-};
+// Its b2 is now `HDVSPerDraw` — the same struct `hd_vs` reads, at the same
+// offsets — so there is no `PopcornVSPerDraw` any more, exactly as there is no
+// `PopcornPSPerDraw`. What the 72 shipped 3.0.0 blobs read:
+//
+//   cb2[ 0.. 3]  world          -> TEXCOORD8, the world position
+//   cb2[ 4.. 7]  worldView      -> TEXCOORD7, and the normal / tangent
+//   cb2[ 8..11]  worldViewProj  -> SV_Position
+//   cb2[16].y    the particle scale
+//
+// The 2.0.0 layout was the same block shifted: `cb2[0..3]` was declared but
+// never read, what this file called `world` at `cb2[4..7]` was really
+// worldView, and the scale sat at `cb2[12].y`. 3.0.0 did not move the matrices
+// at all — it made `cb2[0..3]` live and pushed the scalar row from 12 to 16,
+// which is where `HDVSPerDraw` has always had it.
+//
+// The relayout is PER-PIPELINE, not engine-wide: 3.0.0 `sd_on_hd_vs` still
+// reads the legacy scalars at `cb2[12].z/.w`. Do not generalise it.
 
-public [[vk::binding(2, 0)]] ConstantBuffer<PopcornVSPerDraw> popcornVsCB2 : register(b2);
-
-// Per-draw constants for the PopcornFX pixel shader (b2). Aliases
-// the same register slot as the HD `psCB2` (and `waterPsCB2`) — the
-// engine reuses the same buffer slot for whichever pipeline is
-// active, and slangc only emits the binding the live entry point
+// 3.0.0 moved the PopcornFX pixel shader onto the SHARED per-draw bank.
+//
+// 2.0.0 gave popcorn its own b2 layout: eight analytical lights at cb2[21..52],
+// its own fog block, its own IBL mip ends. 3.0.0 deleted all of that and pointed
+// the family at the same buffer `hd_ps` reads — `hdPsCB2` above — plus the same
+// clustered-lighting bank `hdPsCB1`. Every row popcorn touches in 3.0.0
+// (fog at [1..3], inverse view at [8..10], the projection at [16..19], the fog
+// centre at [20], the depth remap at [21], the IBL ends at [25], the enables at
+// [26].w / [27].yz and the ambient set at [28..30]) sits at the offset
+// `HDPSPerDraw` already declares it at. There is therefore no popcorn PS
+// constant buffer any more, and no `PopcornPSPerDraw` struct.
+//
+// The same is true of its IBL textures: 2.0.0 bound them at t13/t14/t15, 3.0.0
+// at t11/t12/t13 — which is exactly `t_hdIblFrom` / `t_hdIblTo` / `t_hdBrdfLut`.
+// The clustered light set is likewise `t_hdLights` / `t_hdLightIndices` /
+// `t_hdClusters` at t16/t17/t18, bit for bit the same records.
+//
+// What remains popcorn's own are the five material slots below, which collide by
+// register with HD's but carry different content. That is safe for the same
+// reason it always was: slangc emits only the bindings the live entry point
 // actually references.
-//
-// Slot map (recovered from the original BLS PS perms; see
-// re_shaders/popcornfx/popcorn_ps.hlsl for the per-feature comments):
-//
-//   cb2[0]          — unused by the popcorn PS
-//   cb2[1].xyz      — fog start / end / density (FOG_*)
-//   cb2[2].xyz      — fog color                  (FOG_*)
-//   cb2[3..6]       — unused (HD's worldView slot)
-//   cb2[7..10]      — per-particle world basis   (LIT IBL)
-//   cb2[11..14]     — world → clip matrix        (SOFT_PARTICLES,
-//                                                 MOTION_PASS, LIT IBL)
-//   cb2[15]         — depth-buffer UV remap (.xy = scale, .zw = bias)
-//   cb2[16].x       — depth-fade scale            (SOFT_PARTICLES,
-//                                                 MOTION_PASS)
-//   cb2[17..18]     — unused
-//   cb2[19].x       — IBL `cubeFrom` roughness-to-mip multiplier
-//   cb2[19].y       — IBL `cubeTo`   roughness-to-mip multiplier
-//   cb2[19].z       — IBL cubemap blend (0 → cubeFrom, 1 → cubeTo)
-//   cb2[20].z       — analytic light count       (LIT)
-//   cb2[20].w       — "use smoothed normal" flag (LIT specular AA)
-//   cb2[21..52]     — analytic light array (8 lights × 4 float4
-//                     stride, sharing layout with HD's `ShaderLight`).
-//                     lights[0] does double duty as the IBL ambient /
-//                     base-material driver — its `.ambient` is added
-//                     to the IBL diffuse contribution and its
-//                     `.diffuse` is the IBL tint.
-public struct PopcornPSPerDraw
-{
-    public float4   _pad0;                                  // cb2[0]
-    public float    fogStart;       public float fogEnd;
-    public float    fogDensity;     public float _p1;       // cb2[1]
-    public float4   fogColor;                               // cb2[2]
-    public float4x4 _padCB3;                                // cb2[3..6]
 
-    // The following two "matrix" slots are declared as raw float4
-    // arrays rather than `float4x4` because both are addressed with
-    // non-contiguous component swizzles (.xyw / .xzy) and slang's
-    // matrix-row accessors lower those to per-scalar loads instead
-    // of a single vector load + swizzle. Storing them as raw arrays
-    // matches the original engine's `float4 cb2[N]` access pattern.
-    //
-    //   particleBasis[0..2] — per-particle world basis used by the
-    //                          LIT IBL block to rotate worldPos and
-    //                          worldNormal into the cubemap-local
-    //                          frame (.xzy swizzle).
-    //   worldToClip[0..3]   — world → clip (3×4 affine, using the
-    //                          .xyw lanes of each row; .z is unused).
-    public float4   particleBasis[4];                       // cb2[7..10]
-    public float4   worldToClip[4];                         // cb2[11..14]
-
-    public float4   depthUVRemap;                           // cb2[15]
-#if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // See PSPerDraw for the layout rationale behind the scalar split.
-    public float    depthFadeScale;
-    public float    _p16_x;         public float _p16_y;
-    public float    _p16_z;                                 // cb2[16]
-#else
-    public float    depthFadeScale; public float3 _p16;     // cb2[16]
-#endif
-    public float4   _pad17;                                 // cb2[17]
-    public float4   _pad18;                                 // cb2[18]
-    public float    iblMipFrom;     public float iblMipTo;
-    public float    iblBlend;       public float _p19;      // cb2[19]
-    public float2   _pad20_xy;
-    public float    lightCount;     public float useSmoothedNormal; // cb2[20]
-    public ShaderLight lights[8];                           // cb2[21..52]
-};
-
-public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<PopcornPSPerDraw> popcornPsCB2 : register(b2);
 
 // Popcorn pixel-shader textures. Slot ordering matches the engine
 // bindings recovered from the BLS perms:
@@ -917,31 +848,26 @@ public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<PopcornPSPerDraw
 //   t3  — smoothness (.y) + metallic (.z) (LIT only).
 //   t4  — scene depth (SOFT_PARTICLES color-pass fade and the
 //         MOTION_PASS depth-discard test).
-//   t13 — IBL diffuse-irradiance + spec cubemap "from" probe (LIT).
-//   t14 — IBL spec cubemap "to" probe (LIT) — blended by iblBlend.
-//   t15 — split-sum BRDF integration LUT (LIT).
 //
-// Several of these aliases share register slots with the HD bindings
-// declared above (e.g. t13/t14/t15 are also used by the HD IBL path);
-// slangc only emits the bindings the active entry actually
-// references, so the duplicate declarations are harmless.
+// The IBL probes are NOT here: 3.0.0 moved them to t11/t12/t13, where they are
+// `t_hdIblFrom` / `t_hdIblTo` / `t_hdBrdfLut` — the same three resources the HD
+// mesh shader samples, so popcorn reads those declarations directly rather than
+// aliasing its own names onto them.
+//
+// The five below share register slots with HD's material set; slangc only emits
+// the bindings the active entry actually references, so the duplicate
+// declarations are harmless.
 public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4>        t_popcornDiffuse  : register(t0);
 public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4>        t_popcornAlphaLut : register(t1);
 public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4>        t_popcornNormal   : register(t2);
 public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4>        t_popcornSmoothMet: register(t3);
 public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4>        t_popcornDepth    : register(t4);
-public [[vk::binding(PsSrvBindingOffset + 13, 1)]] TextureCubeArray<float4> t_popcornCubeFrom : register(t13);
-public [[vk::binding(PsSrvBindingOffset + 14, 1)]] TextureCubeArray<float4> t_popcornCubeTo   : register(t14);
-public [[vk::binding(PsSrvBindingOffset + 15, 1)]] Texture2D<float4>        t_popcornBrdfLut  : register(t15);
 
 public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_popcornDiffuse  : register(s0);
 public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_popcornAlphaLut : register(s1);
 public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_popcornNormal   : register(s2);
 public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_popcornSmoothMet: register(s3);
 public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_popcornDepth    : register(s4);
-public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_popcornCubeFrom : register(s13);
-public [[vk::binding(PsSamplerBindingOffset + 14, 2)]] SamplerState s_popcornCubeTo   : register(s14);
-public [[vk::binding(PsSamplerBindingOffset + 15, 2)]] SamplerState s_popcornBrdfLut  : register(s15);
 
 // Per-draw constants for the tonemap pixel shader (b1). The engine
 // only uploads a single 16-byte slot — the linear exposure multiplier

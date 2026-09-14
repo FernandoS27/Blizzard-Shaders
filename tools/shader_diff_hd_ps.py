@@ -44,7 +44,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from shader_diff import load, compare                    # noqa: E402
+from shader_diff import load, compare, perm_path                    # noqa: E402
 from wc3_uber_validate import DRIVERS                     # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
@@ -91,8 +91,32 @@ def body_hash(asm_path):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--trials', type=int, default=32)
+    # 128, not 32. Two of the shadow axes are invisible below it. Measured
+    # retail-against-retail -- two SHIPPED permutations that differ only in one
+    # axis, so any divergence is that axis and nothing else:
+    #
+    #   trials                      8        16        32        64       128
+    #   SHADOW_CASCADE2         0.0e0     0.0e0   4.4e-03   9.0e-03   1.2e-02
+    #   POINT_SHADOWS           0.0e0     0.0e0   5.1e-04   2.3e-03   1.5e-02
+    #
+    # At 8 and 16 trials the two programs are bit-identical; at 32 the cube
+    # shadow clears 5.1e-04, which is BELOW the 1e-3 tolerance -- so a sweep at
+    # the old default reported every point-shadow permutation green without
+    # ever executing a cube-shadow lookup that changed the answer. Both axes
+    # need a shaded point that lands inside a cascade AND inside a light's
+    # shadow shell, and the driver only reaches that combination every few
+    # dozen seeds. Lowering this re-opens the hole.
+    ap.add_argument('--trials', type=int, default=128)
     ap.add_argument('--tol', type=float, default=1e-3)
+    # The score is RELATIVE above magnitude 1 (see shader_diff.output_diff).
+    # A fixed absolute threshold tests a bright pixel far more strictly than a
+    # dim one, which is not a property a correctness gate should have: the
+    # LIGHT_DEBUG permutations add a light count to the output and sit around
+    # 13 where the shaded ones sit near 3, so at 128 trials all 64 of them
+    # crossed 1e-3 absolute while their non-debug siblings passed -- same seed,
+    # same output lane, same relative error. Set to 0 to score absolutely.
+    ap.add_argument('--rel-scale', type=float, default=1.0,
+                    help='magnitude floor for the diff score (0 = absolute)')
     ap.add_argument('--perms', default=None,
                     help='comma-separated perm indices (default: all 1024)')
     ap.add_argument('--retail-dir', default=str(RETAIL_DIR))
@@ -112,8 +136,8 @@ def main(argv=None):
     seen = {}
 
     for n, idx in enumerate(perms):
-        retail_asm = retail / f"perm_{idx:04d}.asm"
-        slang_dxbc = slang / f"perm_{idx:03d}.dxbc"
+        retail_asm = perm_path(retail, idx, "asm")
+        slang_dxbc = perm_path(slang, idx, "dxbc")
         prog_r = load(retail_asm)
         prog_s = load(slang_dxbc, decompiler=args.decompiler)
 
@@ -129,7 +153,8 @@ def main(argv=None):
             continue
 
         res = compare(prog_s, prog_r, trials=args.trials,
-                      output_regs=OUTPUT_REGS, tol=args.tol, **DRIVER)
+                      output_regs=OUTPUT_REGS, tol=args.tol,
+                      rel_scale=args.rel_scale, **DRIVER)
         worst_all = max(worst_all, res.worst)
         dm_total += res.discard_mismatches
         if res.worst > args.tol or res.discard_mismatches:

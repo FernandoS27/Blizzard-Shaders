@@ -1,144 +1,125 @@
 """Differential test of the slang ``crystal_ps`` family against retail bytecode.
 
-A worked example of :mod:`shader_diff` for the crystal (gem / refraction) shader,
-which patches HD via BLS and therefore shares the HD-family constant-buffer
-discriminant layout (light count / cascade count / debug mode / IBL probe /
-per-light directional flag) plus crystal's own refraction + shadow path. As with
-``shader_diff_popcorn``, the key is to *drive* those CB discriminants explicitly:
-random floats never make ``lights[0].position.w == 0.0`` (directional first light)
-or ``probeExtent != 0`` land, so whole branches would go untested otherwise.
+The Warcraft III Reforged **3.0.0** crystal (gem / glass / refraction) pixel
+shader: 512 permutations which are ``hd_ps``'s 1024 with the AO_MAP axis struck
+out and every higher bit shifted down one, so crystal index ``c`` denotes the
+feature set of hd index ``2 * c`` ::
 
-Crystal input varyings (retail signature, fed per-semantic; ``map_inputs`` places
-each into the right register/channels for either shader):
+    bit 0 SHADOW_CASCADE2   1 MULTI_TARGET   2 DEPTH_PREPASS   3 LIGHT_DEBUG
+    bit 4 POINT_SHADOWS     5 SHADOW_CASCADE 6 LIGHTING        7 ALPHA_TEST
+    bit 8 MULTI_LAYER
 
-    COLOR    0  -> vertColor        (v1)
-    TEXCOORD 0  -> uv               (v2.xy)
-    TEXCOORD 1  -> viewVec + depth  (v3.xyz view, v3.w gates the discard)
-    TEXCOORD 2  -> normalWS  (unit) (v4.xyz)
-    TEXCOORD 3  -> tangentWS (unit) (v5.xyz, v5.w handedness +/-1)
+**This file reuses ``DRIVERS['hd']`` verbatim, and that is a measured fact, not
+a convenience.** Crystal's shipped declarations and input signature are
+BYTE-IDENTICAL to hd's on the lit permutations -- same cb1[43] / cb2[31], same
+t0-t3 / t6-t8 / t11-t13, same t16/t17/t18 clustered-light buffers, same eight
+interpolants. Crystal did not get a port in 3.0.0; it got moved onto HD's banks,
+exactly as ``popcorn_ps`` and ``popcorn_vs`` were. Writing a second driver would
+mean maintaining a second description of the same layout.
 
-Outputs: single RT (o0) for most perms; the MRT (g-buffer) perms also write
-o1/o2. Comparing (0,1,2) is safe -- unwritten targets read back as 0 in both.
+Outputs compared: SV_TARGET0, plus the two deferred targets on MRT perms.
 
-useNdf is forced OFF because specular-AA depends on real screen-space
-derivatives, which a single-invocation interpreter can't reproduce.
+WHAT THIS GATE HAS TO REACH THAT HD'S DOES NOT
+----------------------------------------------
+Crystal's three material differences all hang off the refract mask in ``t2.x``:
+
+* the albedo is two taps of ``t0`` -- at ``uv`` and at
+  ``uv + n.xy * (0.02 / |n.z|)`` -- lerped by ``1 - mask``;
+* the normal map is decoded RAW (hd scales it by ``cb2[27].x``);
+* the Fresnel rim alpha PARAMETER is remapped by the mask.
+
+The first of those is the one a gate can be blind to. The two taps differ only
+by a small UV step, so on a smooth texture field the refracted and unrefracted
+albedos are CLOSE, and a candidate that dropped the refraction entirely could
+score under an absolute tolerance. Two things keep it live: the driver's UV
+range is wide enough that the texture field has real gradient across the step,
+and ``0.02 / |n.z|`` diverges as the normal turns edge-on, so the grazing trials
+take large offsets. That it is genuinely live is not assumed -- ``refraction-
+dropped`` and ``refract-offset-uses-shading-normal`` are mutations in the P6
+harness and both must come back CAUGHT.
 
 Run from the repo root::
 
     python tools/shader_diff_crystal_ps.py                 # full 512-perm sweep
-    python tools/shader_diff_crystal_ps.py --perms 1,384   # specific perms
-    python tools/shader_diff_crystal_ps.py --trials 60
+    python tools/shader_diff_crystal_ps.py --perms 64,320  # specific perms
+    python tools/shader_diff_crystal_ps.py --trials 64
 
-Expected (June-2026 fixes -- fog-under-debug, albedo-override-vs-refraction,
-debug modes 5-8, ported shadow-cascade path): all 512 perms MATCH, worst ~1e-5.
+The tolerance and trial count are hd_ps's, for the reasons documented there --
+in particular 128 trials, below which the two shadow axes stop being visible.
 """
 
 import argparse
-import math
-import random
+import hashlib
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dxbc_interp import f2b, i2b                         # noqa: E402
-from shader_diff import load, compare                    # noqa: E402
+from shader_diff import load, compare, perm_path                    # noqa: E402
+from wc3_uber_validate import DRIVERS                               # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
-RETAIL_DIR = REPO / "re_shaders" / "crystal"
-SLANG_DIR  = REPO / "slang_out" / "d3d11" / "crystal_ps"
+RETAIL_DIR = REPO / "wc3_re_shaders" / "crystal"
+SLANG_DIR = REPO / "slang_out" / "d3d11" / "crystal_ps"
 DECOMPILER = Path("C:/Tools/3Dmigoto/cmd_Decompiler/cmd_Decompiler.exe")
 NPERMS = 512
 
+#: SV_TARGET0 always; 1 and 2 exist only on the MRT perms and read as zero on
+#: both legs elsewhere, so comparing all three unconditionally is safe.
+#: Taken from the BLOBS (max output register over all 512 retail disassemblies),
+#: not from counting struct members -- see
+#: project_wc3_output_register_alignment, where popcorn_vs's equivalent tuple
+#: was one short and four shipped permutations went uncompared.
+OUTPUT_REGS = (0, 1, 2)
 
-# --- per-semantic inputs (Wc3 crystal varying conventions) ----------------
-# Build a CONCRETE dict per trial so every ``.get(key)`` is deterministic
-# regardless of which order each shader queries its semantics -- feeding the two
-# shaders even slightly different values per semantic produces phantom diffs.
+#: The hd driver, unchanged: varyings, driven constant buffers, the clustered
+#: light / index / grid structured buffers, and the texture stand-in whose t7
+#: depth samples straddle zero.
+DRIVER = DRIVERS['hd']
 
-def _unit(rng):
-    v = [rng.uniform(-1, 1) for _ in range(3)]
-    m = math.sqrt(sum(c * c for c in v)) or 1.0
-    return [c / m for c in v]
+_BITS = (("SC2", 1), ("MRT", 2), ("DP", 4), ("DBG", 8), ("PTS", 16),
+         ("SC", 32), ("LIT", 64), ("AT", 128), ("ML", 256))
 
-def crystal_inputs(seed):
-    r = random.Random(9000 + seed)
-    n = _unit(r); t = _unit(r)
-    return {
-        ("COLOR", 0):    [f2b(r.uniform(0, 1)) for _ in range(4)],            # vertColor
-        ("TEXCOORD", 0): [f2b(r.uniform(-2, 2)) for _ in range(4)],           # uv
-        # viewVec.xyz + depth.w ; v3.w<0 => discard, so span both signs
-        ("TEXCOORD", 1): [f2b(r.uniform(-20, 20)) for _ in range(3)]
-                         + [f2b(r.uniform(-5, 5))],
-        ("TEXCOORD", 2): [f2b(n[0]), f2b(n[1]), f2b(n[2]), f2b(0.0)],         # normalWS (unit)
-        ("TEXCOORD", 3): [f2b(t[0]), f2b(t[1]), f2b(t[2]),
-                          f2b(r.choice([-1.0, 1.0]))],                        # tangentWS + handedness
-    }
-
-
-# --- constant buffers with DRIVEN discriminants ---------------------------
-# Same HD-family layout as hd_ps: cb1[0].x cascade count, cb2[20].z light count,
-# cb2[20].w useNdf, cb3[0].y debug mode, cb2[19].xy probe extents (probe bound
-# iff product != 0), per-light block cb2[21+4i]=ambient / [+22]=diffuse /
-# [+23]=position (.w==0 => directional).
-
-def crystal_cbufs(seed):
-    rng = random.Random(seed * 13 + 7)
-    lights = rng.randint(0, 8)
-    cascades = rng.randint(0, 3)
-    dbg = rng.randint(0, 8)
-    first_dir = rng.random() < 0.5
-    probe = rng.random() < 0.6
-    light_types = rng.getrandbits(8)
-
-    def rows(n):
-        return [[f2b(rng.uniform(-1, 1)) for _ in range(4)] for _ in range(n)]
-    cb1 = rows(4); cb2 = rows(60); cb3 = rows(4)
-
-    cb1[0][0] = i2b(cascades)                # cb1[0].x cascade count (ilt)
-    cb3[0][1] = i2b(dbg)                      # cb3[0].y debug mode
-    cb2[20][2] = i2b(lights)                  # cb2[20].z light count (ult/switch)
-    cb2[20][3] = f2b(0.0)                     # useNdf OFF (specular-AA unmatchable)
-    cb2[16][0] = f2b(rng.uniform(0, 1))
-    cb2[16][1] = f2b(rng.uniform(0, 1))
-    cb2[19][2] = f2b(rng.uniform(0, 1))
-    # IBL probe bound iff probe -> non-zero extents at cb2[19].xy
-    cb2[19][0] = f2b(rng.uniform(0.1, 3) if probe else 0.0)
-    cb2[19][1] = f2b(rng.uniform(0.1, 3) if probe else 0.0)
-    # per-light position.w: 0 == directional, >0 == point
-    for i in range(8):
-        directional = (i == 0 and first_dir) or (i > 0 and (light_types >> i) & 1)
-        cb2[23 + i * 4][3] = f2b(0.0 if directional else rng.uniform(0.2, 3.0))
-    return {1: cb1, 2: cb2, 3: cb3}
-
-
-def crystal_sysvals(seed):
-    return {'is_front_face': 0xFFFFFFFF if (seed & 1) else 0}
-
-
-# --- perm feature label (hd-family 9-bit encoding; MRT is the low bit) -----
 
 def feat(idx):
-    f = []
-    if idx & 2:   f.append("DP")
-    if idx & 1:   f.append("MRT")
-    if idx & 4:   f.append("SHAD")
-    if idx & 8:   f.append("IBL")
-    if (idx & 16) and (idx & 32): f.append("FogE2")
-    elif idx & 16: f.append("FogL")
-    elif idx & 32: f.append("FogE")
-    if idx & 64:  f.append("AT")
-    if idx & 128: f.append("ML")
-    if idx & 256: f.append("DBG")
+    """Human-readable label for a permutation index."""
+    f = [name for name, bit in _BITS if idx & bit]
     return "+".join(f) if f else "base"
 
 
-# --- driver ---------------------------------------------------------------
+def body_hash(asm_path):
+    """Hash of a disassembly's behavioural content.
+
+    Comment lines carry the disassembler's timestamp and the reflection dump
+    (which the retail blobs do not have at all), so they are dropped; what is
+    left is the declarations plus the instruction stream.
+
+    Note this counts distinct INSTRUCTION STREAMS, which is not necessarily the
+    same number as distinct blobs -- see project_fold_class_counting. The fold
+    gate (G4) is what counts blobs; this number is only a dedup for the sweep,
+    and must never be quoted as a fold count.
+    """
+    h = hashlib.sha1()
+    for line in Path(asm_path).read_text('utf-8', errors='replace').splitlines():
+        s = line.strip()
+        if s and not s.startswith('//'):
+            h.update(s.encode('utf-8'))
+            h.update(b'\n')
+    return h.hexdigest()
+
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--trials', type=int, default=150)
-    ap.add_argument('--tol', type=float, default=1e-2)
+    # 128, not 32 -- hd_ps measured two shadow axes to be invisible below it,
+    # and crystal runs the same cascade and cube-shadow code.
+    ap.add_argument('--trials', type=int, default=128)
+    ap.add_argument('--tol', type=float, default=1e-3)
+    # The score is RELATIVE above magnitude 1 (see shader_diff.output_diff);
+    # the LIGHT_DEBUG perms output a light count and would otherwise be held to
+    # a far stricter standard than their shaded siblings. 0 = absolute.
+    ap.add_argument('--rel-scale', type=float, default=1.0,
+                    help='magnitude floor for the diff score (0 = absolute)')
     ap.add_argument('--perms', default=None,
                     help='comma-separated perm indices (default: all 512)')
     ap.add_argument('--retail-dir', default=str(RETAIL_DIR))
@@ -148,28 +129,58 @@ def main(argv=None):
 
     perms = ([int(x) for x in args.perms.split(',')] if args.perms
              else list(range(NPERMS)))
-    retail = Path(args.retail_dir); slang = Path(args.slang_dir)
+    retail = Path(args.retail_dir)
+    slang = Path(args.slang_dir)
 
-    worst_all = 0.0; diverging = []; dm_total = 0
-    for idx in perms:
-        prog_r = load(retail / f"perm_{idx:03d}.asm")
-        prog_s = load(slang / f"perm_{idx:03d}.dxbc", decompiler=args.decompiler)
-        res = compare(prog_s, prog_r, trials=args.trials, output_regs=(0, 1, 2),
-                      tol=args.tol, inputs_fn=crystal_inputs, cbufs_fn=crystal_cbufs,
-                      sysvals_fn=crystal_sysvals)
+    t0 = time.time()
+    worst_all = 0.0
+    diverging = []
+    dm_total = 0
+    seen = {}
+
+    for n, idx in enumerate(perms):
+        retail_asm = perm_path(retail, idx, "asm")
+        slang_dxbc = perm_path(slang, idx, "dxbc")
+        prog_r = load(retail_asm)
+        prog_s = load(slang_dxbc, decompiler=args.decompiler)
+
+        # Two slots that share BOTH hashes pose the same comparison, so the
+        # second is not a sample of the first -- it IS the first.
+        key = (body_hash(retail_asm), body_hash(slang_dxbc.with_suffix('.asm')))
+        if key in seen:
+            first, failure = seen[key]
+            if failure is not None:
+                diverging.append((idx, failure[0], failure[1]))
+                print(f"  DIVERGE perm_{idx:03d} {feat(idx)}: same program as "
+                      f"perm_{first:03d}")
+            continue
+
+        res = compare(prog_s, prog_r, trials=args.trials,
+                      output_regs=OUTPUT_REGS, tol=args.tol,
+                      rel_scale=args.rel_scale, **DRIVER)
         worst_all = max(worst_all, res.worst)
         dm_total += res.discard_mismatches
         if res.worst > args.tol or res.discard_mismatches:
+            seen[key] = (idx, (res.worst, res.discard_mismatches))
             diverging.append((idx, res.worst, res.discard_mismatches))
-            print(f"  DIVERGE perm_{idx} {feat(idx)}: worst={res.worst:.3e} "
-                  f"dm={res.discard_mismatches} (seed {res.worst_seed})")
-        if idx % 64 == 0:
-            print(f"  ...perm {idx} (running worst {worst_all:.1e})", file=sys.stderr)
+            print(f"  DIVERGE perm_{idx:03d} {feat(idx)}: worst={res.worst:.3e} "
+                  f"dm={res.discard_mismatches} at {res.worst_where} "
+                  f"(seed {res.worst_seed})")
+        else:
+            seen[key] = (idx, None)
 
-    print(f"\n=== crystal_ps: {len(perms)} perms x {args.trials} trials ===")
+        if n and n % 128 == 0:
+            print(f"  ...perm {idx} ({len(seen)} classes, "
+                  f"worst {worst_all:.1e}, {time.time() - t0:.0f}s)",
+                  file=sys.stderr)
+
+    print(f"\n=== crystal_ps 3.0.0: {len(perms)} perms x {args.trials} trials ===")
+    print(f"output regs      : {list(OUTPUT_REGS)}")
+    print(f"distinct classes : {len(seen)}")
     print(f"worst divergence : {worst_all:.3e}")
     print(f"discard mismatch : {dm_total}")
     print(f"perms diverging  : {len(diverging)}")
+    print(f"elapsed          : {time.time() - t0:.1f}s")
     print("ALL MATCH" if not diverging else f"DIVERGING: {[d[0] for d in diverging]}")
     return 0 if not diverging else 1
 

@@ -16,7 +16,7 @@ All of these games run on a shared lineage of Blizzard engine tech — the same 
 
 ### Warcraft III: Reforged
 
-The complete, shipped-parity half of the repo. All 19 shipped shader families — SD, SD-on-HD, HD, Crystal, water, terrain, foliage, sprite, distortion, PopcornFX particles, and the tonemap — are reimplemented in Slang and re-packed into the game's `.bls` bundles, DX and Metal, with optional OpenGL / Vulkan / WebGPU output for engine ports. Correctness is proven **bit-identical** against the retail DXBC via a custom DXBC interpreter harness. A `custom_shaders` module layers user-authored variants (e.g. a toon / cel-shaded HD look) on top of the reconstruction.
+The complete, shipped-parity half of the repo. All 19 shipped shader families — SD, SD-on-HD, HD, Crystal, water, terrain, foliage, sprite, distortion, PopcornFX particles, and the tonemap — are reimplemented in Slang and re-packed into the game's `.bls` bundles, DX and Metal, with optional OpenGL / Vulkan / WebGPU output for engine ports. Correctness is proven **bit-identical** against the retail DXBC via a custom DXBC interpreter harness. A `custom_shaders` module is the layer for user-authored variants on top of the reconstruction; it ships empty.
 
 **→ Full build instructions, family list, and the custom-shader guide live in [README-Warcraft3.md](README-Warcraft3.md).**
 

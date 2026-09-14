@@ -7,24 +7,6 @@
 
 implementing wc3_shaders;
 
-// HD pixel shader input. Mirrors VSOutput; see vs_io.slang for the
-// meaning of each slot. Note that worldPos.w carries the fog-depth
-// scalar rather than a homogeneous coordinate.
-public struct PSInput
-{
-    public float4 svPosition   : SV_Position;
-    public float4 vertColor    : COLOR0;
-    public float4 uv           : TEXCOORD0;
-    public float4 worldPos     : TEXCOORD1;
-    public float3 normalWS     : TEXCOORD2;
-    public float4 tangentWS    : TEXCOORD3;
-#if WC3_HAS_SHADOWS
-    public float4 shadowClip0  : TEXCOORD4;
-    public float4 shadowClip1  : TEXCOORD5;
-    public float4 shadowClip2  : TEXCOORD6;
-#endif
-};
-
 // HD mesh pixel shader input, 3.0.0 layout. Mirrors `HDVSOutput` slot for
 // slot; see vs_io.slang for what each one carries.
 //
@@ -292,20 +274,43 @@ public struct PopcornPSInput
     public float2 uv         : TEXCOORD0;
 #  endif
 #endif
-#if POPCORN_HAS_BB_OR_ATLAS
-    public float4 slot1      : TEXCOORD1;
-#endif
+    // Mirrors `PopcornVSOutput` component for component, because the widths
+    // are part of the signature the two stages have to agree on: the atlas
+    // variant's TEXCOORD1 is a single life-ratio scalar, not a vector, and so
+    // is the alpha-LUT random stream. Both are declared as float4 by an
+    // over-wide struct and the shipped blobs then disagree with ours on the
+    // interpolant mask — which the differential gate cannot see, because it
+    // aligns inputs by semantic (see docs/WC3_30_PORT_PLAN.md, 4b).
 #if POPCORN_BILLBOARD
+    public float4 slot1      : TEXCOORD1;
     public float4 uvAxis     : TEXCOORD2;
+#elif POPCORN_ATLAS
+    public float  slot1      : TEXCOORD1;
 #endif
 #if POPCORN_HAS_RANDOM_UV
-    public float4 random     : TEXCOORD3;
+    public float  random     : TEXCOORD3;
 #endif
 #if POPCORN_HAS_NT
+    // VIEW space, not world — the VS rotates both by the worldView matrix, and
+    // the shading below is done in the same space as `viewPos`.
     public float3 normalWS   : TEXCOORD4;
     public float4 tangentWS  : TEXCOORD5;
 #endif
-    public float3 worldPos   : TEXCOORD7;
+    // View-space position: it is the vector from the eye, so the view direction
+    // is `normalize(-viewPos)`, and `.z` is the depth that fog and the
+    // soft-particle / motion depth tests compare against.
+    //
+    // It was `worldPos` under 2.0.0 and it is the same interpolant — the VS has
+    // always rotated it by worldView, together with the normal and tangent. The
+    // old name was simply wrong, and 3.0.0 makes that visible by adding a real
+    // world position alongside it.
+    public float3 viewPos    : TEXCOORD7;
+    // 3.0.0 addition. The volumetric fog arm needs a WORLD position (it measures
+    // a radial distance from the camera and a height above a ground plane), and
+    // a view-space one cannot give it either. Declared unconditionally because
+    // all 288 shipped permutations declare it — including the motion pass, which
+    // never reads it.
+    public float3 worldPos   : TEXCOORD8;
 };
 
 // PopcornFX pixel shader output. Single-target colour pass by default;

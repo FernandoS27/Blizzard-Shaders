@@ -26,7 +26,7 @@ public float sdAttenuation(float distSq)
 // Returns the final per-vertex lit color, clamped to [0, 1] so over-
 // saturated sums don't punch past the legacy output gamut.
 public float3 sdComputePerVertexLighting<let NUM_LIGHTS : int>(
-    float3 worldNormal, float3 worldPos, float4 material, ShaderLight lights[8])
+    float3 worldNormal, float3 worldPos, float4 material, SDHighspecLight lights[8])
 {
     float3 diffAccum = float3(0, 0, 0);
     float3 ambAccum  = float3(0, 0, 0);

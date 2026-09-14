@@ -46,7 +46,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dxbc_interp import Program, TextureModel, f2b, i2b   # noqa: E402
-from shader_diff import load as _load, compare, decompile # noqa: E402
+from shader_diff import load as _load, compare, decompile, perm_path # noqa: E402
 
 
 # --- `continue` support (driver-side, without touching dxbc_interp) --------
@@ -109,7 +109,7 @@ def load(path, decompiler=None):
     return prog
 
 REPO = Path(__file__).resolve().parent.parent
-RETAIL_DIR = REPO / "re_shaders" / "water"
+RETAIL_DIR = REPO / "wc3_re_shaders" / "water"
 SLANG_DIR  = REPO / "slang_out" / "d3d11" / "water_ps"
 DECOMPILER = Path("C:/Tools/3Dmigoto/cmd_Decompiler/cmd_Decompiler.exe")
 NPERMS = 4
@@ -226,8 +226,8 @@ def main(argv=None):
 
     worst_all = 0.0; diverging = []; dm_total = 0
     for idx in perms:
-        prog_r = load(retail / f"perm_{idx:03d}.asm")
-        prog_s = load(slang / f"perm_{idx:03d}.dxbc", decompiler=args.decompiler)
+        prog_r = load(perm_path(retail, idx, "asm"))
+        prog_s = load(perm_path(slang, idx, "dxbc"), decompiler=args.decompiler)
         oregs = output_regs_for(prog_r)
         res = compare(prog_s, prog_r, trials=args.trials, output_regs=oregs,
                       tol=args.tol, inputs_fn=water_inputs, cbufs_fn=water_cbufs,

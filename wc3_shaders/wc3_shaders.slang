@@ -62,10 +62,10 @@ __include "interfaces/vertex_format";
 __include "interfaces/texture_stage";
 __include "interfaces/popcorn_mode";
 
-// Higher-level visual effects used by the PS bodies.
-__include "effects/cloak";
-__include "effects/fresnel_overlay";
-__include "effects/multi_layer";
+// Higher-level visual effects used by the PS bodies. The 2.0.0 cloak, fresnel
+// overlay and multi-layer blend are gone: 3.0.0 folded all three into
+// `hdFresnelAndCloak` / `sampleHDMaterial`, and P6 retired the last family
+// that still called the old ones.
 __include "effects/crystal_refract";
 
 // HD mesh pixel-shader bodies, 3.0.0: material sampling + the fresnel/cloak
@@ -74,17 +74,17 @@ __include "effects/crystal_refract";
 __include "ps/hd_ps_material";
 __include "ps/hd_ps_shadows";
 __include "ps/hd_ps_lighting";
+__include "ps/fog_factor";
 __include "ps/hd_ps_post";
 __include "ps/hd_ps_prepass";
 
-// What survives of the 2.0.0 HD pixel-shader stack. `hd_ps` no longer routes
-// through any of it, but the crystal and SD-on-HD pipelines still call into
-// these helpers (and read the 2.0.0 `PSInput` / `psCB2` layouts), so they stay
-// until those families are re-reversed against 3.0.0 too. The bodies that only
-// `hd_ps` and the deleted toon / gritty variants used are gone.
-__include "ps/ps_depth_prepass";
+// What survives of the 2.0.0 HD pixel-shader stack, after P6 moved the last
+// family off it. Nothing 2.0.0 routes through these any more; they stay only
+// because the TERRAIN, FOLIAGE and WATER bodies borrow four helpers from them
+// (`sampleIBL`, `lightLoop`, `blizzardAmbientBlend`, `queryTextureLOD`) and
+// those families have not been re-reversed against 3.0.0 yet.
 __include "ps/ps_ibl";
-__include "ps/ps_post";
+__include "ps/texture_lod";
 
 // Terrain pixel-shader bodies (splat blend + cascaded shadow + lit
 // dominant + multi-light loop + TINT_OVERRIDE debug router).
@@ -99,17 +99,14 @@ __include "ps/terrain_ps_body";
 // but with its own sampling block and fog-policy axis.
 __include "ps/foliage_ps_body";
 
-// Crystal pixel-shader bodies (refractive variant of the HD pipeline).
-__include "ps/crystal_ps_depth_prepass";
-__include "ps/crystal_ps_ibl";
-__include "ps/crystal_ps_standard";
+// Crystal pixel-shader body, 3.0.0: the alpha-tested depth prepass. Crystal's
+// three material differences from HD live in effects/crystal_refract; the plain
+// prepass and everything in the colour pass are HD's own bodies, called.
+__include "ps/crystal_ps_body";
 
-// SD-on-HD pixel-shader bodies.
-__include "ps/sd_ps_depth_prepass";
-__include "ps/sd_ps_shadow";
-__include "ps/sd_ps_ibl";
-__include "ps/sd_ps_standard";
-__include "ps/sd_ps_post";
+// SD-on-HD pixel-shader body, 3.0.0: the albedo-only material, the cloak and
+// the depth prepass. Everything else this family needs is HD's.
+__include "ps/sd_on_hd_ps_body";
 
 // SD classic pixel-shader body (fixed-function texture stages).
 __include "ps/sd_classic_ps_body";
