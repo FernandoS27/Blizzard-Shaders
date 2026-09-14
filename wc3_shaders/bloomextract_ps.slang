@@ -31,7 +31,7 @@ public static const float3 BLOOM_LUMA = float3(0.300000012, 0.589999974, 0.10999
 [shader("fragment")]
 public float4 bloom_extract_ps_main(SpritePSInput input) : SV_Target0
 {
-    float threshold = bloomExtractPsCB1.threshold;
+    float threshold = bloomExtractPsCB3.threshold;
 
     float4 color = t_bloomSource.Sample(s_bloomSource, input.uv);
     float  luma  = dot(color.xyz, BLOOM_LUMA);

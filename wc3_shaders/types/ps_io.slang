@@ -67,24 +67,17 @@ public struct HDPSInput
 //
 //   WC3_IS_DEPTH_PREPASS=1   → PSOutput has no color/mrt (hd-style)
 //   WC3_IS_MRT=1             → PSOutput has mrt (hd-style)
-//   WC3_TERRAIN_NULL_PASS=1  → TerrainPSOutput / FoliagePSOutput empty
-//   WC3_HAS_MRT=1            → TerrainPSOutput / FoliagePSOutput mrt slots
-//                              (set explicitly by terrain/foliage mappers
-//                               because the gate expression already
-//                               factors in NULL_PASS)
 //
-// Each struct uses its OWN gate flag — sharing WC3_HAS_COLOR across
-// PSOutput and TerrainPSOutput would mean terrain's NULL_PASS perms
-// also disable PSOutput.color, which breaks hd_ps.slang when both
-// shaders live in the same compilation unit.
+// Every 3.0.0 lit family (hd, crystal, sd_on_hd, popcorn, foliage,
+// terrain) shares this one output struct and these two defines. 2.0.0
+// terrain and foliage had their own `WC3_TERRAIN_NULL_PASS` / `WC3_HAS_MRT`
+// pair and a TerrainPSOutput; both went when those families moved onto
+// HD's permutation layout.
 #if !defined(WC3_IS_DEPTH_PREPASS)
 #define WC3_PSO_HAS_COLOR 1
 #endif
 #if defined(WC3_IS_MRT) && !defined(WC3_IS_DEPTH_PREPASS)
 #define WC3_PSO_HAS_MRT 1
-#endif
-#if !defined(WC3_TERRAIN_NULL_PASS)
-#define WC3_TERRAIN_HAS_COLOR 1
 #endif
 
 public struct PSOutput
@@ -109,18 +102,26 @@ public struct SDPSInput
     public float3 worldPos   : TEXCOORD1;
 };
 
-// Water pixel shader input. Matches `WaterVSOutput` slot-for-slot:
-// TEXCOORD2 is skipped (the water pass has no tangent attribute), the
-// world-space geometry normal arrives on TEXCOORD3, and TEXCOORD4
-// carries the per-object "up" axis used as the TBN tangent.
+// Water pixel shader input, 3.0.0. Mirrors `WaterVSOutput` slot for slot.
 public struct WaterPSInput
 {
-    public float4 svPosition   : SV_Position;
-    public float4 vertColor    : COLOR0;
-    public float2 uv           : TEXCOORD0;
-    public float3 worldPos     : TEXCOORD1;
-    public float3 geomNormalWS : TEXCOORD3;
-    public float4 upAxisWS     : TEXCOORD4;
+    public float4 svPosition : SV_Position;
+    public float4 vertColor  : COLOR0;
+    public float4 uv         : TEXCOORD0;
+    public float3 viewPos    : TEXCOORD1;
+    public float3 normalVS   : TEXCOORD2;
+    public float4 tangentVS  : TEXCOORD3;
+    public float4 worldPos   : TEXCOORD10;
+};
+
+// Water writes TWO targets on every shaded permutation -- the colour and the
+// view depth -- and none on the depth prepass, which is an empty program.
+public struct WaterPSOutput
+{
+#if WC3_PSO_HAS_COLOR
+    public float4 color : SV_Target0;
+    public float4 depth : SV_Target1;
+#endif
 };
 
 // SD classic pipeline PS output. Single target; no MRT, no debug split.
@@ -139,74 +140,36 @@ public struct TonemapPSInput
     public float2 uv         : TEXCOORD0;
 };
 
-// Terrain pixel shader input. Mirrors `TerrainVSOutput` slot-for-slot.
-// Shadow slots gated on WC3_HAS_SHADOWS so WGSL @location indices
-// stay in sync with the VS-side output.
+// Terrain pixel shader input, 3.0.0. Mirrors `TerrainVSOutput` slot for slot:
+// the flat-interpolated layer indices first, then foliage's payload. As with
+// foliage, SV_IsFrontFace is a separate entry-point parameter that retail
+// declares and never reads.
 public struct TerrainPSInput
 {
-    public nointerpolation uint4 boneIDs : TEXCOORD7;
-    public float4 svPosition   : SV_Position;
-    public float4 color        : COLOR0;
-    public float4 texCoord     : TEXCOORD0;
-    public float4 worldPos     : TEXCOORD1;
-    public float3 worldNormal  : TEXCOORD2;
-    public float4 worldTangent : TEXCOORD3;
-#if WC3_HAS_SHADOWS
-    public float4 shadowClip0  : TEXCOORD4;
-    public float4 shadowClip1  : TEXCOORD5;
-    public float4 shadowClip2  : TEXCOORD6;
-#endif
+    public nointerpolation uint4 layers : TEXCOORD8;
+    public float4 svPosition : SV_Position;
+    public float4 vertColor  : COLOR0;
+    public float4 uv         : TEXCOORD0;
+    public float4 viewPos    : TEXCOORD1;
+    public float4 tangentVS  : TEXCOORD3;
+    public float3 normalVS   : TEXCOORD2;
+    public float4 worldPos   : TEXCOORD10;
 };
 
-// Terrain pixel shader output. The single colour target is gated by
-// `WC3_HAS_COLOR` (= !HAS_NULL_PASS) so the engine's NULL_PASS stub
-// (which emits no output signature whatsoever — `dcl_output` is absent
-// in the original DXBC) can be reconstructed by leaving it undefined.
-// The two MRT targets (depth-feedback in .x = view-Z, and packed world
-// normal + 1) are gated by `WC3_HAS_MRT` (= !HAS_NULL_PASS && HAS_MRT).
-// Both defines are set per perm by compile_all_slang.py — see
-// map_terrain_ps. The migration off `Conditional<float4, FLAG>` follows
-// the same WGSL emit fix as PSOutput above.
-public struct TerrainPSOutput
-{
-#if WC3_TERRAIN_HAS_COLOR
-    public float4 color     : SV_Target0;
-#endif
-#if WC3_HAS_MRT
-    public float4 depthFeed : SV_Target1;
-    public float4 normalEnc : SV_Target2;
-#endif
-};
-
-// Foliage pixel shader input. Mirrors `FoliageVSOutput` slot-for-slot.
-// Shadow slots gated on WC3_HAS_SHADOWS so WGSL @location indices
-// stay in sync with the VS-side output.
+// Foliage pixel shader input, 3.0.0. Mirrors `FoliageVSOutput` slot for
+// slot, tangent before normal. The front-face flag is taken as a separate
+// entry-point parameter, as HD takes it: retail declares SV_IsFrontFace in
+// the signature and never reads it -- foliage does not flip its normal for
+// back faces.
 public struct FoliagePSInput
 {
-    public float4 svPosition   : SV_Position;
-    public float4 color        : COLOR0;
-    public float4 texCoord     : TEXCOORD0;
-    public float4 worldPos     : TEXCOORD1;
-    public float3 worldNormal  : TEXCOORD2;
-    public float4 worldTangent : TEXCOORD3;
-#if WC3_HAS_SHADOWS
-    public float4 shadowClip0  : TEXCOORD4;
-    public float4 shadowClip1  : TEXCOORD5;
-    public float4 shadowClip2  : TEXCOORD6;
-#endif
-};
-
-// Foliage pixel shader output. Like `TerrainPSOutput`, gated on
-// `WC3_HAS_COLOR` + `WC3_HAS_MRT`.
-public struct FoliagePSOutput
-{
-#if WC3_TERRAIN_HAS_COLOR
-    public float4 color     : SV_Target0;
-#endif
-#if WC3_HAS_MRT
-    public float4 depthFeed : SV_Target1;
-    public float4 normalEnc : SV_Target2;
-#endif
+    public float4 svPosition : SV_Position;
+    public float4 vertColor  : COLOR0;
+    public float4 uv         : TEXCOORD0;
+    public float4 viewPos    : TEXCOORD1;
+    public float4 tangentVS  : TEXCOORD3;
+    public float3 normalVS   : TEXCOORD2;
+    public float4 worldPos   : TEXCOORD10;
 };
 
 // Sprite pixel shader input. Mirrors SpriteVSOutput. svPosition is

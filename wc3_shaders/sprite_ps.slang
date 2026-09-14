@@ -27,16 +27,18 @@
 // Alpha is always passed through unchanged — only the RGB lanes are
 // gamma-mapped. Reference: IEC 61966-2-1 sRGB transfer function (see
 // linearToSrgb / srgbToLinearIEC in math/color.slang).
+//
+// `movie_ps` draws an RGB video source with this same program (3.0.0 ships
+// movie's RGB permutations byte-identical to sprite's perm_000 / perm_002), so
+// the body is a helper both entries call.
 
 implementing wc3_shaders;
 
-[shader("fragment")]
-public float4 sprite_ps_main<
+public float4 spriteColor<
     let HAS_SRGB_ENCODE : bool,
-    let HAS_SRGB_DECODE : bool>(
-    SpritePSInput input) : SV_Target0
+    let HAS_SRGB_DECODE : bool>(float2 uv)
 {
-    float4 sample = t_sprite.Sample(s_sprite, input.uv);
+    float4 sample = t_sprite.Sample(s_sprite, uv);
 
     // Both flags set → the encode and decode cancel, matching the
     // shipped perm_003 which is identical to the no-flag perm_000.
@@ -46,4 +48,13 @@ public float4 sprite_ps_main<
     float3 rgb = HAS_SRGB_ENCODE ? linearToSrgb(sample.rgb)
                                  : srgbToLinearIEC(sample.rgb);
     return float4(rgb, sample.a);
+}
+
+[shader("fragment")]
+public float4 sprite_ps_main<
+    let HAS_SRGB_ENCODE : bool,
+    let HAS_SRGB_DECODE : bool>(
+    SpritePSInput input) : SV_Target0
+{
+    return spriteColor<HAS_SRGB_ENCODE, HAS_SRGB_DECODE>(input.uv);
 }

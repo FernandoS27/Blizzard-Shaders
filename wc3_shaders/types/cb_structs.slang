@@ -22,6 +22,16 @@ implementing wc3_shaders;
 // (`GsBindingOffset = 32`, `HsBindingOffset = 48`, …) when added.
 public static const int PsBindingOffset = 16;
 
+// Scalar-split layout rule, cited by several structs below.
+//
+// WGSL's std140-style uniform layout and Slang's Metal natural-buffer layout
+// both put a `float3` on the next 16-byte boundary. A struct written as
+// `float alphaRef; float3 _p0;` therefore packs `_p0` at offset 16 instead of 4
+// on those targets, and shifts every later field by 12 or 16 bytes relative to
+// the HLSL register packing the engine writes. Splitting the float3 into three
+// scalars keeps them in the same 16-byte register as the scalar before them on
+// every target; the split lanes are padding no shader reads.
+
 // Tighter PS offsets under WGSL so the runtime bind-group layout fits
 // WebGPU's per-stage caps (12 uniforms / 16 textures / 16 samplers).
 #ifdef WGSL_TARGET
@@ -33,71 +43,6 @@ public static const int PsCbBindingOffset      = PsBindingOffset;
 public static const int PsSrvBindingOffset     = PsBindingOffset;
 public static const int PsSamplerBindingOffset = PsBindingOffset;
 #endif
-
-// One analytical light as uploaded by the engine.
-// type == 0 => directional (position is actually the light direction).
-// type  > 0 => point light (position is a world-space position).
-// _pad2.x is repurposed as "ambient weight" in the IBL combine path.
-//
-// All four members are float4 so the CB layout is identical across
-// HLSL register-packing (D3D11) and Slang's Metal natural-buffer layout.
-// The original engine wire format stores xyz components plus a trailing
-// scalar in each 16-byte slot; the `.w` channels carry the pad/type
-// scalars that used to be standalone fields.
-public struct ShaderLight
-{
-    public float4 ambient;       // .xyz = ambient color, .w = _pad0
-    public float4 diffuse;       // .xyz = diffuse color, .w = _pad1
-    public float4 position;      // .xyz = position/direction, .w = type
-    public float4 _pad2;
-};
-
-// Per-draw constants for the HD pixel shader (b2).
-// Holds fog + alpha-test parameters, view/projection matrices used by IBL,
-// effect knobs (cloak, fresnel overlay, emissive gain), IBL blend state
-// between the "from" and "to" probe cubemaps, and the active light list.
-//
-// Under WGSL the padding `float3 _p0` is split into three scalar lanes:
-// WebGPU's std140-style uniform layout forces vec3 to a 16-byte
-// alignment boundary, which would shift every following field by 12
-// bytes relative to the engine's wire format (alphaRef@0, _p0@4..16).
-// Splitting `_p0` into `_p0_x/_p0_y/_p0_z` keeps the WGSL byte layout
-// identical to the original HLSL cbuffer packing — the padding lanes
-// are never read by any shader, so the split is invisible to callers.
-// Same pattern applied to every `scalar; float3 _pad;` group below.
-public struct PSPerDraw
-{
-#if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // WGSL std140 and Slang's Metal natural-buffer layout both put a
-    // `float3` at the next 16-byte boundary, which would push `fogStart`
-    // from offset 16 (HLSL register-packing) to 32 and shift every
-    // following field by 16 bytes — and the host CB writer expects the
-    // HLSL/D3D wire layout. Splitting `_p0` into three scalars makes
-    // them pack into the same 16-byte register as `alphaRef`, matching
-    // the original HLSL packing on every target.
-    public float   alphaRef;
-    public float   _p0_x;            public float  _p0_y;
-    public float   _p0_z;
-#else
-    public float   alphaRef;         public float3 _p0;
-#endif
-    public float   fogStart;         public float  fogEnd;
-    public float   fogDensity;       public float  _p1;
-    public float4  fogColor;
-    public float4x4 worldView;
-    public float4x4 view;
-    public float4x4 projection;
-    public float4  viewport;
-    public float   inverseSoftness;  public float  cloakAmount;
-    public float   fresnelTeamColor; public float  _p2;
-    public float4  _pad17;
-    public float4  fresnelColor;
-    public float   envFromMipEnd;    public float  envToMipEnd;
-    public float   envTransitionT;   public float  _p3;
-    public float   effectTime;       public float  emissiveGain;
-    public float   lightCount;       public float  useNdf;
-    public ShaderLight lights[8];
-};
 
 // The three cascade view-projection matrices used by the shadow map PCF
 // sampling path. Uploaded at b1 in the vertex stage.
@@ -149,71 +94,39 @@ public struct BonePalette
     public float4x3 matrices[256];
 };
 
-// Debug visualisation controls (b3 in PS).
-// `enabledShaders` is a bitfield toggling various debug overrides:
-//   bit 0 — replace albedo.rgb with overrideAlbedo.
-//   bit 1 — replace the t2 control map with overrideOrm (used by crystal):
-//           scalar form (standard / ML) reads .x as a refractMask override,
-//           vector form (IBL paths) reads .xyz as a full ORM override.
-// `debugMode` selected one of the 2.0.0 debug visualisation paths; 3.0.0
-// spends the axis on LIGHT_DEBUG inside the clustered light walk instead.
-// The `overrideOrm` slot is unused by the HD pipeline and exists here so
-// the crystal pipeline shares the same b3 layout.
-public struct DebugVisCB
-{
-    public uint  enabledShaders;  public float  debugMode;
-    public float2 _p0;
-    // `overrideAlbedo` / `overrideOrm` are float4 so the CB layout is
-    // identical across HLSL register-packing (D3D11), WGSL std140, and
-    // Slang's Metal natural-buffer layout — see PSPerDraw for the same
-    // rationale on `_p0`. Callers read `.xyz` for the float3 portion and
-    // `.w` (formerly `_p1` / `_p2`) is unused padding.
-    public float4 overrideAlbedo; // .xyz override, .w = _p1
-    public float4 overrideOrm;    // .xyz override, .w = _p2
-};
-
-public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<PSPerDraw>      psCB2 : register(b2);
-public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<DebugVisCB>     psCB3 : register(b3);
 public [[vk::binding(1, 0)]] ConstantBuffer<ShadowCascades> vsCB1 : register(b1);
 public [[vk::binding(2, 0)]] ConstantBuffer<VSPerDraw>      vsCB2 : register(b2);
 public [[vk::binding(3, 0)]] ConstantBuffer<BonePalette>    vsCB3 : register(b3);
 
-// HD material textures. Slot ordering matches the engine-side bindings:
-//   t0 albedo, t1 normal (XY + AA mask in W), t2 ORM (occ/rough/metal/mask),
-//   t3 emissive, t4 team color mask.
-//   t13/t14 are the two IBL cubemap arrays we blend between during
-//   environment transitions; t15 is the split-sum BRDF LUT.
+// `sd_lowspec_vs`'s palette: the same record, 72 bones (216 float4s) -- the
+// lowspec pipeline targets feature level 9, whose constant buffers are small.
+public struct LowspecBonePalette72
+{
+    public float4x3 matrices[72];
+};
+
+public [[vk::binding(3, 0)]] ConstantBuffer<LowspecBonePalette72> sdLowspecVsCB3 : register(b3);
+
+// The two texture stages the SD classic pixel shader samples (t0 / t1). The
+// rest of the 2.0.0 HD material set (ORM, emissive, team colour, the IBL pair
+// and BRDF LUT at t13-t15) went when the last 2.0.0 lit family was ported.
 public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4>         t_albedo    : register(t0);
 public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4>         t_normal    : register(t1);
-public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4>         t_orm       : register(t2);
-public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4>         t_emissive  : register(t3);
-public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4>         t_teamColor : register(t4);
-public [[vk::binding(PsSrvBindingOffset + 13, 1)]] TextureCubeArray<float4>  t_iblFrom   : register(t13);
-public [[vk::binding(PsSrvBindingOffset + 14, 1)]] TextureCubeArray<float4>  t_iblTo     : register(t14);
-public [[vk::binding(PsSrvBindingOffset + 15, 1)]] Texture2D<float4>         t_brdfLut   : register(t15);
 
 public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_albedo    : register(s0);
 public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_normal    : register(s1);
-public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_orm       : register(s2);
-public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_emissive  : register(s3);
-public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_teamColor : register(s4);
-public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_iblFrom   : register(s13);
-public [[vk::binding(PsSamplerBindingOffset + 14, 2)]] SamplerState s_iblTo     : register(s14);
-public [[vk::binding(PsSamplerBindingOffset + 15, 2)]] SamplerState s_brdfLut   : register(s15);
 
 // ===========================================================================
 // Warcraft III 3.0.0 HD mesh pipeline
 // ===========================================================================
 //
-// Everything above this point is the 2.0.0-era HD binding set, still used by
-// the SD-on-HD, crystal and user-variant pipelines. Everything below is the
-// 3.0.0 HD mesh pair (`hd_vs` / `hd_ps`), rebuilt from the shipped BLS
-// permutations. The two layouts coexist rather than one replacing the other
-// because 3.0.0 renumbered b2, moved the shadow cascades out of the vertex
-// stage and swapped the per-draw light array for a clustered light buffer —
-// the families still on 2.0.0 would not survive the edit. They claim the same
-// registers, which is fine: slang only emits the resources an entry point
-// actually reaches, exactly as `t_albedo` and `t_waterScene` already share t0.
+// Everything above this point is what survives of the 2.0.0-era binding set:
+// the vertex banks `sd_on_hd_vs` and `sd_highspec_vs` still read, and the two
+// texture stages `sd_classic_ps` samples. Every 3.0.0 lit pixel shader -- hd,
+// crystal, sd_on_hd, popcorn, foliage, terrain, water -- binds what follows.
+// Declarations that claim the same register are fine: slang only emits the
+// resources an entry point actually reaches, exactly as `t_albedo` and
+// `t_waterScene` share t0.
 
 // One bone, as both palettes store it: the three rows of an affine 3x4.
 //
@@ -246,6 +159,7 @@ public struct HDBonePalette
 //   [ 8-11]  worldViewProj  — object -> clip.
 //   [12-15]  not read by this stage (the pixel shader's projection matrix
 //            lands here; the vertex stage just skips over it).
+//   [16].x   effect clock (foliage wind, water ripples)   .y popcorn scale
 //   [16].zw  water clip height / under-water sign.
 //   [17].x   bone-buffer base index, an int in float clothing.
 //   [18]     diffuse tint.
@@ -255,13 +169,18 @@ public struct HDVSPerDraw
     public float4x4 world;
     public float4x4 worldView;
     public float4x4 worldViewProj;
-    public float4x4 _padProjection;
-    // `.y` is the PopcornFX particle scale: every particle vertex position is
-    // multiplied by it before any matrix. Named here rather than left as
+    // [12-15] view -> clip. The HD mesh shader never reads it (it has the
+    // concatenated worldViewProj); `cameraocclusion_vs` projects billboards
+    // it builds in view space.
+    public float4x4 projection;
+    // `.x` is the shared effect clock: foliage takes its fraction as the wind
+    // swing phase, water scales it by 0.0035 to scroll its ripples. `.y` is
+    // the PopcornFX particle scale: every particle vertex
+    // position is multiplied by it before any matrix. Named here rather than left as
     // padding because the HD mesh shader reads neither lane, so there is no
     // competing meaning — unlike the pixel bank's cb2[22].x, which really is
     // two different numbers in the two pipelines.
-    public float   _p16_x;          public float popcornScale;
+    public float   effectTime;      public float popcornScale;
     public float   clipHeight;      public float underWater;
     public float   boneBufferBase;  public float _p17_y;
     public float   _p17_z;          public float _p17_w;
@@ -273,11 +192,15 @@ public struct HDVSPerDraw
 };
 
 // Blight-map placement (b1). The vertex shader turns the world XY into a
-// [0,1] lookup for the pixel shader's blight mask.
+// [0,1] lookup for the pixel shader's blight mask. `water_vs` also reads the
+// second row.
 public struct HDVSBlight
 {
     // .xy = world-space origin of the blight rect, .zw = 1 / its extent.
     public float4 rect;
+    // .x = the water wave height: how far `water_vs` displaces a vertex along
+    // object Z per unit of its two ripple taps. Only water reads this row.
+    public float4 waterWave;
 };
 
 public [[vk::binding(1, 0)]] ConstantBuffer<HDVSBlight>    hdVsCB1 : register(b1);
@@ -334,7 +257,8 @@ public struct HDPSPerDraw
     public float   radialStrength;   public float  fogEverywhere;
     public float4x4 _padWorldView;
     public float4x4 invView;
-    public float4x4 _pad12;
+    // [12-15] clip -> view: `volumetricfog_ps` unprojects the screen through it.
+    public float4x4 invProjection;
     // Declared as a raw float4 array rather than a float4x4 because it is only
     // ever addressed as `.xyw` per row: slang lowers a matrix-row swizzle to
     // per-scalar loads, where the array gives back the single vector load and
@@ -344,18 +268,24 @@ public struct HDPSPerDraw
     public float4  depthUVRemap;
     public float   outputAlphaScale; public float  cloakAmount;
     public float   fresnelTeamColor; public float  blightEnable;
-    public float   _p23_x;           public float  _p23_y;
+    // [23].xy are water's depth-fade distances (shallow, deep).
+    public float   waterShallowDepth; public float waterDeepDepth;
     public float   _p23_z;           public float  depthTestEnable;
     public float4  fresnelColor;
     public float   envFromMipEnd;    public float  envToMipEnd;
     public float   envTransitionT;   public float  _p25_w;
-    public float   _p26_x;           public float  emissiveGain;
+    // [26].x is the effect clock water scrolls its ripples by.
+    public float   effectTime;       public float  emissiveGain;
     public float   shadowDepthBias;  public float  useNdf;
     public float   normalStrength;   public float  mainLightEnable;
     public float   fogMode;          public float  _p27_w;
     public float4  ambientAdd;
     public float4  ambientColor;
     public float4  mainLightDir;
+
+    // `water_ps` reads [22].xyz -- HD's alpha-scale / cloak / fresnel-team
+    // lanes -- as one colour: the clamp on the water probe's glow.
+    public float3 waterGlowClamp() { return float3(outputAlphaScale, cloakAmount, fresnelTeamColor); }
 };
 
 // One cube-shadow record: 26 float4s, from cb1[43] on.
@@ -378,6 +308,7 @@ public struct HDCubeShadow
 //            Held as one array so the cascade walk indexes it the way the
 //            shipped shader does: one base plus the loop counter.
 //   [36].x   cascade count     .y  shadow-casting light count
+//   [37]-[39].z  water_ps's own parameters (named in the struct)
 //   [39].w   light debug mode (0 off, >=1 sentinel colours, >=2 overlay)
 //   [40].xy  inverse cluster grid dimensions
 //   [40].zw  light-array base / light-index-list base
@@ -388,11 +319,15 @@ public struct HDPSClustered
 {
     public float4x4 cascadeSets[9];
     public float  cascadeCount;      public float shadowLightCount;
-    public float  _p36_z;            public float _p36_w;
-    public float4 _pad37;
-    public float4 _pad38;
-    public float  _p39_x;            public float _p39_y;
-    public float  _p39_z;            public float lightDebugMode;
+    // [36].zw are `cameraocclusion_ps`'s: the see-through disc's opacity at
+    // its centre and the radius its fade starts at.
+    public float  occlusionAlpha;     public float occlusionInnerRadius;
+    // [37]-[39].z are water's: HD, crystal, foliage and terrain never read them.
+    public float4 waterProbeColor;   // .xyz constant probe colour, .w > 0.5 selects it over t4
+    public float  waterRefractMin;   public float waterRefractMax;
+    public float  waterReflectStrength; public float waterGlowStrength;
+    public float  waterFadeScale;    public float waterRippleStrength;
+    public float  waterReflectScale; public float lightDebugMode;
     public float2 invClusterDims;
     public float  lightArrayBase;    public float lightIndexBase;
     public float  clusterBase;       public float gridStride;
@@ -493,51 +428,17 @@ public [[vk::binding(PsSamplerBindingOffset + 11, 2)]] SamplerState s_hdIblFrom 
 public [[vk::binding(PsSamplerBindingOffset + 12, 2)]] SamplerState s_hdIblTo   : register(s12);
 public [[vk::binding(PsSamplerBindingOffset + 13, 2)]] SamplerState s_hdBrdfLut : register(s13);
 
-// Scalar cascade count for the shadow sampler PS path (b1).
-// Shared between the HD (IBL) and SD-on-HD pipelines — both consume the
-// same cb1[0].x active-cascade count.
-public struct ShadowCascadeCount
-{
-#if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // See PSPerDraw for the layout rationale behind the scalar split.
-    public float numCascades;
-    public float _pad_x;       public float _pad_y;
-    public float _pad_z;
-#else
-    public float numCascades;  public float3 _pad;
-#endif
-};
-
-public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<ShadowCascadeCount> sdPsCB1 : register(b1);
-
-// Shadow cascades at t10-12 / s10-12. Bytecode must stay bit-identical
-// to the shipped Blizzard shaders on D3D, hence Texture2D<float4>. WGSL
-// needs Texture2D<float> so slangc emits texture_depth_2d. PCF helpers
-// take `ShadowMapTex` which aliases the right form per target.
-#ifdef WGSL_TARGET
-public typealias ShadowMapTex = Texture2D<float>;
-#else
-public typealias ShadowMapTex = Texture2D<float4>;
-#endif
-public [[vk::binding(PsSrvBindingOffset + 10, 1)]] ShadowMapTex sd_t_shadow0 : register(t10);
-public [[vk::binding(PsSrvBindingOffset + 11, 1)]] ShadowMapTex sd_t_shadow1 : register(t11);
-public [[vk::binding(PsSrvBindingOffset + 12, 1)]] ShadowMapTex sd_t_shadow2 : register(t12);
-public [[vk::binding(PsSamplerBindingOffset + 10, 2)]] SamplerComparisonState sd_s_shadow0 : register(s10);
-public [[vk::binding(PsSamplerBindingOffset + 11, 2)]] SamplerComparisonState sd_s_shadow1 : register(s11);
-public [[vk::binding(PsSamplerBindingOffset + 12, 2)]] SamplerComparisonState sd_s_shadow2 : register(s12);
-
 // Per-light record for the SD highspec VS (b0).
 //
-// The same three rows as `ShaderLight`, in the same order, minus its trailing
-// `_pad2`: 3.0.0 tightened THIS family's per-light stride from 4 rows to 3.
+// The 2.0.0 per-light record (ambient, diffuse, position) minus its trailing
+// padding row: 3.0.0 tightened THIS family's per-light stride from 4 rows to 3.
 // Read off the shipped bytecode — at two active lights retail declares
 // `dcl_constantbuffer CB0[19]` and reads ambient `cb0[16].xyz`, diffuse
 // `cb0[17].xyz`, position `cb0[18].xyz` and type `cb0[18].w`; at the 2.0.0
 // stride of 4 the same permutation declared CB0[20] and read cb0[17..19].
 //
-// A separate type rather than a shrunk `ShaderLight`, because `wc3_shaders` is
-// one translation unit and every other light list (HD, water, SD-on-HD) still
-// uses the 4-row record — shrinking it would shift all of those banks.
+// (The 4-row record itself, `ShaderLight`, went with the last 2.0.0 lit family
+// in P11; every other family's lights are now HD's clustered buffer.)
 public struct SDHighspecLight
 {
     public float4 ambient;       // .xyz = ambient color, .w = _pad0
@@ -573,7 +474,7 @@ public struct SDHighspecVSPerDraw
 public struct SDClassicPSPerDraw
 {
 #if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // See PSPerDraw for the layout rationale behind the scalar split.
+    // See the scalar-split layout rule at the top of this file.
     public float  alphaRef;
     public float  _p0_x;        public float  _p0_y;
     public float  _p0_z;
@@ -590,128 +491,37 @@ public struct SDClassicPSPerDraw
 public [[vk::binding(0, 0)]] ConstantBuffer<SDHighspecVSPerDraw>  sdHighspecVsCB0 : register(b0);
 public [[vk::binding(PsCbBindingOffset + 0, 0)]] ConstantBuffer<SDClassicPSPerDraw>   sdClassicPsCB0  : register(b0);
 
-// Per-draw constants for the water pixel shader (b2). Shares most of
-// its layout with `PSPerDraw` — fog, invView rotation, IBL probe params,
-// effect time, and the analytic light list are identical slot-for-slot
-// — but repurposes a few fields the HD path doesn't need:
-//   • `worldToClip` (cb2[11..14], aka HD's `projection`) is used as the
-//     full world-space → clip-space matrix by the SSR march.
-//   • `ambientClamp` (cb2[16].xyz) is an HDR ceiling on the emissive
-//     probe color (HD uses these 3 scalars as cloak / fresnel knobs).
-//   • `refractSoftness` / `litSoftness` (cb2[17].xy) parameterise the
-//     two depth-based shore ramps.
-//
-// `lights[8]` over-declares the last 16 bytes relative to what the
-// engine actually uploads (which stops at light[7].position+type), but
-// the water shader never reads that slot and D3D tolerates the extra.
-public struct WaterPSPerDraw
-{
-    public float4  _pad0;                                 // cb2[0]
+// Water pixel shader resources, 3.0.0. Water moved onto the HD banks
+// (hdPsCB1 / hdPsCB2, t6 / t8, t11-t13, t16-t18, the cascade and cube shadow
+// arrays) and binds four textures of its own at slots HD uses for its
+// material:
+//   t0 the scene colour behind the water, read with Load (refraction, and the
+//      colour of a screen-space reflection hit)
+//   t1 the scene depth, Load
+//   t2 a 64x64-tile min/max depth pyramid (.x max, .y min) the reflection
+//      march walks before stepping the full-resolution depth -- reached only by
+//      the SSR permutations
+//   t3 the tiling ripple normal map, s3
+//   t4 the water colour probe, s4, read at mip 16 (its average)
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_waterScene   : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_waterDepth   : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4> t_waterDepthHiZ : register(t2);
+public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4> t_waterNormal  : register(t3);
+public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4> t_waterProbe   : register(t4);
 
-    public float   fogStart;        public float  fogEnd;
-    public float   fogDensity;      public float  _p1;           // cb2[1]
-    public float4  fogColor;                              // cb2[2]
+public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_waterNormal : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_waterProbe  : register(s4);
 
-    float4x4 _padWorldView;                        // cb2[3..6] (unused by water)
-    public float4x4 view;                                 // cb2[7..10]
-    public float4x4 worldToClip;                          // cb2[11..14]
-    public float4   viewport;                             // cb2[15]
+// The 3.0.0 foliage vertex shader has no per-draw bank of its own: it reads
+// hdVsCB1 (blight rect) and hdVsCB2 (matrices, tint, UV transform, wind
+// time) at HD's offsets. Only the wind block below is foliage's.
 
-    // cb2[16]: HDR clamp applied to the emissive probe color.
-    public float3   ambientClamp;   public float _p16;           // cb2[16]
-
-    // cb2[17]: depth-based shore ramp distances.
-    public float    refractSoftness;
-    public float    litSoftness;    public float2 _p17;          // cb2[17]
-
-    public float4   _pad18;                               // cb2[18]
-
-    public float    envFromMipEnd;  public float  envToMipEnd;
-    public float    envTransitionT; public float  _p19;          // cb2[19]
-
-    public float    effectTime;     public float  _p20_y;
-    public float    lightCount;     public float  useNdf;        // cb2[20]
-
-    public ShaderLight lights[8];                         // cb2[21..]
-};
-
-public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<WaterPSPerDraw> waterPsCB2 : register(b2);
-
-// Water PS texture bindings. The water draw reuses HD slot numbers but
-// binds different resources there — the aliases below make the intent
-// explicit in the shader body. Slang only emits bindings that the
-// compiled entry actually uses, so these don't collide with the HD
-// `t_albedo` / `t_normal` / ... declarations above.
-//   t0 = previous-frame scene color (for refraction & SSR hits)
-//   t1 = previous-frame depth buffer, sampled as .x
-//   t2 = tiling water normal map (DXT5nm-style two-channel packing)
-//   t3 = emissive / lightmap probe (sampled at mip 16 ≈ average color)
-//
-//   s4 = scene-color sampler (note: paired with t0, not s0)
-//   s1/s2/s3 match their texture counterparts
-public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_waterScene  : register(t0);
-public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_waterDepth  : register(t1);
-public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4> t_waterNormal : register(t2);
-public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4> t_waterProbe  : register(t3);
-
-public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_waterScene  : register(s4);
-public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_waterDepth  : register(s1);
-public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_waterNormal : register(s2);
-public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_waterProbe  : register(s3);
-
-// Per-draw constants for the foliage vertex shader (b2). 16 float4
-// slots — superset of the terrain VS layout with two extra float4s for
-// the constant tint colour (cb2[13]) and the 2×3 UV0 transform matrix
-// (cb2[14..15]). The wind-animation perms additionally read
-// `effectTime` from cb2[12].x.
-//
-//   shadowWorld   @ cb2[0..3]   — full 4×4 model→world used to feed the
-//                                 cascade matrices in cb1 (shadow path
-//                                 only).
-//   worldRow0/1/2 @ cb2[4..6]   — three rows of the model→world rotation
-//                                 (.xyz of each are the columns of the
-//                                 world 3×3 used for normals/tangents).
-//   worldTranslate@ cb2[7]      — model→world translation (.xyz only).
-//   worldViewProj @ cb2[8..11]  — model→clip 4×4 for SV_Position.
-//   effectTime    @ cb2[12].x   — engine clock used as the cos/sin
-//                                 wind-swing phase. .yzw are unused.
-//   tintColor     @ cb2[13]     — RGBA constant tint multiplied against
-//                                 the per-vertex COLOR.
-//   texMtx0Row0   @ cb2[14]     — UV0 affine row 0 (.xyw lanes only).
-//   texMtx0Row1   @ cb2[15]     — UV0 affine row 1 (.xyw lanes only).
-//
-// The vertex-color slot is always read by the body, so the foliage VS
-// has no `HAS_VERTEX_COLOR` axis. fxc still shrinks the cb declaration
-// based on highest indexed access, so wind-on perms emit `CB2[16]`
-// while wind-off perms emit `CB2[16]` as well (the latter still touches
-// cb2[14..15] for the UV transform).
-public struct FoliageVSPerDraw
-{
-    public float4x4 shadowWorld;     // cb2[0..3]
-    public float4   worldRow0;       // cb2[4]
-    public float4   worldRow1;       // cb2[5]
-    public float4   worldRow2;       // cb2[6]
-    public float4   worldTranslate;  // cb2[7]
-    public float4x4 worldViewProj;   // cb2[8..11]
-#if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // See PSPerDraw for the layout rationale behind the scalar split.
-    public float    effectTime;
-    public float    _padTime_x;      public float _padTime_y;
-    public float    _padTime_z;      // cb2[12]
-#else
-    public float    effectTime;      public float3 _padTime; // cb2[12]
-#endif
-    public float4   tintColor;       // cb2[13]
-    public float4   texMtx0Row0;     // cb2[14]
-    public float4   texMtx0Row1;     // cb2[15]
-};
-
-public [[vk::binding(2, 0)]] ConstantBuffer<FoliageVSPerDraw> foliageVsCB2 : register(b2);
-
-// Wind-area parameters (b3, only bound when WIND_ANIMATION is active).
+// Wind-area parameters (b3, only bound on the WIND permutation).
 //   .xy = world-space origin of the wind area (anchor for the gradient
 //          texture mapping).
 //   .zw = wind area size in world units (used as the UV scale).
+// Unchanged from 2.0.0; binding 3 in set 0 is shared with hdVsCB3, which is
+// fine because no entry point reaches both.
 public struct FoliageWindCB
 {
     public float2 windOrigin;
@@ -726,75 +536,26 @@ public [[vk::binding(3, 0)]] ConstantBuffer<FoliageWindCB> foliageVsCB3 : regist
 public [[vk::binding(0, 1)]] Texture2D<float4> t_foliageWind : register(t0);
 public [[vk::binding(0, 2)]] SamplerState      s_foliageWind : register(s0);
 
-// Foliage pixel-shader textures. Slot ordering matches the engine
-// bindings recovered from the BLS perms:
-//   t0 albedo + alpha, t1 packed normal map (xyw lanes), t2 mask
-//   (yz = roughness/metallic), t3 emissive, t4 lightmap / AO (.w lane).
-// Cascaded shadow + IBL probe + BRDF LUT bindings are reused from the
-// shared HD aliases (sd_t_shadow*, t_iblFrom/To, t_brdfLut).
-public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_foliageAlbedo   : register(t0);
-public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_foliageNormal   : register(t1);
-public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4> t_foliageMask     : register(t2);
-public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4> t_foliageEmissive : register(t3);
-public [[vk::binding(PsSrvBindingOffset + 4, 1)]] Texture2D<float4> t_foliageLightmap : register(t4);
+// Water VS ripple normal map: the vertex stage samples the same tiling normal
+// map the water pixel shader does, to heave the surface with its ripples.
+public [[vk::binding(0, 1)]] Texture2D<float4> t_waterVsNormal : register(t0);
+public [[vk::binding(0, 2)]] SamplerState      s_waterVsNormal : register(s0);
 
-public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_foliageAlbedo   : register(s0);
-public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_foliageNormal   : register(s1);
-public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_foliageMask     : register(s2);
-public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_foliageEmissive : register(s3);
-public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_foliageLightmap : register(s4);
+// The 3.0.0 foliage pixel shader binds HD's resources outright (t_hd*,
+// hdPsCB1 / hdPsCB2, the t16-t18 cluster buffers) -- see foliage_ps.slang.
 
-// Per-draw constants for the terrain vertex shader (b2). The terrain
-// pipeline uses a layout distinct from the HD `VSPerDraw`:
-//
-//   shadowWorld   @ cb2[0..3]   — full 4×4 model→world used to feed the
-//                                 cascade matrices in cb1 (shadow path
-//                                 only — fxc DCE'ds it on non-shadow
-//                                 perms because nothing reads it).
-//   worldRow0/1/2 @ cb2[4..6]   — three rows of the model→world rotation
-//                                 (the .xyz of each are taken as the
-//                                 columns of the world 3×3); used to
-//                                 transform normals + tangents.
-//   worldTranslate@ cb2[7]      — model→world translation (.xyz only).
-//   worldViewProj @ cb2[8..11]  — model→clip 4×4 for SV_Position.
-//   _padReserved  @ cb2[12]     — present in the no-vertex-color layout,
-//                                 never read.
-//   tintColor     @ cb2[13]     — RGBA constant tint, used only when the
-//                                 vertex format does not carry COLOR.
-//
-// fxc's CB declaration shrinks based on the highest accessed index, so
-// the vertex-color-feeding perms (which never read cb2[12..13]) emit
-// `dcl_constantbuffer CB2[12]` while the constant-tint perms emit
-// `CB2[14]` — even though the slang struct is fixed at 14 float4s.
-public struct TerrainVSPerDraw
-{
-    public float4x4 shadowWorld;     // cb2[0..3]
-    public float4   worldRow0;       // cb2[4]
-    public float4   worldRow1;       // cb2[5]
-    public float4   worldRow2;       // cb2[6]
-    public float4   worldTranslate;  // cb2[7]
-    public float4x4 worldViewProj;   // cb2[8..11]
-    public float4   _padReserved;    // cb2[12]
-    public float4   tintColor;       // cb2[13]
-};
+// Terrain pixel-shader splat material, 3.0.0: three TEXTURE ARRAYS, one slice
+// per ground layer, selected per cell by the layer indices on TEXCOORD8.
+//   t0 albedo + opacity, t1 packed normal map (.xyw), t2 ORM (.yz = roughness,
+//   metal). Everything else terrain binds is HD's (t_hd*, hdPsCB1 / hdPsCB2).
+// The terrain vertex shader has no bank of its own: hdVsCB1 / hdVsCB2.
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2DArray<float4> t_terrainAlbedo : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2DArray<float4> t_terrainNormal : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2DArray<float4> t_terrainOrm    : register(t2);
 
-public [[vk::binding(2, 0)]] ConstantBuffer<TerrainVSPerDraw> terrainVsCB2 : register(b2);
-
-// Terrain pixel-shader splat textures. Slot ordering matches the
-// engine bindings: t0 splat color array, t1 splat normal+gloss array
-// (rg = nx/ny, w = gloss), t2 splat mask array (.yz = mask UV), t3
-// global lightmap / AO (.w = AO factor). The terrain PS shares t10..t15
-// (cascade shadows + IBL probes + BRDF LUT) with the HD pipeline via
-// the existing aliases declared above.
-public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2DArray<float4> t_splatColor  : register(t0);
-public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2DArray<float4> t_splatNormal : register(t1);
-public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2DArray<float4> t_splatMask   : register(t2);
-public [[vk::binding(PsSrvBindingOffset + 3, 1)]] Texture2D<float4>      t_lightmap    : register(t3);
-
-public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_splatColor  : register(s0);
-public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_splatNormal : register(s1);
-public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_splatMask   : register(s2);
-public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_lightmap    : register(s3);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState s_terrainAlbedo : register(s0);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState s_terrainNormal : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_terrainOrm    : register(s2);
 
 // 3.0.0 moved the PopcornFX VERTEX shader onto the shared per-draw bank too.
 //
@@ -869,16 +630,16 @@ public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState s_popcornNorm
 public [[vk::binding(PsSamplerBindingOffset + 3, 2)]] SamplerState s_popcornSmoothMet: register(s3);
 public [[vk::binding(PsSamplerBindingOffset + 4, 2)]] SamplerState s_popcornDepth    : register(s4);
 
-// Per-draw constants for the tonemap pixel shader (b1). The engine
+// Per-draw constants for the tonemap pixel shader (b3). The engine
 // only uploads a single 16-byte slot — the linear exposure multiplier
 // applied to the HDR scene color before the ACES filmic curve — but
 // the CB is still dimensioned as a full float4 to match the wire
-// layout fxc emits for `float4 cb1[1]`.
+// layout fxc emits for `float4 cb3[1]`.
 public struct TonemapPSPerDraw
 {
     public float  exposure;
 #if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // See PSPerDraw for the layout rationale behind the scalar split.
+    // See the scalar-split layout rule at the top of this file.
     public float  _p0_x;
     public float  _p0_y;
     public float  _p0_z;
@@ -887,7 +648,7 @@ public struct TonemapPSPerDraw
 #endif
 };
 
-public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<TonemapPSPerDraw> tonemapPsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<TonemapPSPerDraw> tonemapPsCB3 : register(b3);
 
 // Tonemap PS texture bindings. Aliases the same D3D slots the HD mesh
 // PS uses (t0 / s0) — the tonemap pass runs on its own pipeline object
@@ -1008,45 +769,45 @@ public [[vk::binding(2, 3)]] RWTexture2D<unorm float4>      u_cmaaCombined      
 // (engine-driven) separable blur: `bloomextract` isolates the bright
 // highlights of the scene, and `bloomcombine` grades and screen-composites
 // the blurred highlights back over the scene. Each is its own pipeline
-// object, so the bindings below alias the shared t0/t1/s0/s1/b1 slot numbers
+// object, so the bindings below alias the shared t0/t1/s0/s1/b3 slot numbers
 // — slangc only emits the bindings the active entry point references, so they
 // coexist with the HD material aliases above (same pattern as tonemap / cmaa).
 //
-// The two CBs both bind b1 and most likely view slices of one engine-side
+// The two CBs both bind b3 (b1 in 2.0.0) and most likely view slices of one engine-side
 // "bloom params" upload; each shader names only the lanes it reads:
-//   bloomextract reads cb1[0].x         → CB1[1]
-//   bloomcombine reads cb1[0].zw,1[1].xy → CB1[2]
+//   bloomextract reads cb3[0].x         → CB3[1]
+//   bloomcombine reads cb3[0].zw,3[1].xy → CB3[2]
 
-// Per-draw constants for the bloom bright-pass (b1). Only the .x luminance
-// cutoff is consumed; the rest pads out to `float4 cb1[1]`.
+// Per-draw constants for the bloom bright-pass (b3). Only the .x luminance
+// cutoff is consumed; the rest pads out to `float4 cb3[1]`.
 public struct BloomExtractPSPerDraw
 {
-    public float  threshold;        // cb1[0].x — luminance cutoff
+    public float  threshold;        // cb3[0].x — luminance cutoff
 #if defined(WGSL_TARGET) || defined(METAL_TARGET)
-    // See PSPerDraw for the layout rationale behind the scalar split.
+    // See the scalar-split layout rule at the top of this file.
     public float  _p0_x;            public float _p0_y;
     public float  _p0_z;
 #else
-    public float3 _p0;              // cb1[0].yzw
+    public float3 _p0;              // cb3[0].yzw
 #endif
 };
 
-// Per-draw constants for the bloom composite (b1). Two float4 slots holding
-// the per-layer intensity (cb1[0].zw) and saturation (cb1[1].xy) knobs. All
+// Per-draw constants for the bloom composite (b3). Two float4 slots holding
+// the per-layer intensity (cb3[0].zw) and saturation (cb3[1].xy) knobs. All
 // fields are float/float2 so the layout is identical across every target
 // without the float3-alignment split the structs above need.
 public struct BloomCombinePSPerDraw
 {
-    public float2 _p0_xy;           // cb1[0].xy — unused
-    public float  intensityBloom;   // cb1[0].z  — gain for the blurred layer
-    public float  intensityScene;   // cb1[0].w  — gain for the scene layer
-    public float  saturationBloom;  // cb1[1].x  — saturation for the blur
-    public float  saturationScene;  // cb1[1].y  — saturation for the scene
-    public float2 _p1_zw;           // cb1[1].zw — unused
+    public float2 _p0_xy;           // cb3[0].xy — unused
+    public float  intensityBloom;   // cb3[0].z  — gain for the blurred layer
+    public float  intensityScene;   // cb3[0].w  — gain for the scene layer
+    public float  saturationBloom;  // cb3[1].x  — saturation for the blur
+    public float  saturationScene;  // cb3[1].y  — saturation for the scene
+    public float2 _p1_zw;           // cb3[1].zw — unused
 };
 
-public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<BloomExtractPSPerDraw> bloomExtractPsCB1 : register(b1);
-public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<BloomCombinePSPerDraw> bloomCombinePsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<BloomExtractPSPerDraw> bloomExtractPsCB3 : register(b3);
+public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<BloomCombinePSPerDraw> bloomCombinePsCB3 : register(b3);
 
 // Bloom bright-pass input: the resolved scene colour (t0).
 public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_bloomSource : register(t0);
@@ -1064,20 +825,20 @@ public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState   s_bloomBlur
 //
 // Single-permutation full-screen separable blur (gaussianblur.bls). The engine
 // runs the one shader for both the horizontal and the vertical pass, uploading
-// a different tap set each pass: up to 15 taps in `float4 cb1[15]`, where tap i
+// a different tap set each pass: up to 15 taps in `float4 cb3[15]`, where tap i
 // carries its UV offset in .xy and its weight in .z. The active tap count is
-// packed into cb1[0].w (read once, truncated to int, before the loop).
+// packed into cb3[0].w (read once, truncated to int, before the loop).
 //
 // `taps` is a raw float4[15] rather than a named-field struct so each element
 // occupies exactly one 16-byte slot on every target — matching the shipped
-// `float4 cb1[15]` register packing — and the loop's dynamic index lowers to a
-// single cb1[i] load (same rationale as the imgui / popcorn indexed CBs above).
+// `float4 cb3[15]` register packing — and the loop's dynamic index lowers to a
+// single cb3[i] load (same rationale as the imgui / popcorn indexed CBs above).
 public struct GaussianBlurPSPerDraw
 {
     public float4 taps[15];   // [i].xy = UV offset, [i].z = weight; [0].w = tap count
 };
 
-public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<GaussianBlurPSPerDraw> gaussianBlurPsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<GaussianBlurPSPerDraw> gaussianBlurPsCB3 : register(b3);
 
 // Gaussian blur input: the image being blurred (t0). Aliases the shared t0/s0
 // slots like the other post-process passes; slangc only emits the binding the
@@ -1090,28 +851,28 @@ public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_gaussianS
 //
 // Single-permutation full-screen bokeh DoF (depthoffield.bls). Three float4
 // constant slots drive a golden-angle spiral gather over the scene colour,
-// with the circle of confusion derived from a depth texture. cb1[0].xy and
-// cb1[2].xyz are unused by the shipped shader.
+// with the circle of confusion derived from a depth texture. cb3[0].xy and
+// cb3[2].xyz are unused by the shipped shader.
 //
 // As with BloomCombinePSPerDraw, every field is float/float2 so the byte
 // layout is identical on every target without a float3-alignment split.
 public struct DepthOfFieldPSPerDraw
 {
-    public float2 _p0_xy;          // cb1[0].xy — unused
-    public float2 invResolution;   // cb1[0].zw — texel size (1 / render-target resolution)
+    public float2 _p0_xy;          // cb3[0].xy — unused
+    public float2 invResolution;   // cb3[0].zw — texel size (1 / render-target resolution)
 
-    public float  maxBlurSize;     // cb1[1].x  — max bokeh radius in pixels; also the loop bound
-    public float  radiusScale;     // cb1[1].y  — spiral radius step / sample-density control
-    public float  focusDistance;   // cb1[1].z  — linear depth of the focus plane
-    public float  focusScale;      // cb1[1].w  — CoC strength (aperture / f-number term)
+    public float  maxBlurSize;     // cb3[1].x  — max bokeh radius in pixels; also the loop bound
+    public float  radiusScale;     // cb3[1].y  — spiral radius step / sample-density control
+    public float  focusDistance;   // cb3[1].z  — linear depth of the focus plane
+    public float  focusScale;      // cb3[1].w  — CoC strength (aperture / f-number term)
 
-    public float  _p2_x;           // cb1[2].x  — unused
-    public float  _p2_y;           // cb1[2].y  — unused
-    public float  _p2_z;           // cb1[2].z  — unused
-    public float  farFieldOnly;    // cb1[2].w  — 1.0 clamps CoC >= MIN_COC (no foreground blur)
+    public float  _p2_x;           // cb3[2].x  — unused
+    public float  _p2_y;           // cb3[2].y  — unused
+    public float  _p2_z;           // cb3[2].z  — unused
+    public float  farFieldOnly;    // cb3[2].w  — 1.0 clamps CoC >= MIN_COC (no foreground blur)
 };
 
-public [[vk::binding(PsCbBindingOffset + 1, 0)]] ConstantBuffer<DepthOfFieldPSPerDraw> depthOfFieldPsCB1 : register(b1);
+public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<DepthOfFieldPSPerDraw> depthOfFieldPsCB3 : register(b3);
 
 // Depth of field inputs: scene colour (t0) and scene depth (t1). Aliases the
 // shared t0/t1 slots like the other post-process passes; slangc only emits the
@@ -1120,3 +881,49 @@ public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4> t_dofColor :
 public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_dofDepth : register(t1);
 public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState   s_dofColor : register(s0);
 public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState   s_dofDepth : register(s1);
+
+// ---------------------------------------------------------------------------
+// Small screen / world passes (P13): greyscale, ssaa, foliagepush,
+// debugtexture, waterreflection, fog, volumetricfog, cameraocclusion,
+// coneindicator, movie.
+// ---------------------------------------------------------------------------
+
+// The per-draw pixel bank (b2) as the small passes see it: the engine uploads
+// the same 24-row block the HD mesh shader reads, but these passes only look at
+// rows 22-23, and read them as their own parameters rather than HD's alpha /
+// cloak / fresnel lanes:
+//   ssaa          params.xy = source texel size, params.z = supersample factor
+//   foliagepush   params.x  = push strength
+//   debugtexture  params.x  = array slice
+//   coneindicator params    = (startRadius, endRadius, length, sin angle),
+//                 params2.x = cos angle
+public struct ScreenPassPSPerDraw
+{
+    public float4 _pad[22];         // cb2[0..21]
+    public float4 params;           // cb2[22]
+    public float4 params2;          // cb2[23]
+};
+
+public [[vk::binding(PsCbBindingOffset + 2, 0)]] ConstantBuffer<ScreenPassPSPerDraw> screenPassPsCB2 : register(b2);
+
+// `waterreflection`'s one row (b3): .zw is the output-to-source texel ratio of
+// the depth-bounds downsample; .xy is unused.
+public struct ScreenPassPSScale
+{
+    public float4 scale;            // cb3[0]
+};
+
+public [[vk::binding(PsCbBindingOffset + 3, 0)]] ConstantBuffer<ScreenPassPSScale> screenPassPsCB3 : register(b3);
+
+// The one source every small pass reads (t0 / s0): the scene colour, the
+// scene depth, a debug texture array or the movie's luma plane, depending on
+// the pass.
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2D<float4>      t_screenSource      : register(t0);
+public [[vk::binding(PsSrvBindingOffset + 0, 1)]] Texture2DArray<float4> t_screenSourceArray : register(t0);
+public [[vk::binding(PsSamplerBindingOffset + 0, 2)]] SamplerState       s_screenSource      : register(s0);
+
+// The movie's chroma planes (t1 / t2).
+public [[vk::binding(PsSrvBindingOffset + 1, 1)]] Texture2D<float4> t_movieCb : register(t1);
+public [[vk::binding(PsSrvBindingOffset + 2, 1)]] Texture2D<float4> t_movieCr : register(t2);
+public [[vk::binding(PsSamplerBindingOffset + 1, 2)]] SamplerState  s_movieCb : register(s1);
+public [[vk::binding(PsSamplerBindingOffset + 2, 2)]] SamplerState  s_movieCr : register(s2);

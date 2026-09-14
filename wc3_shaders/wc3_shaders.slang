@@ -78,27 +78,6 @@ __include "ps/fog_factor";
 __include "ps/hd_ps_post";
 __include "ps/hd_ps_prepass";
 
-// What survives of the 2.0.0 HD pixel-shader stack, after P6 moved the last
-// family off it. Nothing 2.0.0 routes through these any more; they stay only
-// because the TERRAIN, FOLIAGE and WATER bodies borrow four helpers from them
-// (`sampleIBL`, `lightLoop`, `blizzardAmbientBlend`, `queryTextureLOD`) and
-// those families have not been re-reversed against 3.0.0 yet.
-__include "ps/ps_ibl";
-__include "ps/texture_lod";
-
-// Terrain pixel-shader bodies (splat blend + cascaded shadow + lit
-// dominant + multi-light loop + TINT_OVERRIDE debug router).
-__include "ps/terrain_ps_splat";
-__include "ps/terrain_ps_shadow";
-__include "ps/terrain_ps_lighting";
-__include "ps/terrain_ps_debug";
-__include "ps/terrain_ps_body";
-
-// Foliage pixel-shader body. Single-texture material variant of the
-// terrain pipeline — reuses terrain's shadow / lighting / debug helpers
-// but with its own sampling block and fog-policy axis.
-__include "ps/foliage_ps_body";
-
 // Crystal pixel-shader body, 3.0.0: the alpha-tested depth prepass. Crystal's
 // three material differences from HD live in effects/crystal_refract; the plain
 // prepass and everything in the colour pass are HD's own bodies, called.
@@ -110,9 +89,6 @@ __include "ps/sd_on_hd_ps_body";
 
 // SD classic pixel-shader body (fixed-function texture stages).
 __include "ps/sd_classic_ps_body";
-
-// Water pixel-shader body.
-__include "ps/water_ps_body";
 
 // PopcornFX pixel-shader body.
 __include "ps/popcorn_ps_body";
@@ -146,6 +122,8 @@ __include "terrain_vs";
 __include "terrain_ps";
 __include "foliage_vs";
 __include "foliage_ps";
+__include "cliffblightmiscterrain_vs";
+__include "cliffblightmiscterrain_ps";
 __include "distortion_ps";
 __include "imgui_vs";
 __include "imgui_ps";
@@ -165,3 +143,8 @@ __include "gaussianblur_ps";
 
 // Bokeh depth of field (single-pass golden-angle spiral gather).
 __include "depthoffield_ps";
+
+// Small screen / world passes (P13).
+__include "screen_passes";
+__include "world_passes";
+__include "cone_indicator";

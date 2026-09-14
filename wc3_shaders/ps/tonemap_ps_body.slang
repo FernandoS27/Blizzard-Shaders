@@ -6,7 +6,7 @@
 //
 // The HD lighting passes render into a linear HDR off-screen target; this
 // full-screen pass samples that target, applies an exposure multiplier
-// uploaded in `tonemapPsCB1.exposure`, and runs the result through
+// uploaded in `tonemapPsCB3.exposure`, and runs the result through
 // Krzysztof Narkowicz's analytical ACES filmic fit before writing the
 // LDR back-buffer. Alpha is passed through unchanged so downstream
 // composition (UI, post-cloak overlay) can still blend against it.
@@ -41,6 +41,6 @@ float3 tonemapACES(float3 color)
 public float4 tonemapPSBody(TonemapPSInput input)
 {
     float4 hdr     = t_sceneHdr.Sample(s_sceneHdr, input.uv);
-    float3 exposed = hdr.rgb * tonemapPsCB1.exposure;
+    float3 exposed = hdr.rgb * tonemapPsCB3.exposure;
     return float4(tonemapACES(exposed), hdr.a);
 }

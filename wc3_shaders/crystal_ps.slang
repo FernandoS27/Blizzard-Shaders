@@ -104,25 +104,7 @@ public PSOutput crystal_ps_main<
     }
     else
     {
-        HDSurface surf;
-        surf.N = N;
-        surf.V = V;
-        surf.albedo = mat.albedo.xyz;
-        surf.metal = mat.roughMetal.y;
-
-        float roughness = saturate(mat.roughMetal.x);
-        roughness = roughness * HD_ROUGHNESS_SCALE + HD_ROUGHNESS_BIAS;
-        surf.rough = (asuint(hdPsCB2.useNdf) != 0) ? specularAA(roughness, N)
-                                                   : roughness;
-
-        surf.F0 = surf.metal * surf.albedo;
-        surf.diffColor = (surf.albedo - surf.metal * surf.albedo) * INV_PI;
-
-        float rr = surf.rough * surf.rough;
-        surf.a2 = rr * rr;
-        float kSq = (1 + surf.rough) * (1 + surf.rough);
-        surf.kDirect = SCHLICK_K_FACTOR * kSq;
-        surf.kInv = -kSq * SCHLICK_K_FACTOR + 1;
+        HDSurface surf = hdBuildSurface(N, V, mat.albedo.xyz, mat.roughMetal);
 
         float3 lit = float3(0, 0, 0);
         if (asint(hdPsCB2.mainLightEnable) != 0)

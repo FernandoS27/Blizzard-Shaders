@@ -151,15 +151,7 @@ static float popcornDepthFadeScale() { return hdPsCB2.outputAlphaScale; }
 // cb2[15] -> cb2[21].
 public float popcornSceneDepthDelta(float3 viewPos)
 {
-    float3 clip = viewPos.x * hdPsCB2.viewToClip[0].xyw
-                + viewPos.y * hdPsCB2.viewToClip[1].xyw
-                + viewPos.z * hdPsCB2.viewToClip[2].xyw
-                +             hdPsCB2.viewToClip[3].xyw;
-    float2 ndc      = clip.xy / clip.z;
-    ndc             = ndc * 0.5 + 0.5;
-    float2 depthUV  = float2(ndc.x, 1.0 - ndc.y);
-    depthUV         = hdPsCB2.depthUVRemap.xy * depthUV
-                    + hdPsCB2.depthUVRemap.zw;
+    float2 depthUV  = hdClipToDepthUV(hdViewToClipXYW(viewPos));
     float  sceneZ   = t_popcornDepth.Sample(s_popcornDepth, depthUV).x;
     return sceneZ - viewPos.z;
 }

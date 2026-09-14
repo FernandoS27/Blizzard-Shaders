@@ -2,72 +2,157 @@
 // Copyright (c) 2026, Fernando Sahmkow
 // See LICENSE in the repository root for full terms.
 //
-// Terrain pixel shader entry point.
+// Terrain pixel shader entry point — Warcraft III Reforged 3.0.0.
 //
-// Specialisation space — four functional axes; the engine ships 128
-// perms (7 raw bits) but bits 3/4/5 are reserved (collapse to the same
-// output) and bit 1 (`HAS_NULL_PASS`) overrides every other axis with
-// an empty stub.
+// 3.0.0 moved terrain onto the HD mesh's banks, the same move foliage made:
+// cb1[43] / cb2[31], the t6 / t8 blight pair, the t11 / t12 / t13 IBL set and
+// the t16 / t17 / t18 clustered-light buffers. What is terrain's own is the
+// splat material -- t0 / t1 / t2 as TEXTURE ARRAYS, one slice per ground
+// layer, picked per cell by the four flat-interpolated indices the vertex
+// shader passes on TEXCOORD8.
 //
-//   HAS_NULL_PASS  — empty shader, no outputs (engine "skip" stub).
-//                    Overrides every other axis: 64 of 128 perms map
-//                    here. The output struct's color/MRT slots are
-//                    gated out via `Conditional` so the dxbc emits no
-//                    SV_Target entries, matching the shipped layout.
-//   HAS_MRT        — emit SV_Target1 (depth-feedback in .x = view-Z)
-//                    and SV_Target2 (encoded world normal + 1) in
-//                    addition to SV_Target0.
-//   HAS_SHADOWS    — sample the 3 cascaded shadow maps with PCF and
-//                    multiply visibility into the dominant light.
-//   HAS_TINT       — `TINT_OVERRIDE` in engine terms: per-splat layer
-//                    color/UV substitution + the debug-viz output
-//                    router. Bypasses the post-grade colour matrix.
+// Its 128 permutations are foliage's mask with the ALPHA_TEST bit dead (the
+// cut-out is unconditional, see below), folded by HD's rules into retail's 25
+// programs:
 //
-// All of the heavy lifting lives in `terrainPSBody`
-// (ps/terrain_ps_body.slang); this file just dispatches to it under
-// the right specialisation and packs the result into the output
-// payload.
+//   bit 0 (  1)  SHADOW_CASCADE2 -> HAS_SHADOW_CASCADE2
+//   bit 1 (  2)  MULTI_TARGET    -> WC3_IS_MRT (a define: it reshapes PSOutput)
+//   bit 2 (  4)  DEPTH_PREPASS   -> WC3_IS_DEPTH_PREPASS (likewise)
+//   bit 3 (  8)  LIGHT_DEBUG     -> HAS_LIGHT_DEBUG
+//   bit 4 ( 16)  POINT_SHADOWS   -> HAS_POINT_SHADOWS
+//   bit 5 ( 32)  SHADOW_CASCADE  -> HAS_SHADOW_CASCADE
+//   bit 6 ( 64)  dead
+//
+// The shading is HD's main light (with foliage's 0.4 irradiance normalisation)
+// and HD's clustered loop, called rather than restated. Checked in the
+// bytecode, and just as much a part of it:
+//
+//   * up to four layers are blended in index order, each weighted by its own
+//     albedo alpha times the vertex alpha: albedo and roughness / metal lerp,
+//     the tangent-space normal lerps and renormalises from (0, 0, 1);
+//   * a cell whose most opaque layer is under 0.8 is DISCARDED -- in every
+//     permutation, the depth prepass included, which is why there is no alpha
+//     test axis;
+//   * the vertex colour tints the ALBEDO, before lighting, not the result;
+//   * no specular anti-aliasing, no emissive, no fog, no depth test, no clip;
+//   * foliage's blight darkening, then a fixed 3x3 colour grade, alpha 1.
 
 implementing wc3_shaders;
 
-// HAS_NULL_PASS / HAS_MRT migrated to WC3_TERRAIN_NULL_PASS / WC3_HAS_MRT
-// preprocessor defines so TerrainPSOutput's color + MRT slots can be
-// gated via #if instead of `Conditional<>`. WC3_HAS_COLOR is derived
-// (= !WC3_TERRAIN_NULL_PASS) and WC3_HAS_MRT is set only when both
-// !NULL_PASS && HAS_MRT — both done in compile_all_slang.py's
-// map_terrain_ps. HAS_SHADOWS / HAS_TINT stay as slang template params
-// (body logic only, no IO).
-[shader("fragment")]
-public TerrainPSOutput terrain_ps_main<
-    let HAS_SHADOWS : bool,
-    let HAS_TINT    : bool>(
-    TerrainPSInput input)
-{
-    TerrainPSOutput output;
+static const uint  TERRAIN_NO_LAYER = 0xFFFF;
+static const uint  TERRAIN_LAYERS = 4;
+// A cell whose most opaque layer is below this is a hole in the ground.
+static const float TERRAIN_COVERAGE_CUTOFF = 0.800000012;
+static const float TERRAIN_IRRADIANCE_MAX_SCALE = 0.400000006;
 
-#if WC3_TERRAIN_NULL_PASS
+struct TerrainSplat
+{
+    float3 albedo;
+    float3 normalTS;
+    float2 roughMetal;
+    float  coverage;    // the most opaque layer's albedo alpha
+};
+
+// Blend the cell's layers. Each present layer lerps the running result toward
+// itself by its own opacity times the vertex alpha, so later layers paint over
+// earlier ones; an absent slot (0xFFFF) is skipped, not blended at zero.
+//
+// Takes the layer indices and UV rather than the TerrainPSInput: passing the
+// struct makes slang emit an internal copy of it for WGSL that keeps the
+// `@interpolate(flat)` of the uint4 without a `@location`, which naga rejects
+// ("input/output binding is not consistent") on every permutation.
+TerrainSplat sampleTerrainSplat(uint4 layers, float2 uv, float vertAlpha)
+{
+    TerrainSplat s;
+    s.albedo = float3(0, 0, 0);
+    s.normalTS = float3(0, 0, 1);
+    s.roughMetal = float2(0, 0);
+    s.coverage = 0;
+
+    for (uint k = 0; k < TERRAIN_LAYERS; ++k)
     {
-        // 64-perm "skip" stub — PSOutput has no fields on this perm
-        // (gated by the WC3_HAS_COLOR / WC3_HAS_MRT #ifs in ps_io.slang),
-        // so the dxbc emits a bare `ret` matching the shipped layout.
+        if (layers[k] == TERRAIN_NO_LAYER)
+            continue;
+        float3 uvw = float3(uv, (float)layers[k]);
+        float4 albedo = t_terrainAlbedo.Sample(s_terrainAlbedo, uvw);
+        float3 n = decodeNormalMap(t_terrainNormal.Sample(s_terrainNormal, uvw).xyw);
+        float2 rm = t_terrainOrm.Sample(s_terrainOrm, uvw).yz;
+
+        float w = vertAlpha * albedo.w;
+        s.albedo = w * (albedo.xyz - s.albedo) + s.albedo;
+        s.coverage = max(albedo.w, s.coverage);
+        s.normalTS = normalize(w * (n - s.normalTS) + s.normalTS);
+        s.roughMetal = w * (rm - s.roughMetal) + s.roughMetal;
+    }
+    return s;
+}
+
+// The same walk for the depth prepass, which needs only the coverage.
+float terrainCoverage(uint4 layers, float2 uv)
+{
+    float coverage = 0;
+    for (uint k = 0; k < TERRAIN_LAYERS; ++k)
+    {
+        if (layers[k] == TERRAIN_NO_LAYER)
+            continue;
+        float3 uvw = float3(uv, (float)layers[k]);
+        coverage = max(t_terrainAlbedo.Sample(s_terrainAlbedo, uvw).w, coverage);
+    }
+    return coverage;
+}
+
+[shader("fragment")]
+public PSOutput terrain_ps_main<
+    let HAS_SHADOW_CASCADE  : bool,
+    let HAS_SHADOW_CASCADE2 : bool,
+    let HAS_POINT_SHADOWS   : bool,
+    let HAS_LIGHT_DEBUG     : bool
+>(TerrainPSInput input, uint frontFace : SV_IsFrontFace)
+{
+    PSOutput output;
+
+#if WC3_IS_DEPTH_PREPASS
+    {
+        if (terrainCoverage(input.layers, input.uv.xy) - TERRAIN_COVERAGE_CUTOFF < 0)
+            discard;
         return output;
     }
 #else
     {
 
-    TerrainShadeResult shaded = terrainPSBody<HAS_SHADOWS, HAS_TINT>(input);
-    output.color = shaded.color;
+    TerrainSplat splat = sampleTerrainSplat(input.layers, input.uv.xy, input.vertColor.w);
+    if (splat.coverage - TERRAIN_COVERAGE_CUTOFF < 0)
+        discard;
 
-#if WC3_HAS_MRT
+    float3 N = tangentToWorld(splat.normalTS, input.tangentVS.xyz, input.normalVS,
+                              input.tangentVS.w);
+    float3 albedo = srgbToLinear(input.vertColor.xyz) * splat.albedo;
+    float3 V = normalize(-input.viewPos.xyz);
+
+    float roughness = saturate(splat.roughMetal.x) * HD_ROUGHNESS_SCALE
+                    + HD_ROUGHNESS_BIAS;
+    HDSurface surf = hdSurfaceFromRough(N, V, albedo, splat.roughMetal.y, roughness);
+
+    float mainShadow = 1;
+    if (HAS_SHADOW_CASCADE)
+        mainShadow = hdMainLightShadow<HAS_SHADOW_CASCADE2>(input.worldPos);
+
+    float3 lit = float3(0, 0, 0);
+    if (asint(hdPsCB2.mainLightEnable) != 0)
+        lit = hdMainLightIrr(surf, input.viewPos.xyz, mainShadow,
+                             TERRAIN_IRRADIANCE_MAX_SCALE);
+
+    lit = hdClusterLights<HAS_POINT_SHADOWS, HAS_LIGHT_DEBUG>(
+        surf, input.viewPos.xyz, input.worldPos.xyz, input.svPosition.xy, lit);
+
+    float3 rgb = hdApplyBlightFade(PI * lit, input.uv.zw);
+
+    output.color = float4(hdTerrainColorGrade(rgb), 1);
+
+#if WC3_IS_MRT
     {
-        // Depth-feedback target: world-space Z carried through the VS
-        // payload.
-        output.depthFeed = float4(shaded.viewZ, 0, 0, 1);
-
-        // Encoded world normal: (n + 1) · 0.5 in RGB, .w = 1. The shipped
-        // DXBC writes this on *every* MRT perm (`mad o2.xyz, normal, 0.5, 0.5`)
-        // including the TINT/debug ones — there is no "leave it black" quirk.
-        output.normalEnc = float4(shaded.worldNormal * 0.5 + 0.5, 1.0);
+        output.specular = float4(input.viewPos.z, 0, 0, 1);
+        output.normal = float4(N * HD_NORMAL_PACK + HD_NORMAL_PACK, 1);
     }
 #endif
 

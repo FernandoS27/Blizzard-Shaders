@@ -49,13 +49,20 @@ FAMILIES = [
     ("water_ps",       ("shader_diff_water_ps.py",       40, None)),
     ("foliage_ps",     ("shader_diff_foliage_ps.py",     30, None)),
     ("foliage_vs",     ("shader_diff_foliage_vs.py",     40, None)),
+    # --- Plan II P12 / P13: new coverage ---
+    ("cliff_ps",       ("shader_diff_cliffblightmiscterrain_ps.py", 30, None)),
+    ("cliff_vs",       ("shader_diff_cliffblightmiscterrain_vs.py", 40, None)),
+    ("sd_lowspec_vs",  ("shader_diff_sd_highspec_vs.py --lowspec", 30, None)),
+    ("screenpasses",   ("shader_diff_screenpasses.py",  128, None)),   # 13 small passes
 ]
 
 _WORST = re.compile(r"worst[ =].*?([0-9]+\.[0-9]+e[+-]?[0-9]+|[0-9]+\.[0-9]+)")
 
 
 def run_family(driver, trials):
-    proc = subprocess.run([sys.executable, str(TOOLS / driver), "--trials", str(trials)],
+    # A driver entry may carry fixed arguments after the script name.
+    script, *extra = driver.split()
+    proc = subprocess.run([sys.executable, str(TOOLS / script), *extra, "--trials", str(trials)],
                           capture_output=True, text=True)
     out = proc.stdout + proc.stderr
     matched = "ALL MATCH" in out and proc.returncode == 0

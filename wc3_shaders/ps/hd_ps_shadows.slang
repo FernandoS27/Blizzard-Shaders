@@ -25,7 +25,16 @@ implementing wc3_shaders;
 // shipped cascade atlas addressable at all.
 public float hdCascadeShadow(float4 worldPos, uint set, float2 texel)
 {
-    float3 atlasOffset = float3(0, 0, 0);
+    return hdCascadeShadowJittered(worldPos, set, texel, float2(0, 0));
+}
+
+// The same walk from a caller-chosen starting atlas offset. HD starts at zero;
+// `water_ps` starts at a small offset along its ripple normal, so the ripples
+// wobble the shadow they receive.
+public float hdCascadeShadowJittered(float4 worldPos, uint set, float2 texel,
+                                     float2 jitter)
+{
+    float3 atlasOffset = float3(jitter, 0);
     float shadow = 1;
 
     [loop] for (uint i = 0; i < asuint(hdPsCB1.cascadeCount); i++)
@@ -64,18 +73,26 @@ public float hdCascadeShadow(float4 worldPos, uint set, float2 texel)
 // enough light for the second to matter, which is what the early-out buys.
 public float hdMainLightShadow<let HAS_SHADOW_CASCADE2 : bool>(float4 worldPos)
 {
+    return hdMainLightShadowJittered<HAS_SHADOW_CASCADE2>(worldPos, float2(0, 0));
+}
+
+// The same, with both cascade walks started from `jitter` (see
+// hdCascadeShadowJittered).
+public float hdMainLightShadowJittered<let HAS_SHADOW_CASCADE2 : bool>(
+    float4 worldPos, float2 jitter)
+{
     uint w, h, slices, levels;
     t_hdCascadeShadow.GetDimensions(0, w, h, slices, levels);
     float2 texel = float2(1, 1) / float2(w, h);
 
     if (HAS_SHADOW_CASCADE2)
     {
-        float shadow = hdCascadeShadow(worldPos, 1, texel);
+        float shadow = hdCascadeShadowJittered(worldPos, 1, texel, jitter);
         if (shadow >= HD_CASCADE_EARLY_OUT)
-            shadow = min(hdCascadeShadow(worldPos, 2, texel), shadow);
+            shadow = min(hdCascadeShadowJittered(worldPos, 2, texel, jitter), shadow);
         return shadow;
     }
-    return hdCascadeShadow(worldPos, 2, texel);
+    return hdCascadeShadowJittered(worldPos, 2, texel, jitter);
 }
 
 // Which cube face a direction lands on: the major axis of |dir|, with the sign
@@ -99,6 +116,18 @@ static int hdCubeFace(float3 dir)
 // debug overlay draws those two shells.
 public float hdCubeShadow(int shadowIndex, float3 worldPos, out float cubeDist)
 {
+    return hdCubeShadowOffset<false>(shadowIndex, worldPos, float3(0, 0, 0), cubeDist);
+}
+
+// The same lookup, optionally with the kernel's centre direction pushed along
+// `normalOffset` and renormalised before the basis is built. `water_ps` offsets
+// by the same ripple jitter it starts its cascade walk from; every other family passes NORMAL_OFFSET = false, which
+// removes the offset outright rather than adding zero -- renormalising an
+// already-unit vector is not bit-exact, so "offset by zero" would not be the
+// same program.
+public float hdCubeShadowOffset<let NORMAL_OFFSET : bool>(
+    int shadowIndex, float3 worldPos, float3 normalOffset, out float cubeDist)
+{
     HDCubeShadow rec = hdPsCB1.cubeShadows[shadowIndex];
     float3 toShadow = worldPos - rec.position.xyz;
     cubeDist = max(max(abs(toShadow.x), abs(toShadow.y)), abs(toShadow.z));
@@ -109,6 +138,8 @@ public float hdCubeShadow(int shadowIndex, float3 worldPos, out float cubeDist)
     // A basis around the light direction so the 3x3 kernel steps across the
     // cube face rather than along it.
     float3 dn = normalize(toShadow);
+    if (NORMAL_OFFSET)
+        dn = normalize(dn + normalOffset);
     float3 tangentC = (abs(dn.z) < 0.999000013)
                     ? normalize(cross(dn, float3(0, 0, 1)))
                     : normalize(cross(dn, float3(0, 1, 0)));

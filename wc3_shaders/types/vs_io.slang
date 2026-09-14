@@ -170,21 +170,16 @@ public struct SDVSOutput
     public float3 worldPos    : TEXCOORD1;
 };
 
-// Terrain vertex stream. The seven attribute slots arrive in the
-// non-canonical order the engine's terrain VB streams them — ATTR0,
-// ATTR6, ATTR1, ATTR7, ATTR2, ATTR3, ATTR4 — and slang assigns input
-// registers from the struct member order, so the field ordering here
-// must match the engine's binding order verbatim. ATTR2 (vertex color)
-// is only read by the body when `HAS_VERTEX_COLOR` is set; the slot
-// itself is always declared so the engine's vertex layout stays fixed
-// regardless of which perm is active.
-//
-// `boneIDs` is a uint4 because the engine uses `0xFFFF` in any slot as
-// a "degenerate vertex" sentinel (see TerrainVSOutput.position quirk).
+// Terrain vertex stream, 3.0.0. Seven slots in the engine's binding order --
+// ATTR0, ATTR6, ATTR1, ATTR7, ATTR2, ATTR3, ATTR4 -- and slang assigns input
+// registers from member order, so the order here IS the binding order. ATTR6
+// is not a bone weight on terrain: it is the four splat LAYER indices of the
+// cell, an array slice each, with 0xFFFF meaning "no layer". ATTR2 is read
+// only by the VERTEX_COLOR permutation; ATTR4 is declared and never read.
 public struct TerrainVSInput
 {
     public [[vk::location(0)]] float3 position  : ATTR0;
-    public [[vk::location(6)]] uint4  boneIDs   : ATTR6;
+    public [[vk::location(6)]] uint4  layers    : ATTR6;
     public [[vk::location(1)]] float3 normal    : ATTR1;
     public [[vk::location(7)]] float4 tangent   : ATTR7;
     public [[vk::location(2)]] float4 vertColor : ATTR2;
@@ -192,51 +187,42 @@ public struct TerrainVSInput
     public [[vk::location(4)]] float2 uv1       : ATTR4;
 };
 
-// Terrain VS → PS payload. Layout matches the slot map the original
-// terrain PS expects:
+// Terrain VS -> PS payload, 3.0.0 layout: foliage's payload with the splat
+// layer indices riding in FRONT of everything, as a flat-interpolated uint4
+// on TEXCOORD8 -- retail's signature puts it in register 0, ahead of
+// SV_Position, and fxc assigns registers in declaration order.
 //
-//   TEXCOORD7  boneIDs (uint4 nointerpolation)  — splat layer indices.
-//   SV_Position position                         — clip-space.
-//   COLOR0     color                             — vertex color or const tint.
-//   TEXCOORD0  texCoord (.xy = UV0, .zw = UV1).
-//   TEXCOORD1  worldPos (.xyz world, .w = 0).
-//   TEXCOORD2  worldNormal (.xyz only — no .w lane).
-//   TEXCOORD3  worldTangent (.xyz world, .w = handedness pass-through).
-//   TEXCOORD4  shadowClip0 — cascade-0 light-clip-space position.
-//   TEXCOORD5  shadowClip1 — cascade-1 light-clip-space position.
-//   TEXCOORD6  shadowClip2 — cascade-2 light-clip-space position.
-//
-// The cascade slots are gated by `WC3_HAS_SHADOWS` (preprocessor define
-// — see the VSOutput comment for why) so the non-shadow perms emit a
-// smaller VS→PS signature, exactly matching the BLS layout.
+//   TEXCOORD8   the four splat layer indices, passed through untouched
+//   TEXCOORD0   .xy raw UV0 (no texture matrix on terrain), .zw blight UV
+//   TEXCOORD1   .xyz view-space position, .w zero
+//   TEXCOORD3   .xyz view-space tangent (not renormalised), .w handedness
+//   TEXCOORD2   view-space normal, from the bent and renormalised object
+//               normal, not renormalised after the transform
+//   TEXCOORD10  world position, homogeneous
 public struct TerrainVSOutput
 {
-    public nointerpolation uint4 boneIDs : TEXCOORD7;
-    public float4 position     : SV_Position;
-    public float4 color        : COLOR0;
-    public float4 texCoord     : TEXCOORD0;
-    public float4 worldPos     : TEXCOORD1;
-    public float3 worldNormal  : TEXCOORD2;
-    public float4 worldTangent : TEXCOORD3;
-#if WC3_HAS_SHADOWS
-    public float4 shadowClip0 : TEXCOORD4;
-    public float4 shadowClip1 : TEXCOORD5;
-    public float4 shadowClip2 : TEXCOORD6;
-#endif
+    public nointerpolation uint4 layers : TEXCOORD8;
+    public float4 position  : SV_Position;
+    public float4 color     : COLOR0;
+    public float4 texCoord  : TEXCOORD0;
+    public float4 viewPos   : TEXCOORD1;
+    public float4 tangentVS : TEXCOORD3;
+    public float3 normalVS  : TEXCOORD2;
+    public float4 worldPos  : TEXCOORD10;
 };
 
-// Foliage vertex stream. Eight attribute slots arrive in the engine
-// VB binding order — ATTR0, ATTR5, ATTR6, ATTR1, ATTR7, ATTR2, ATTR3,
-// ATTR4 — and slang assigns input registers from the struct member
-// order, so the field ordering here must match the binding order
-// verbatim. ATTR5/ATTR6 are declared so the input layout stays fixed
-// regardless of which perm is active; the foliage VS body never reads
-// them (no per-draw skinning on foliage).
+// Foliage vertex stream, 3.0.0. The engine binds foliage through the HD
+// mesh's eight-slot layout -- ATTR0, ATTR5, ATTR6, ATTR1, ATTR7, ATTR2,
+// ATTR3, ATTR4 -- and slang assigns input registers from member order, so
+// the member order here IS the binding order. ATTR5 (bone indices, uint)
+// and ATTR6 (weights) keep the layout fixed and are never read; ATTR4 is
+// declared and unread too. ATTR2.w is not an alpha: it is the per-vertex
+// wind weight, and ATTR7.w doubles as the wind strength and the handedness.
 public struct FoliageVSInput
 {
     public [[vk::location(0)]] float3 position    : ATTR0;
-    public [[vk::location(5)]] float4 _boneWeight : ATTR5;
-    public [[vk::location(6)]] uint4  _boneIndex  : ATTR6;
+    public [[vk::location(5)]] uint4  boneIndices : ATTR5;
+    public [[vk::location(6)]] float4 weights     : ATTR6;
     public [[vk::location(1)]] float3 normal      : ATTR1;
     public [[vk::location(7)]] float4 tangent     : ATTR7;
     public [[vk::location(2)]] float4 vertColor   : ATTR2;
@@ -244,33 +230,29 @@ public struct FoliageVSInput
     public [[vk::location(4)]] float2 uv1         : ATTR4;
 };
 
-// Foliage VS → PS payload. Shadow-cascade slots are gated by
-// `HAS_SHADOWS` so the non-shadow perms emit a smaller VS→PS signature
-// (matching the BLS layout where caster passes never carry cascade
-// UVs even when the receive flag is set).
+// Foliage VS -> PS payload, 3.0.0 layout. It is HD's payload with the
+// blight UV folded into TEXCOORD0.zw instead of riding its own TEXCOORD11,
+// and with the tangent declared BEFORE the normal: retail's signature puts
+// TEXCOORD3 in register 4 and TEXCOORD2 in register 5, and fxc assigns
+// registers in declaration order. The cascade slots of 2.0.0 are gone --
+// the pixel shader reprojects TEXCOORD10 itself, exactly as HD does.
 //
-//   SV_Position  position     — clip-space.
-//   COLOR0       color        — tint × per-vertex colour.
-//   TEXCOORD0    texCoord     — .xy = transformed UV0, .zw = UV1.
-//   TEXCOORD1    worldPos     — .xyz world, .w = 0.
-//   TEXCOORD2    worldNormal  — normalized world normal (.xyz only).
-//   TEXCOORD3    worldTangent — .xyz raw world tangent, .w = sign(v4.w)
-//                                handedness stencil (-1 / 0 / +1).
-//   TEXCOORD4-6  shadowClip0/1/2 — cascade-space clip positions
-//                                  (HAS_SHADOWS only).
+//   TEXCOORD0   .xy transformed UV0, .zw blight-map UV
+//   TEXCOORD1   .xyz view-space position, .w zero (foliage has no water
+//               clip plane)
+//   TEXCOORD3   .xyz view-space tangent (not renormalised), .w sign of the
+//               authored handedness
+//   TEXCOORD2   view-space normal, renormalised
+//   TEXCOORD10  world position, homogeneous
 public struct FoliageVSOutput
 {
-    public float4 position     : SV_Position;
-    public float4 color        : COLOR0;
-    public float4 texCoord     : TEXCOORD0;
-    public float4 worldPos     : TEXCOORD1;
-    public float3 worldNormal  : TEXCOORD2;
-    public float4 worldTangent : TEXCOORD3;
-#if WC3_HAS_SHADOWS
-    public float4 shadowClip0 : TEXCOORD4;
-    public float4 shadowClip1 : TEXCOORD5;
-    public float4 shadowClip2 : TEXCOORD6;
-#endif
+    public float4 position  : SV_Position;
+    public float4 color     : COLOR0;
+    public float4 texCoord  : TEXCOORD0;
+    public float4 viewPos   : TEXCOORD1;
+    public float4 tangentVS : TEXCOORD3;
+    public float3 normalVS  : TEXCOORD2;
+    public float4 worldPos  : TEXCOORD10;
 };
 
 // Sprite vertex stream. The sprite pipeline takes a pre-projected
@@ -333,10 +315,8 @@ public struct ImGuiVSOutput
     public float4 vertColor : COLOR0;
 };
 
-// Water vertex stream (subset of the HD stream — no tangent, no UV1,
-// no skinning). Kept separate from VSInput so the water VS emits a
-// 4-attribute input signature matching the engine's water vertex
-// buffer rather than the 8-attribute HD one.
+// Water vertex stream: four slots, ATTR0-3 in order. No tangent, no second
+// UV set, no skinning.
 public struct WaterVSInput
 {
     public [[vk::location(0)]] float3 position    : ATTR0;
@@ -345,22 +325,27 @@ public struct WaterVSInput
     public [[vk::location(3)]] float2 uv          : ATTR3;
 };
 
-// Water VS → PS payload. Differs from VSOutput in two ways:
-//   • no TEXCOORD2 slot — the water PS takes its geometry normal on
-//     TEXCOORD3 to free TEXCOORD2 for an engine-wide reserved slot.
-//   • TEXCOORD4 carries a fixed "up" axis (world Y column), which the
-//     water PS uses as the TBN tangent instead of a per-vertex tangent.
-// Member types are trimmed to the exact components the PS reads, so
-// the compiled VS declares `dcl_output oN.xy/xyz/xyzw` accordingly
-// (and doesn't emit dead writes to unused lanes).
+// Water VS -> PS payload, 3.0.0 layout (retail's register order):
+//
+//   TEXCOORD0   .xy transformed UV0, .zw blight-map UV
+//   TEXCOORD1   view-space position of the WAVE-DISPLACED vertex
+//   TEXCOORD2   view-space geometry normal, renormalised (the undisplaced
+//               normal: the waves move the surface, not its facing)
+//   TEXCOORD3   .xyz the object's Y axis in view space -- water has no
+//               tangent attribute, so this is the frame's tangent -- .w 1
+//   TEXCOORD10  world position, homogeneous
+//
+// 2.0.0 carried the geometry normal on TEXCOORD3 and the axis on TEXCOORD4,
+// and had no world position or blight UV at all.
 public struct WaterVSOutput
 {
-    public float4 position    : SV_Position;
-    public float4 color       : COLOR0;
-    public float2 texCoord    : TEXCOORD0;
-    public float3 worldPos    : TEXCOORD1;
-    public float3 normalWS    : TEXCOORD3;
-    public float4 upAxisWS    : TEXCOORD4;
+    public float4 position  : SV_Position;
+    public float4 color     : COLOR0;
+    public float4 texCoord  : TEXCOORD0;
+    public float3 viewPos   : TEXCOORD1;
+    public float3 normalVS  : TEXCOORD2;
+    public float4 tangentVS : TEXCOORD3;
+    public float4 worldPos  : TEXCOORD10;
 };
 
 // PopcornFX vertex stream.

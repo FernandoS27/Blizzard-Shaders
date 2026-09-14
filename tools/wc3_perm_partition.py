@@ -32,7 +32,27 @@ Usage::
     python tools/wc3_perm_partition.py sd_on_hd_ps
     python tools/wc3_perm_partition.py hd_ps --retail wc3_re_shaders/hd
     python tools/wc3_perm_partition.py --all
+    python tools/wc3_perm_partition.py --all --check-banks
     python tools/wc3_perm_partition.py crystal_ps --retail-version 2.0.0
+
+**G1 is not a census on its own.** A family with one equivalence class folds
+trivially and passes whatever its body does -- which is how five 2.0.0
+post-process shaders read ``OK retail=1 mapper=1`` in a tree whose census said
+23/29 families agree with 3.0.0. ``--check-banks`` adds gate G0b
+(``tools/wc3_decl_surface.py``): the per-permutation declaration surface of the
+slang build against retail's, which sees a bank move at any perm count. With
+``--all`` it also prints a per-family VERSION verdict:
+
+* ``identical``  -- retail ships byte-identical blobs in 2.0.0 and 3.0.0, so
+  there is nothing version-specific to port;
+* ``3.0.0``      -- the slang surface matches 3.0.0 retail on every perm;
+* ``2.0.0``      -- it matches 2.0.0 retail instead: a stale family;
+* ``neither``    -- it matches no tree (mid-port, or a family whose index
+  space changed between versions, so a same-index comparison means nothing);
+* ``3.0.0-only`` -- no 2.0.0 extraction exists and G0b fails against 3.0.0.
+
+A family is OK only when G1 matches AND its version verdict is ``3.0.0`` or
+``identical``.
 """
 
 from __future__ import annotations
@@ -45,6 +65,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "tools"))
 
 from compile_all_slang import (FAMILY_CONFIGS, MAPPERS,  # noqa: E402
                                RETAIL_DIRS)
@@ -139,6 +160,39 @@ def _fmt(s: frozenset[int], limit: int = 6) -> str:
     return "{" + body + (f", +{len(v) - limit} more" if len(v) > limit else "") + "}"
 
 
+def retail_identical(family: str) -> bool | None:
+    """Do 2.0.0 and 3.0.0 retail ship the same blob for every perm index?
+
+    None when either tree has no folder for this family.
+    """
+    sub = RETAIL_DIRS.get(family, family)
+    old, new = TREES["2.0.0"] / sub, TREES["3.0.0"] / sub
+    if not (old.is_dir() and new.is_dir()):
+        return None
+
+    def blobs(d: Path) -> dict[int, str]:
+        return {perm_index(p): hashlib.sha1(p.read_bytes()).hexdigest()
+                for p in d.glob("perm_*.dxbc")}
+    return blobs(old) == blobs(new)
+
+
+def version_verdict(family: str):
+    """(label, 3.0.0 G0b verdict) -- labels are described in the module docstring."""
+    import wc3_decl_surface as G0b
+    cfg = FAMILY_CONFIGS[family]
+    slang = G0b.slang_surfaces(family, cfg.perm_count)
+    new = G0b.check(family, "3.0.0", slang)
+    same = retail_identical(family)
+    if same is None:
+        return ("3.0.0" if new.ok else "3.0.0-only"), new
+    if same:
+        return "identical", new
+    if new.ok:
+        return "3.0.0", new
+    old = G0b.check(family, "2.0.0", slang)
+    return ("2.0.0" if old.ok else "neither"), new
+
+
 def check(family: str, retail_dir: Path | None, version: str,
           verbose: bool = True) -> bool:
     cfg = FAMILY_CONFIGS.get(family)
@@ -188,21 +242,44 @@ def main(argv=None) -> int:
                     help="explicit retail folder (overrides --retail-version)")
     ap.add_argument("--retail-version", choices=sorted(TREES), default="3.0.0",
                     help="which retail tree to compare against (default 3.0.0)")
+    ap.add_argument("--check-banks", action="store_true",
+                    help="also run gate G0b (declaration surface); with --all, "
+                         "print a per-family version verdict")
     args = ap.parse_args(argv)
 
     if args.all:
-        results = {f: check(f, None, args.retail_version, verbose=False)
-                   for f in FAMILY_CONFIGS}
+        results = {}
+        for f in FAMILY_CONFIGS:
+            ok = check(f, None, args.retail_version, verbose=False)
+            if args.check_banks:
+                label, g0b = version_verdict(f)
+                fine = label in ("3.0.0", "identical")
+                ok = ok and fine
+                # The line above is G1 alone; this one carries the verdict.
+                print(f"  => {'OK  ' if ok else 'FAIL'} {'':<19} G0b {g0b.matched}/"
+                      f"{g0b.perms}  version {label}"
+                      f"{'' if fine else '  <-- NOT ON 3.0.0'}")
+            results[f] = ok
         bad = [f for f, ok in results.items() if not ok]
-        print(f"\n{len(results) - len(bad)}/{len(results)} families agree with "
-              f"{args.retail_version} retail")
+        what = ("are on 3.0.0 (G1 + G0b)" if args.check_banks
+                else f"agree with {args.retail_version} retail")
+        print(f"\n{len(results) - len(bad)}/{len(results)} families {what}")
         if bad:
             print(f"disagreeing: {', '.join(bad)}")
+        if not args.check_banks:
+            print("note: G1 alone cannot see single-class families; "
+                  "add --check-banks for a census")
         return 1 if bad else 0
 
     if not args.family:
         ap.error("give a family name or --all")
-    return 0 if check(args.family, args.retail, args.retail_version) else 1
+    ok = check(args.family, args.retail, args.retail_version)
+    if args.check_banks:
+        import wc3_decl_surface as G0b
+        v = G0b.check(args.family, args.retail_version)
+        G0b.report(v, verbose=True)
+        ok = ok and v.ok
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

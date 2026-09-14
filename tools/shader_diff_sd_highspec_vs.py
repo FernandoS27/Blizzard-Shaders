@@ -1,4 +1,5 @@
-"""Differential test of the slang ``sd_highspec_vs`` family against retail bytecode.
+"""Differential test of the slang ``sd_highspec_vs`` / ``sd_lowspec_vs`` families
+against retail bytecode.
 
 A worked example of :mod:`shader_diff` for a *vertex* shader (no textures): it
 builds physically-plausible skinning / lighting constant buffers and *forces*
@@ -21,6 +22,14 @@ o3(TEXCOORD1); every perm in this family declares all four. Run from repo root::
 Known-good result: every perm matches retail to <=2.2e-16 on every output
 (lighting-reassociation fp noise only) — effectively bit-identical. Reports
 ALL MATCH at --tol 1e-4.
+
+``--lowspec`` runs the same sweep over ``sd_lowspec_vs`` (3.0.0): the same 162
+programs at shader model 4 over a 72-bone palette, so the bank is built at 216
+rows and bone indices are drawn below 72 -- an index past the palette raises in
+the interpreter on either leg rather than reading a neighbour. Retail lowspec
+blobs carry a Level9 preamble, stripped by ``shader_diff_imgui.load_retail``.
+
+    python tools/shader_diff_sd_highspec_vs.py --lowspec
 """
 
 import argparse
@@ -32,6 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dxbc_interp import f2b, i2b                         # noqa: E402
 from shader_diff import load, compare, perm_path                    # noqa: E402
+from shader_diff_imgui import load_retail                           # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 RETAIL_DIR = REPO / "wc3_re_shaders" / "sd_highspec_vs"
@@ -67,8 +77,12 @@ def affine_rows(rng, scale=1.0):
 # right register/channels for whichever shader (retail packs ATTR0/ATTR5/ATTR6
 # etc. distinctly; slang gives each its own register). Feed BOTH identically.
 
-def hs_inputs(seed, skin_mode):
-    """skin_mode: 'weighted' (weightSum != 0) or 'rigid' (weights all zero)."""
+def hs_inputs(seed, skin_mode, max_bone=200):
+    """skin_mode: 'weighted' (weightSum != 0) or 'rigid' (weights all zero).
+
+    ``max_bone`` is the largest index drawn: 200 for the 256-bone palette (the
+    historical draw, kept so highspec's inputs are unchanged), 71 for lowspec.
+    """
     rng = random.Random(seed)
     n = rand_rotation(rng)[0]      # unit normal
     pos = [rng.uniform(-2, 2) for _ in range(3)]
@@ -81,7 +95,7 @@ def hs_inputs(seed, skin_mode):
         raw = [rng.uniform(0.05, 1) for _ in range(4)]
         s = sum(raw)
         w = [x / s for x in raw]                          # normalised weights
-    bones = [float(rng.randint(0, 200)) for _ in range(4)]  # bone indices (uint)
+    bones = [float(rng.randint(0, max_bone)) for _ in range(4)]  # bone indices (uint)
     return {
         ("ATTR", 0): [f2b(pos[0]), f2b(pos[1]), f2b(pos[2]), f2b(1.0)],   # position
         ("ATTR", 1): [f2b(n[0]), f2b(n[1]), f2b(n[2]), f2b(0.0)],         # normal
@@ -108,7 +122,7 @@ def hs_inputs(seed, skin_mode):
 # cb0[16..18], where 2.0.0 declared CB0[20] and read cb0[17..19].
 # cb3: 256-bone palette, 3 affine rows each.
 
-def hs_cbufs(seed, light_types):
+def hs_cbufs(seed, light_types, bones=256):
     """light_types: 8-bit mask, bit i set => light i is a POINT light (w>0)."""
     rng = random.Random(seed * 7 + 1)
     cb0 = [[f2b(0.0)] * 4 for _ in range(64)]
@@ -142,8 +156,8 @@ def hs_cbufs(seed, light_types):
             cb0[base + 2] = [f2b(d[0]), f2b(d[1]), f2b(d[2]),
                              f2b(-rng.uniform(0.2, 3.0))]                # w<=0
 
-    cb3 = [[f2b(0.0)] * 4 for _ in range(768)]              # 256 bones x 3 rows
-    for b in range(256):
+    cb3 = [[f2b(0.0)] * 4 for _ in range(bones * 3)]        # bones x 3 rows
+    for b in range(bones):
         rows = affine_rows(rng, 5.0)
         for r in range(3):
             cb3[b * 3 + r] = [f2b(x) for x in rows[r]]
@@ -174,7 +188,7 @@ def light_scenarios(nl):
 
 # --- driver: wraps compare() to sweep skin-mode + light-type per perm ------
 
-def compare_perm(prog_s, prog_r, idx, trials, tol, cov):
+def compare_perm(prog_s, prog_r, idx, trials, tol, cov, bones=256):
     """Sweep both skin modes and varied light-type masks across `trials`.
 
     A skinning perm (weight==2) alternates weighted/rigid (~1/4 rigid); a
@@ -190,8 +204,8 @@ def compare_perm(prog_s, prog_r, idx, trials, tol, cov):
         skin_mode = 'rigid' if (skinning and t % 4 == 3) else 'weighted'
         mask = masks[t % len(masks)]
         seed = idx * 131 + t
-        sv = hs_inputs(20000 + seed, skin_mode)
-        cb = hs_cbufs(40000 + seed, mask)
+        sv = hs_inputs(20000 + seed, skin_mode, 200 if bones == 256 else bones - 1)
+        cb = hs_cbufs(40000 + seed, mask, bones)
 
         # coverage bookkeeping
         cov['evals'] += 1
@@ -224,10 +238,16 @@ def main(argv=None):
     ap.add_argument('--tol', type=float, default=1e-4)
     ap.add_argument('--perms', default=None,
                     help='comma-separated perm indices (default: all 162)')
-    ap.add_argument('--retail-dir', default=str(RETAIL_DIR))
-    ap.add_argument('--slang-dir', default=str(SLANG_DIR))
+    ap.add_argument('--lowspec', action='store_true',
+                    help='sweep sd_lowspec_vs (72-bone palette, SM4) instead')
+    ap.add_argument('--retail-dir', default=None)
+    ap.add_argument('--slang-dir', default=None)
     ap.add_argument('--decompiler', default=str(DECOMPILER))
     args = ap.parse_args(argv)
+    family = "sd_lowspec_vs" if args.lowspec else "sd_highspec_vs"
+    bones = 72 if args.lowspec else 256
+    args.retail_dir = args.retail_dir or str(REPO / "wc3_re_shaders" / family)
+    args.slang_dir = args.slang_dir or str(REPO / "slang_out" / "d3d11" / family)
 
     perms = ([int(x) for x in args.perms.split(',')] if args.perms else list(range(NPERMS)))
     retail = Path(args.retail_dir); slang = Path(args.slang_dir)
@@ -236,9 +256,9 @@ def main(argv=None):
     cov = {'evals': 0, 'skin_weighted': 0, 'skin_rigid': 0, 'pt_lights': 0, 'dir_lights': 0}
 
     for idx in perms:
-        prog_r = load(perm_path(retail, idx, "asm"))
+        prog_r = load_retail(perm_path(retail, idx, "asm"))
         prog_s = load(perm_path(slang, idx, "dxbc"), decompiler=args.decompiler)
-        w, where, seed, dm = compare_perm(prog_s, prog_r, idx, args.trials, args.tol, cov)
+        w, where, seed, dm = compare_perm(prog_s, prog_r, idx, args.trials, args.tol, cov, bones)
         worst_all = max(worst_all, w)
         dm_total += dm
         if w > args.tol or dm:
@@ -249,7 +269,7 @@ def main(argv=None):
             print(f"  ...perm {idx} (running worst {worst_all:.1e})", file=sys.stderr)
 
     n = len(perms)
-    print(f"\n=== sd_highspec_vs: {n} perms x {args.trials} trials ===")
+    print(f"\n=== {family}: {n} perms x {args.trials} trials ===")
     print(f"output regs      : {list(OUTPUT_REGS)} (SV_POSITION,COLOR,TEXCOORD0,TEXCOORD1)")
     print(f"worst divergence : {worst_all:.3e}")
     print(f"discard mismatch : {dm_total}")

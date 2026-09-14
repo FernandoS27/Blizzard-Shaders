@@ -43,16 +43,16 @@ public float4 bloom_combine_ps_main<let CLAMP_OUTPUT : bool>(SpritePSInput input
     // Blurred highlight layer (t1), graded then inverted to a screen mask.
     float3 bloom = bloomGradeLayer(
         t_bloomBlur.Sample(s_bloomBlur, input.uv).xyz,
-        bloomCombinePsCB1.saturationBloom,
-        bloomCombinePsCB1.intensityBloom);
+        bloomCombinePsCB3.saturationBloom,
+        bloomCombinePsCB3.intensityBloom);
     float3 maskBloom = float3(1.0, 1.0, 1.0) - saturate(bloom);
 
     // Scene layer (t0) — also supplies the output alpha.
     float4 scene       = t_bloomScene.Sample(s_bloomScene, input.uv);
     float3 sceneGraded = bloomGradeLayer(
         scene.xyz,
-        bloomCombinePsCB1.saturationScene,
-        bloomCombinePsCB1.intensityScene);
+        bloomCombinePsCB3.saturationScene,
+        bloomCombinePsCB3.intensityScene);
 
     // Screen-style composite: scene attenuated by the bloom mask, plus bloom.
     float3 combined = sceneGraded * maskBloom + bloom;

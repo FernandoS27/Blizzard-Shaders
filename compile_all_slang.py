@@ -523,8 +523,12 @@ def run_sweep(family: str, count: int, mapper: Callable[[int], PermSpec],
     # a strict subset of SM5 for the operations the SD classic PS uses
     # (one or two `Sample`s, fixed-function blend, optional fog +
     # `discard`), so the only behaviour change is the chunk type.
-    if family == "sd_classic_ps" and target_key == "d3d11":
-        profile = "ps_4_0"
+    #
+    # 3.0.0 ships three more families at SM4 with a Level9 part -- greyscale,
+    # movie and sd_lowspec_vs, all drawn by the low-spec / feature-level-9
+    # paths -- so they take the same override.
+    if family in SM4_FAMILIES and target_key == "d3d11":
+        profile = profile.replace("_5_0", "_4_0")
 
     # Custom-shader families compile from their own module file with
     # wc3_shaders on the include path so `import wc3_shaders;` resolves.
@@ -934,18 +938,34 @@ def map_water_vs(idx: int) -> PermSpec:
 
 
 def map_water_ps(idx: int) -> PermSpec:
-    # 4 permutations: FogNone / FogLinear / FogExponential / FogExp2.
-    fogL = bool(idx & 1)
-    fogE = bool(idx & 2)
-    if fogL and fogE:
-        fog = "FogExp2"
-    elif fogL:
-        fog = "FogLinear"
-    elif fogE:
-        fog = "FogExponential"
-    else:
-        fog = "FogNone"
-    return PermSpec(entry="water_ps_main", types=[fog], label=fog)
+    """3.0.0 water pixel shader -- 128 perms on a 7-bit mask, 49 programs.
+
+        bit 0 SHADOW_CASCADE2   1 DEPTH_PREPASS   2 LIGHT_DEBUG
+        bit 3 POINT_SHADOWS     4 SHADOW_CASCADE  5-6 SSR quality
+
+    The SSR bits are one 2-bit axis, not two booleans: 0 = no reflection
+    march, 1 / 2 / 3 = 16 / 32 / 64 coarse steps. A depth prepass is an empty
+    program whatever else is set; the second cascade set needs the first.
+    Water has no LIGHTING, ALPHA_TEST or MULTI_TARGET axis -- it is always lit
+    and always writes both targets.
+    """
+    dp = bool(idx & 2)
+    sc = bool(idx & 16) and not dp
+    sc2 = bool(idx & 1) and sc
+    dbg = bool(idx & 4) and not dp
+    pts = bool(idx & 8) and not dp
+    ssr = 0 if dp else (idx >> 5) & 3
+    steps = (0, 16, 32, 64)[ssr]
+    s = lambda v: "true" if v else "false"
+    defines: List[str] = ["WC3_IS_DEPTH_PREPASS=1"] if dp else []
+    flags = "+".join(n for n, v in (("SC", sc), ("SC2", sc2), ("PS", pts),
+                                    ("DBG", dbg), ("DP", dp)) if v)
+    return PermSpec(
+        entry="water_ps_main",
+        types=[s(sc), s(sc2), s(pts), s(dbg), str(steps)],
+        defines=defines,
+        label=(flags or "base") + f"+SSR{steps}",
+    )
 
 
 def map_tonemap_ps(idx: int) -> PermSpec:
@@ -963,14 +983,60 @@ def map_sprite_ps(idx: int) -> PermSpec:
     #   bit 0 — HAS_SRGB_ENCODE (linear → sRGB write)
     #   bit 1 — HAS_SRGB_DECODE (sRGB    → linear read)
     # Both bits set is a passthrough (the encode/decode pair cancels),
-    # matching the engine's perm_003 == perm_000 collapse.
-    enc = "true" if (idx & 1) else "false"
-    dec = "true" if (idx & 2) else "false"
+    # matching the engine's perm_003 == perm_000 collapse. Fold it HERE, not
+    # only in the shader body: the body returning the same value is not the
+    # same as one specialisation, and G1 (wc3_perm_partition.py) counts
+    # specialisations -- retail ships 3 blobs for these 4 perms.
+    enc_b, dec_b = bool(idx & 1), bool(idx & 2)
+    if enc_b and dec_b:
+        enc_b = dec_b = False
+    enc = "true" if enc_b else "false"
+    dec = "true" if dec_b else "false"
     return PermSpec(
         entry="sprite_ps_main",
         types=[enc, dec],
         label=f"ENC={enc}+DEC={dec}",
     )
+
+
+def map_sd_lowspec_vs(idx: int) -> PermSpec:
+    """3.0.0 low-spec SD vertex shader -- highspec's 162 perms and axes over a
+    72-bone palette (see `sd_highspec_vs.slang`); 108 programs, like highspec."""
+    spec = map_sd_highspec_vs(idx)
+    return PermSpec(entry="sd_lowspec_vs_main", types=spec.types, label=spec.label)
+
+
+def _single(entry: str) -> Callable[[int], PermSpec]:
+    """A one-permutation family."""
+    return lambda idx: PermSpec(entry=entry, types=[], label="(only)")
+
+
+def map_fog_ps(idx: int) -> PermSpec:
+    """3.0.0 full-screen fog: one perm per engine fog mode (0..6). Mode 4 is the
+    volumetric fog, which ships as its own shader, so this pass folds it onto
+    mode 0 -- retail's 7 perms are 6 blobs."""
+    return PermSpec(entry="fog_ps_main", types=[FOG30_NAMES[0 if idx == 4 else idx]],
+                    label=f"fog{idx}")
+
+
+def map_movie_ps(idx: int) -> PermSpec:
+    """3.0.0 video decode -- 24 perms, 14 programs.
+
+        bit 0  the output is NOT sRGB-decoded
+        bit 1  the source is RGB (sprite's program) rather than Y/Cb/Cr planes
+        idx >> 2   0..5: colour matrix (idx >> 2) % 3 -- BT.601 / BT.709 / BT.2020 --
+                   and full range when (idx >> 2) >= 3, video range below
+
+    An RGB source reads neither the matrix nor the range, so those axes are
+    zeroed for it: its 12 perms are 2 programs.
+    """
+    rgb = bool(idx & 2)
+    srgb = not (idx & 1)
+    matrix = 0 if rgb else (idx >> 2) % 3
+    full = False if rgb else (idx >> 2) >= 3
+    s = lambda v: "true" if v else "false"
+    return PermSpec(entry="movie_ps_main", types=[s(rgb), s(srgb), str(matrix), s(full)],
+                    label=f"RGB={s(rgb)}+SRGB={s(srgb)}+M{matrix}+FULL={s(full)}")
 
 
 def map_distortion_ps(idx: int) -> PermSpec:
@@ -1055,144 +1121,148 @@ def map_depth_of_field_ps(idx: int) -> PermSpec:
 
 
 def map_terrain_vs(idx: int) -> PermSpec:
-    # 8 perms = 3 raw bits, but only 4 functionally distinct outputs:
-    #   bit 0 — SHADOW_PASS      (caster pass; suppresses cascade output)
-    #   bit 1 — RECEIVE_SHADOWS  (emit cascade UVs)
-    #   bit 2 — VERTEX_COLOR     (per-vertex RGBA from ATTR2)
-    # Effective HAS_SHADOWS = (RECEIVE_SHADOWS && !SHADOW_PASS) — a draw
-    # rendering its own caster pass never emits cascade UVs even when
-    # the receive flag is also set. perm_001/003/005/007 collapse onto
-    # perm_000/000/004/004 respectively.
-    shadow_pass = bool(idx & 1)
-    receive     = bool(idx & 2)
-    vert_color  = bool(idx & 4)
-    has_shadows = receive and not shadow_pass
+    """3.0.0 terrain vertex shader -- 2 perms, one axis: bit 0 VERTEX_COLOR.
 
-    vc = "true" if vert_color else "false"
-    # HAS_SHADOWS migrated to WC3_HAS_SHADOWS preprocessor define (see
-    # map_hd_vs). HAS_VERTEX_COLOR stays as a slang template param.
-    defines: List[str] = []
-    if has_shadows:
-        defines.append("WC3_HAS_SHADOWS=1")
-    return PermSpec(
-        entry="terrain_vs_main",
-        types=[vc],
-        defines=defines,
-        label=f"VC={vc}+SH={'true' if has_shadows else 'false'}",
-    )
+    2.0.0 shipped eight (SHADOW_PASS, RECEIVE_SHADOWS, VERTEX_COLOR); the two
+    shadow bits left with the cascade outputs, as they did in foliage_vs.
+    """
+    vc = "true" if (idx & 1) else "false"
+    return PermSpec(entry="terrain_vs_main", types=[vc], label=f"VC={vc}")
 
 
 def map_foliage_vs(idx: int) -> PermSpec:
-    # 8 perms = 3 raw bits, but only 4 functionally distinct outputs:
-    #   bit 0 — SHADOW_PASS    (caster pass; suppresses cascade output)
-    #   bit 1 — RECEIVE_SHADOWS
-    #   bit 2 — WIND_ANIMATION
-    # Effective HAS_SHADOWS = (RECEIVE_SHADOWS && !SHADOW_PASS) — same
-    # collapse rule as terrain_vs.
-    shadow_pass = bool(idx & 1)
-    receive     = bool(idx & 2)
-    wind        = bool(idx & 4)
-    has_shadows = receive and not shadow_pass
+    """3.0.0 foliage vertex shader -- 2 perms, one axis: bit 0 WIND.
 
-    wd = "true" if wind else "false"
-    # HAS_SHADOWS migrated to WC3_HAS_SHADOWS preprocessor define (see
-    # map_hd_vs). HAS_WIND stays as a slang template param.
-    defines: List[str] = []
-    if has_shadows:
-        defines.append("WC3_HAS_SHADOWS=1")
-    return PermSpec(
-        entry="foliage_vs_main",
-        types=[wd],
-        defines=defines,
-        label=f"SH={'true' if has_shadows else 'false'}+WIND={wd}",
-    )
+    2.0.0 shipped eight (SHADOW_PASS, RECEIVE_SHADOWS, WIND). The two shadow
+    bits left with the cascade outputs: 3.0.0 passes the world position on every
+    permutation and the pixel shader projects it, as the HD mesh VS does.
+    """
+    wind = "true" if (idx & 1) else "false"
+    return PermSpec(entry="foliage_vs_main", types=[wind], label=f"WIND={wind}")
 
 
 def map_foliage_ps(idx: int) -> PermSpec:
-    # 128 perms (7 raw bits) — every bit is functionally distinct:
-    #   bit 0 (1)   — MRT_OUTPUTS
-    #   bit 1 (2)   — NULL_PASS    (overrides everything; 64/128 collapse)
-    #   bit 2 (4)   — RECEIVE_SHADOWS
-    #   bit 3 (8)   — FOG_LINEAR
-    #   bit 4 (16)  — FOG_EXPONENTIAL  (with bit 3 → FogExp2)
-    #   bit 5 (32)  — ALPHA_TEST
-    #   bit 6 (64)  — TINT_OVERRIDE
-    null_pass = bool(idx & 2)
-    mrt       = bool(idx & 1)
-    shadows   = bool(idx & 4)
-    fogL      = bool(idx & 8)
-    fogE      = bool(idx & 16)
-    at        = bool(idx & 32)
-    tint      = bool(idx & 64)
+    """3.0.0 foliage pixel shader -- 128 perms: HD's mask, LIGHTING pinned on.
 
-    if fogL and fogE:
-        fog = "FogExp2"
-    elif fogL:
-        fog = "FogLinear"
-    elif fogE:
-        fog = "FogExponential"
-    else:
-        fog = "FogNone"
+    Foliage moved onto the HD mesh's banks in 3.0.0 and took its permutation
+    layout with it: HD's feature bits in HD's order, with AO_MAP and
+    MULTI_LAYER struck out and LIGHTING always set, so the seven bits are
 
-    npS  = "true" if null_pass else "false"
-    mrtS = "true" if mrt       else "false"
-    shS  = "true" if shadows   else "false"
-    atS  = "true" if at        else "false"
-    tnS  = "true" if tint      else "false"
-    # HAS_NULL_PASS / HAS_MRT migrated to preprocessor defines so
-    # FoliagePSOutput can use #if instead of `Conditional<>` (see
-    # foliage_ps.slang). WC3_HAS_MRT factors in NULL_PASS already; the
-    # script sets it explicitly rather than relying on derivation.
+        SC2=1 MRT=2 DP=4 DBG=8 PTS=16 SC=32 AT=64
+
+    Folded by `_hd_ps_fold` -- the same rules, not a copy of them -- which
+    gives retail's 50 programs: 48 shaded (3 cascade states x MRT x DBG x
+    PTS x AT) plus the plain and the alpha-tested prepass.
+    """
+    f = _hd_ps_fold(
+        ao =False,
+        sc2=bool(idx &  1),   # SHADOW_CASCADE2
+        mrt=bool(idx &  2),   # MULTI_TARGET
+        dp =bool(idx &  4),   # DEPTH_PREPASS
+        dbg=bool(idx &  8),   # LIGHT_DEBUG
+        pts=bool(idx & 16),   # POINT_SHADOWS
+        sc =bool(idx & 32),   # SHADOW_CASCADE
+        lit=True,
+        at =bool(idx & 64),   # ALPHA_TEST
+        ml =False,
+    )
+    alpha = "AlphaTestOn" if f["at"] else "AlphaTestOff"
+    s = lambda v: "true" if v else "false"
     defines: List[str] = []
-    if null_pass:
-        defines.append("WC3_TERRAIN_NULL_PASS=1")
-    elif mrt:
-        defines.append("WC3_HAS_MRT=1")
-    if shadows:
-        defines.append("WC3_HAS_SHADOWS=1")
+    if f["dp"]:
+        defines.append("WC3_IS_DEPTH_PREPASS=1")
+    if f["mrt"]:
+        defines.append("WC3_IS_MRT=1")
+    flags = "+".join(n for n, v in (("SC", f["sc"]), ("SC2", f["sc2"]),
+                                    ("PS", f["pts"]), ("DBG", f["dbg"]),
+                                    ("DP", f["dp"]), ("MRT", f["mrt"])) if v)
     return PermSpec(
         entry="foliage_ps_main",
-        types=[shS, fog, atS, tnS],
+        types=[alpha, s(f["sc"]), s(f["sc2"]), s(f["pts"]), s(f["dbg"])],
         defines=defines,
-        label=f"NULL={npS}+MRT={mrtS}+SH={shS}+{fog}+AT={atS}+TINT={tnS}",
+        label=alpha + (f"+{flags}" if flags else ""),
     )
 
 
 def map_terrain_ps(idx: int) -> PermSpec:
-    # 128 perms (7 raw bits) but only 4 functionally distinct axes:
-    #   bit 0 (1)   — MRT_OUTPUTS
-    #   bit 1 (2)   — NULL_PASS    (overrides everything; 64/128 collapse)
-    #   bit 2 (4)   — RECEIVE_SHADOWS
-    #   bit 3 (8)   — unused (reserved)
-    #   bit 4 (16)  — unused (reserved)
-    #   bit 5 (32)  — unused (reserved)
-    #   bit 6 (64)  — TINT_OVERRIDE
-    # The reserved bits collapse to identical bytecode under the same
-    # functional axes, so the mapper just ignores them — slangc gets the
-    # same -specialize tuple for every collapse-equivalent index.
-    null_pass = bool(idx & 2)
-    mrt       = bool(idx & 1)
-    shadows   = bool(idx & 4)
-    tint      = bool(idx & 64)
+    """3.0.0 terrain pixel shader -- 128 perms: foliage's mask, bit 6 dead.
 
-    npS = "true" if null_pass else "false"
-    mrtS = "true" if mrt      else "false"
-    shS  = "true" if shadows  else "false"
-    tnS  = "true" if tint     else "false"
-    # HAS_NULL_PASS / HAS_MRT migrated to preprocessor defines (see
-    # terrain_ps.slang and ps_io.slang for the rationale).
+        SC2=1 MRT=2 DP=4 DBG=8 PTS=16 SC=32 (64 dead)
+
+    Terrain's coverage cut-out is unconditional, so the bit foliage spends on
+    ALPHA_TEST changes nothing here. Folded by `_hd_ps_fold` with LIGHTING
+    pinned on: 24 shaded programs plus one depth prepass, retail's 25.
+    """
+    f = _hd_ps_fold(
+        ao =False,
+        sc2=bool(idx &  1),   # SHADOW_CASCADE2
+        mrt=bool(idx &  2),   # MULTI_TARGET
+        dp =bool(idx &  4),   # DEPTH_PREPASS
+        dbg=bool(idx &  8),   # LIGHT_DEBUG
+        pts=bool(idx & 16),   # POINT_SHADOWS
+        sc =bool(idx & 32),   # SHADOW_CASCADE
+        lit=True,
+        at =False,
+        ml =False,
+    )
+    s = lambda v: "true" if v else "false"
     defines: List[str] = []
-    if null_pass:
-        defines.append("WC3_TERRAIN_NULL_PASS=1")
-    elif mrt:
-        defines.append("WC3_HAS_MRT=1")
-    if shadows:
-        defines.append("WC3_HAS_SHADOWS=1")
+    if f["dp"]:
+        defines.append("WC3_IS_DEPTH_PREPASS=1")
+    if f["mrt"]:
+        defines.append("WC3_IS_MRT=1")
+    flags = "+".join(n for n, v in (("SC", f["sc"]), ("SC2", f["sc2"]),
+                                    ("PS", f["pts"]), ("DBG", f["dbg"]),
+                                    ("DP", f["dp"]), ("MRT", f["mrt"])) if v)
     return PermSpec(
         entry="terrain_ps_main",
-        types=[shS, tnS],
+        types=[s(f["sc"]), s(f["sc2"]), s(f["pts"]), s(f["dbg"])],
         defines=defines,
-        label=f"NULL={npS}+MRT={mrtS}+SH={shS}+TINT={tnS}",
+        label=flags or "base",
+    )
+
+
+def map_cliff_vs(idx: int) -> PermSpec:
+    """3.0.0 cliff / blight / misc-terrain vertex shader -- one permutation."""
+    return PermSpec(entry="cliff_vs_main", types=[], label="(only)")
+
+
+def map_cliff_ps(idx: int) -> PermSpec:
+    """3.0.0 cliff / blight / misc-terrain pixel shader -- 256 perms, 50 programs.
+
+        SC2=1 MRT=2 DP=4 DBG=8 PTS=16 SC=32 (64 dead) AT=128
+
+    Terrain's mask with ALPHA_TEST as one extra top bit. Folded by
+    `_hd_ps_fold` with LIGHTING pinned on; the alpha-tested prepass stays
+    apart from the plain one, as in HD and foliage.
+    """
+    f = _hd_ps_fold(
+        ao =False,
+        sc2=bool(idx &   1),   # SHADOW_CASCADE2
+        mrt=bool(idx &   2),   # MULTI_TARGET
+        dp =bool(idx &   4),   # DEPTH_PREPASS
+        dbg=bool(idx &   8),   # LIGHT_DEBUG
+        pts=bool(idx &  16),   # POINT_SHADOWS
+        sc =bool(idx &  32),   # SHADOW_CASCADE
+        lit=True,
+        at =bool(idx & 128),   # ALPHA_TEST
+        ml =False,
+    )
+    alpha = "AlphaTestOn" if f["at"] else "AlphaTestOff"
+    s = lambda v: "true" if v else "false"
+    defines: List[str] = []
+    if f["dp"]:
+        defines.append("WC3_IS_DEPTH_PREPASS=1")
+    if f["mrt"]:
+        defines.append("WC3_IS_MRT=1")
+    flags = "+".join(n for n, v in (("SC", f["sc"]), ("SC2", f["sc2"]),
+                                    ("PS", f["pts"]), ("DBG", f["dbg"]),
+                                    ("DP", f["dp"]), ("MRT", f["mrt"])) if v)
+    return PermSpec(
+        entry="cliff_ps_main",
+        types=[alpha, s(f["sc"]), s(f["sc2"]), s(f["pts"]), s(f["dbg"])],
+        defines=defines,
+        label=alpha + (f"+{flags}" if flags else ""),
     )
 
 
@@ -1441,6 +1511,8 @@ MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "terrain_ps":     map_terrain_ps,
     "foliage_vs":     map_foliage_vs,
     "foliage_ps":     map_foliage_ps,
+    "cliffblightmiscterrain_vs": map_cliff_vs,
+    "cliffblightmiscterrain_ps": map_cliff_ps,
     "distortion_ps":  map_distortion_ps,
     "imgui_vs":       map_imgui_vs,
     "imgui_ps":       map_imgui_ps,
@@ -1452,7 +1524,25 @@ MAPPERS: dict[str, Callable[[int], PermSpec]] = {
     "bloomcombine":            map_bloom_combine_ps,
     "gaussianblur":            map_gaussian_blur_ps,
     "depthoffield":            map_depth_of_field_ps,
+    "sd_lowspec_vs":           map_sd_lowspec_vs,
+    "greyscale_ps":            _single("greyscale_ps_main"),
+    "ssaa_ps":                 _single("ssaa_ps_main"),
+    "foliagepush_ps":          _single("foliagepush_ps_main"),
+    "debugtexture_ps":         _single("debugtexture_ps_main"),
+    "waterreflection_ps":      _single("waterdepthbounds_ps_main"),
+    "fog_ps":                  map_fog_ps,
+    "volumetricfog_vs":        _single("volumetricfog_vs_main"),
+    "volumetricfog_ps":        _single("volumetricfog_ps_main"),
+    "cameraocclusion_vs":      _single("cameraocclusion_vs_main"),
+    "cameraocclusion_ps":      _single("cameraocclusion_ps_main"),
+    "coneindicator_vs":        _single("coneindicator_vs_main"),
+    "coneindicator_ps":        _single("coneindicator_ps_main"),
+    "movie_ps":                map_movie_ps,
 }
+
+# Families whose 3.0.0 retail blobs are shader model 4 (with a Level9 part);
+# see run_sweep.
+SM4_FAMILIES = {"sd_classic_ps", "sd_lowspec_vs", "greyscale_ps", "movie_ps"}
 
 # Fail fast if the config and the mapper set drift — every family listed
 # in wc3_shaders.json must have a mapper implementation here, and vice versa.
@@ -1476,12 +1566,28 @@ RETAIL_DIRS: dict[str, str] = {
     "tonemap_ps": "tonemap", "sprite_vs": "sprite_vs", "sprite_ps": "sprite",
     "terrain_vs": "terrain_vs", "terrain_ps": "terrain",
     "foliage_vs": "foliage_vs", "foliage_ps": "foliage",
+    "cliffblightmiscterrain_vs": "cliffblightmiscterrain_vs",
+    "cliffblightmiscterrain_ps": "cliffblightmiscterrain",
     "distortion_ps": "distortion", "imgui_vs": "imgui_vs", "imgui_ps": "imgui",
     "ffxcmaaedge0": "ffxcmaaedge0", "ffxcmaaedge1": "ffxcmaaedge1",
     "ffxcmaaedgecombine": "ffxcmaaedgecombine",
     "ffxcmaaprocessandapply": "ffxcmaaprocessandapply",
     "bloomextract": "bloomextract", "bloomcombine": "bloomcombine",
     "gaussianblur": "gaussianblur", "depthoffield": "depthoffield",
+    "sd_lowspec_vs": "sd_lowspec_vs",
+    "greyscale_ps": "greyscale",
+    "ssaa_ps": "ssaa",
+    "foliagepush_ps": "foliagepush",
+    "debugtexture_ps": "debugtexture",
+    "waterreflection_ps": "waterreflection",
+    "fog_ps": "fog",
+    "volumetricfog_vs": "volumetricfog_vs",
+    "volumetricfog_ps": "volumetricfog",
+    "cameraocclusion_vs": "cameraocclusion_vs",
+    "cameraocclusion_ps": "cameraocclusion",
+    "coneindicator_vs": "coneindicator_vs",
+    "coneindicator_ps": "coneindicator",
+    "movie_ps": "movie",
 }
 
 

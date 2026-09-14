@@ -20,9 +20,57 @@ implementing wc3_shaders;
 // samples, and the ramp is what turns coverage into the sickly green.
 public float3 hdApplyBlight(float3 rgb, float2 blightUV)
 {
+    return rgb * hdBlightTint(blightUV);
+}
+
+// A view-space point projected by the bank's view -> clip rows, keeping only the
+// .xyw lanes the screen-space lookups need.
+public float3 hdViewToClipXYW(float3 viewPos)
+{
+    return viewPos.x * hdPsCB2.viewToClip[0].xyw
+         + viewPos.y * hdPsCB2.viewToClip[1].xyw
+         + viewPos.z * hdPsCB2.viewToClip[2].xyw
+         +             hdPsCB2.viewToClip[3].xyw;
+}
+
+// A clip-space .xyw to the depth buffer's UV: perspective divide, NDC to [0, 1]
+// with the V flip, then the per-draw remap into the depth target's viewport.
+public float2 hdClipToDepthUV(float3 clipXYW)
+{
+    float2 ndc = clipXYW.xy / clipXYW.z;
+    ndc = ndc * 0.5 + 0.5;
+    float2 uv = float2(ndc.x, 1.0 - ndc.y);
+    return hdPsCB2.depthUVRemap.xy * uv + hdPsCB2.depthUVRemap.zw;
+}
+
+// The fixed colour grade the ground families finish with: `terrain_ps` and
+// `cliffblightmiscterrain_ps`. Rows are the output channels.
+static const float3x3 HD_TERRAIN_COLOR_GRADE = float3x3(
+     1.07000005,  -0.0600000173, -0.0100000026,
+    -0.0300000086, 1.03999996,   -0.0100000026,
+    -0.0300000086, -0.0600000173, 1.09000003);
+
+public float3 hdTerrainColorGrade(float3 rgb)
+{
+    return mul(HD_TERRAIN_COLOR_GRADE, rgb);
+}
+
+// The tint itself. `water_ps` multiplies it into four separate layers rather
+// than into one colour.
+public float3 hdBlightTint(float2 blightUV)
+{
     float mask = t_hdBlightMask.Sample(s_hdBlightMask, blightUV).x;
-    float3 blight = t_hdBlightRamp.Sample(s_hdBlightRamp, float2(mask, 0.75)).xyz;
-    return rgb * blight;
+    return t_hdBlightRamp.Sample(s_hdBlightRamp, float2(mask, 0.75)).xyz;
+}
+
+// The ground-layer variant: blight DARKENS instead of tinting, unconditionally,
+// by the ramp's ALPHA at row 0.25. Shared by `foliage_ps` and `terrain_ps`,
+// whose shipped programs compute it identically.
+public float3 hdApplyBlightFade(float3 rgb, float2 blightUV)
+{
+    float mask = t_hdBlightMask.Sample(s_hdBlightMask, blightUV).x;
+    float fade = t_hdBlightRamp.Sample(s_hdBlightRamp, float2(mask, 0.25)).w;
+    return (1.0 - fade) * rgb;
 }
 
 // The six distance-based fog modes (everything except volumetric), selected at
@@ -73,7 +121,7 @@ static float hdDistanceFog(int mode, float viewZ)
 // height term takes the larger of "how deep is this pixel" and "how deep is
 // the camera", so flying the camera into the fog bank fogs the whole view
 // rather than only the parts of it that are physically inside.
-static float hdVolumetricFog(float viewZ, float3 worldPos)
+public float hdVolumetricFog(float viewZ, float3 worldPos)
 {
     float fogStart = hdPsCB2.fogColorStart.w;
     float radialEnd = max(hdPsCB2.fogEnd, SAFE_EPS + fogStart);

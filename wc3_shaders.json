@@ -52,7 +52,7 @@
     "water_ps": {
       "stage": "ps",
       "entry": "water_ps_main",
-      "perm_count": 4,
+      "perm_count": 128,
       "bls_name": "water.bls"
     },
     "popcorn_vs": {
@@ -88,7 +88,7 @@
     "terrain_vs": {
       "stage": "vs",
       "entry": "terrain_vs_main",
-      "perm_count": 8,
+      "perm_count": 2,
       "bls_name": "terrain.bls"
     },
     "terrain_ps": {
@@ -100,7 +100,7 @@
     "foliage_vs": {
       "stage": "vs",
       "entry": "foliage_vs_main",
-      "perm_count": 8,
+      "perm_count": 2,
       "bls_name": "foliage.bls"
     },
     "foliage_ps": {
@@ -108,6 +108,18 @@
       "entry": "foliage_ps_main",
       "perm_count": 128,
       "bls_name": "foliage.bls"
+    },
+    "cliffblightmiscterrain_vs": {
+      "stage": "vs",
+      "entry": "cliff_vs_main",
+      "perm_count": 1,
+      "bls_name": "cliffblightmiscterrain.bls"
+    },
+    "cliffblightmiscterrain_ps": {
+      "stage": "ps",
+      "entry": "cliff_ps_main",
+      "perm_count": 256,
+      "bls_name": "cliffblightmiscterrain.bls"
     },
     "distortion_ps": {
       "stage": "ps",
@@ -174,6 +186,90 @@
       "entry": "depth_of_field_ps_main",
       "perm_count": 1,
       "bls_name": "depthoffield.bls"
+    },
+    "sd_lowspec_vs": {
+      "stage": "vs",
+      "entry": "sd_lowspec_vs_main",
+      "perm_count": 162,
+      "bls_name": "sd_lowspec.bls"
+    },
+    "greyscale_ps": {
+      "stage": "ps",
+      "entry": "greyscale_ps_main",
+      "perm_count": 1,
+      "bls_name": "greyscale.bls"
+    },
+    "ssaa_ps": {
+      "stage": "ps",
+      "entry": "ssaa_ps_main",
+      "perm_count": 1,
+      "bls_name": "ssaa.bls"
+    },
+    "foliagepush_ps": {
+      "stage": "ps",
+      "entry": "foliagepush_ps_main",
+      "perm_count": 1,
+      "bls_name": "foliagepush.bls"
+    },
+    "debugtexture_ps": {
+      "stage": "ps",
+      "entry": "debugtexture_ps_main",
+      "perm_count": 1,
+      "bls_name": "debugtexture.bls"
+    },
+    "waterreflection_ps": {
+      "stage": "ps",
+      "entry": "waterdepthbounds_ps_main",
+      "perm_count": 1,
+      "bls_name": "waterreflection.bls"
+    },
+    "fog_ps": {
+      "stage": "ps",
+      "entry": "fog_ps_main",
+      "perm_count": 7,
+      "bls_name": "fog.bls"
+    },
+    "volumetricfog_vs": {
+      "stage": "vs",
+      "entry": "volumetricfog_vs_main",
+      "perm_count": 1,
+      "bls_name": "volumetricfog.bls"
+    },
+    "volumetricfog_ps": {
+      "stage": "ps",
+      "entry": "volumetricfog_ps_main",
+      "perm_count": 1,
+      "bls_name": "volumetricfog.bls"
+    },
+    "cameraocclusion_vs": {
+      "stage": "vs",
+      "entry": "cameraocclusion_vs_main",
+      "perm_count": 1,
+      "bls_name": "cameraocclusion.bls"
+    },
+    "cameraocclusion_ps": {
+      "stage": "ps",
+      "entry": "cameraocclusion_ps_main",
+      "perm_count": 1,
+      "bls_name": "cameraocclusion.bls"
+    },
+    "coneindicator_vs": {
+      "stage": "vs",
+      "entry": "coneindicator_vs_main",
+      "perm_count": 1,
+      "bls_name": "coneindicator.bls"
+    },
+    "coneindicator_ps": {
+      "stage": "ps",
+      "entry": "coneindicator_ps_main",
+      "perm_count": 1,
+      "bls_name": "coneindicator.bls"
+    },
+    "movie_ps": {
+      "stage": "ps",
+      "entry": "movie_ps_main",
+      "perm_count": 24,
+      "bls_name": "movie.bls"
     }
   }
 }

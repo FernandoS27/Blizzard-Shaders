@@ -2,82 +2,111 @@
 // Copyright (c) 2026, Fernando Sahmkow
 // See LICENSE in the repository root for full terms.
 //
-// Foliage pixel shader entry point.
+// Foliage pixel shader entry point — Warcraft III Reforged 3.0.0.
 //
-// Specialisation space:
+// 3.0.0 moved foliage onto the HD mesh's banks. Its declarations are those of
+// a lit HD permutation minus the scene-depth texture (t7): the same cb1[43] /
+// cb2[31], t0-t3, t6 / t8, the t11 / t12 / t13 IBL set and the t16 / t17 / t18
+// clustered-light buffers. And its 128 permutations are HD's feature mask with
+// LIGHTING pinned on and AO_MAP and MULTI_LAYER struck out:
 //
-//   HAS_NULL_PASS    — empty / discard-only stub (depth-only or shadow
-//                      caster pass). When ALPHA_TEST is also active
-//                      the stub samples the albedo alpha and runs the
-//                      alpha-test discard, otherwise it just returns.
-//                      Overrides every other axis below.
-//   HAS_MRT          — emit SV_Target1 (depth-feedback in .x = view-Z)
-//                      and SV_Target2 (encoded world normal + alpha)
-//                      in addition to SV_Target0.
-//   HAS_SHADOWS      — sample 3 cascaded shadow maps with PCF.
-//   TFog             — fog-mode policy (`FogNone` / `FogLinear` /
-//                      `FogExponential` / `FogExp2`).
-//   HAS_ALPHA_TEST   — `discard` when `vertColor.w · texAlpha < cb2[0].x`.
-//   HAS_TINT         — debug visualisation: per-splat tint substitution
-//                      + 9-mode debug-viz router. Bypasses the lit
-//                      colour output path.
+//   bit 0 (  1)  SHADOW_CASCADE2 -> HAS_SHADOW_CASCADE2
+//   bit 1 (  2)  MULTI_TARGET    -> WC3_IS_MRT (a define: it reshapes PSOutput)
+//   bit 2 (  4)  DEPTH_PREPASS   -> WC3_IS_DEPTH_PREPASS (likewise)
+//   bit 3 (  8)  LIGHT_DEBUG     -> HAS_LIGHT_DEBUG
+//   bit 4 ( 16)  POINT_SHADOWS   -> HAS_POINT_SHADOWS
+//   bit 5 ( 32)  SHADOW_CASCADE  -> HAS_SHADOW_CASCADE
+//   bit 6 ( 64)  ALPHA_TEST      -> TAlpha
 //
-// The engine's 128 perms collapse to many functionally distinct outputs
-// (NULL_PASS dominates 64 of them); the perm-mapper handles the
-// dispatching.
+// folded by HD's own rules (compile_all_slang._hd_ps_fold), which reproduce
+// retail's 50 programs exactly.
+//
+// So the shading is HD's -- material taps, specular AA, the main light with
+// its IBL and ambient mix, the clustered light loop with point shadows and the
+// debug overlay -- called rather than restated. What foliage does NOT do is
+// just as much a part of it, and all of it was checked in the bytecode:
+//
+//   * no software depth test (no t7), no water clip, no fog of any kind;
+//   * no fresnel rim and no cloak: alpha is vertex alpha times albedo alpha;
+//   * the normal map is decoded RAW (no per-draw strength), and never flipped
+//     for back faces;
+//   * emissive is added without HD's emissive gain;
+//   * the main light's probe irradiance is normalised against 0.4 of its
+//     maximum (hdMainLightIrr), in every shaded permutation;
+//   * the blight is a DARKENING, unconditional, read from row 0.25 of the
+//     ramp's alpha (hdApplyBlightFade), rather than HD's gated colour tint
+//     from row 0.75;
+//   * the deferred targets skip HD's softness discard.
 
 implementing wc3_shaders;
 
-// HAS_NULL_PASS / HAS_MRT migrated to WC3_TERRAIN_NULL_PASS / WC3_HAS_MRT
-// preprocessor defines (see terrain_ps.slang for the rationale — same
-// shape, just shared with the foliage struct). HAS_SHADOWS / TFog /
-// HAS_ALPHA_TEST / HAS_TINT stay as slang template params.
-[shader("fragment")]
-public FoliagePSOutput foliage_ps_main<
-    let HAS_SHADOWS    : bool,
-    TFog               : IFogMode,
-    let HAS_ALPHA_TEST : bool,
-    let HAS_TINT       : bool>(
-    FoliagePSInput input)
-{
-    FoliagePSOutput output;
+// The probe irradiance is hue-normalised against 0.4 of its largest component
+// rather than the component itself -- see hdMainLightIrr.
+static const float FOLIAGE_IRRADIANCE_MAX_SCALE = 0.400000006;
 
-#if WC3_TERRAIN_NULL_PASS
+// Shading normal: a raw decode of t1 carried through the interpolated frame.
+float3 foliageNormal(FoliagePSInput input)
+{
+    float3 tsN = decodeNormalMap(t_hdNormal.Sample(s_hdNormal, input.uv.xy).xyw);
+    return tangentToWorld(tsN, input.tangentVS.xyz, input.normalVS,
+                          input.tangentVS.w);
+}
+
+[shader("fragment")]
+public PSOutput foliage_ps_main<
+    TAlpha : IAlphaTest,
+    let HAS_SHADOW_CASCADE  : bool,
+    let HAS_SHADOW_CASCADE2 : bool,
+    let HAS_POINT_SHADOWS   : bool,
+    let HAS_LIGHT_DEBUG     : bool
+>(FoliagePSInput input, uint frontFace : SV_IsFrontFace)
+{
+    PSOutput output;
+
+#if WC3_IS_DEPTH_PREPASS
     {
-        // 64-perm "skip" stub. With alpha-test enabled the stub still
-        // performs the discard so the depth buffer punches the right
-        // silhouette through cut-out leaves; otherwise it's a bare
-        // `ret` with zero output dcls (the struct's color/MRT slots are
-        // gated out via #if in ps_io.slang, matching the shipped layout).
-        if (HAS_ALPHA_TEST)
+        // Depth-only. The plain prepass is an empty program; the alpha-tested
+        // one punches the leaf silhouette and nothing else.
+        if (TAlpha.enabled)
         {
-            float alphaTex = t_foliageAlbedo.Sample(s_foliageAlbedo,
-                                                    input.texCoord.xy).w;
-            if (input.color.w * alphaTex - psCB2.alphaRef < 0.0)
-                discard;
+            float albedoA = t_hdAlbedo.Sample(s_hdAlbedo, input.uv.xy).w;
+            TAlpha.test(input.vertColor.w * albedoA, hdPsCB2.alphaRef);
         }
         return output;
     }
 #else
     {
 
-    FoliageShadeResult shaded =
-        foliagePSBody<TFog, HAS_SHADOWS, HAS_TINT>(input);
+    HDMaterial mat = sampleHDMaterial<StandardMaterial, true>(input.uv.xy);
+    float alpha = input.vertColor.w * mat.albedo.w;
 
-    // Alpha-test discard: recompute against the raw texAlpha.
-    if (HAS_ALPHA_TEST)
+    float mainShadow = 1;
+    if (HAS_SHADOW_CASCADE)
+        mainShadow = hdMainLightShadow<HAS_SHADOW_CASCADE2>(input.worldPos);
+
+    float3 N = foliageNormal(input);
+    float3 V = normalize(-input.viewPos.xyz);
+    HDSurface surf = hdBuildSurface(N, V, mat.albedo.xyz, mat.roughMetal);
+
+    float3 lit = float3(0, 0, 0);
+    if (asint(hdPsCB2.mainLightEnable) != 0)
+        lit = hdMainLightIrr(surf, input.viewPos.xyz, mainShadow,
+                             FOLIAGE_IRRADIANCE_MAX_SCALE);
+
+    lit = hdClusterLights<HAS_POINT_SHADOWS, HAS_LIGHT_DEBUG>(
+        surf, input.viewPos.xyz, input.worldPos.xyz, input.svPosition.xy, lit);
+
+    // Undo the 1/PI the Lambertian diffuse carried through the lights.
+    float3 rgb = PI * lit + mat.emissive;
+    rgb = srgbToLinear(input.vertColor.xyz) * rgb;
+
+    output.color = float4(hdApplyBlightFade(rgb, input.uv.zw), alpha);
+    TAlpha.test(alpha, hdPsCB2.alphaRef);
+
+#if WC3_IS_MRT
     {
-        if (input.color.w * shaded.texAlpha - psCB2.alphaRef < 0.0)
-            discard;
-    }
-
-    output.color = float4(shaded.color, shaded.alpha);
-
-#if WC3_HAS_MRT
-    {
-        output.depthFeed = float4(shaded.viewZ, 0, 0, 1);
-        output.normalEnc = float4(shaded.worldNormal * 0.5 + 0.5,
-                                  shaded.alpha);
+        output.specular = float4(input.viewPos.z, 0, 0, 1);
+        output.normal = float4(N * HD_NORMAL_PACK + HD_NORMAL_PACK, alpha);
     }
 #endif
 

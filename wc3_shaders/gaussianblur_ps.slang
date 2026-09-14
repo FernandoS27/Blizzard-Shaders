@@ -30,13 +30,13 @@ implementing wc3_shaders;
 [shader("fragment")]
 public float4 gaussian_blur_ps_main(SpritePSInput input) : SV_Target0
 {
-    // Active tap count from cb1[0].w, truncated to a signed int (DXBC `ftoi`).
-    int tapCount = (int)gaussianBlurPsCB1.taps[0].w;
+    // Active tap count from cb3[0].w, truncated to a signed int (DXBC `ftoi`).
+    int tapCount = (int)gaussianBlurPsCB3.taps[0].w;
 
     float4 accum = float4(0.0, 0.0, 0.0, 0.0);
     for (int i = 0; i < tapCount; ++i)
     {
-        float4 tap      = gaussianBlurPsCB1.taps[i];
+        float4 tap      = gaussianBlurPsCB3.taps[i];
         float2 sampleUv = tap.xy + input.uv;
         float4 texel    = t_gaussianSource.Sample(s_gaussianSource, sampleUv);
         accum = texel * tap.z + accum;   // mad: sample * weight + acc

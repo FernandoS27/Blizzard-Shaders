@@ -1,63 +1,45 @@
-"""Differential test of the slang ``terrain_ps`` family against retail bytecode.
+"""Differential test of the slang ``cliffblightmiscterrain_ps`` family against retail.
 
-The Warcraft III Reforged **3.0.0** terrain pixel shader: 128 permutations on
-foliage's mask with the ALPHA_TEST bit dead, 25 programs::
+The Warcraft III Reforged **3.0.0** cliff / blight / misc-terrain pixel shader --
+new coverage, no 2.0.0 counterpart. 256 permutations, 50 programs::
 
     bit 0 SHADOW_CASCADE2   1 MULTI_TARGET   2 DEPTH_PREPASS   3 LIGHT_DEBUG
-    bit 4 POINT_SHADOWS     5 SHADOW_CASCADE 6 (dead)
+    bit 4 POINT_SHADOWS     5 SHADOW_CASCADE 6 (dead)          7 ALPHA_TEST
 
-**The lighting driver is ``DRIVERS['hd']``**, because 3.0.0 moved terrain onto
-the HD mesh's banks (cb1[43] / cb2[31], t6 / t8, t11-t13, t16-t18). What hd's
-driver does not know about is terrain's splat material, and three things are
-added for it -- each because a branch is otherwise unreachable, not for
-decoration:
+**The driver is ``DRIVERS['hd']``** -- the family sits on HD's banks exactly as
+foliage and terrain do -- with ONE addition, for the one branch hd's texture
+model would starve: the 0.8 coverage cut-out. It tests the ALBEDO alpha alone,
+and hd's texels stop at 0.9, so without help almost every pixel would pass.
+t0's alpha is spread to about [0, 1.1], which also puts the alpha test's
+``vertexAlpha * albedoAlpha < alphaRef`` on both sides.
 
-* **TEXCOORD8**, the four flat-interpolated layer indices. Each slot is an
-  array slice or the 0xFFFF "no layer" sentinel. hd's inputs have no
-  TEXCOORD8 at all, which would read as four zeros: every layer present, the
-  skip never taken. So one slot in four is empty, and one trial in sixteen has
-  all four empty (coverage 0 -> the cut-out always fires).
-* **albedo alpha that straddles the 0.8 coverage cut-out.** The cell is
-  discarded when its MOST opaque layer is under 0.8. hd's texture model keeps
-  texels in [0.1, 0.9], so the maximum over up to four layers is almost always
-  above 0.8 and the discard would be rare; t0's alpha is spread to [0, 1.1].
-* **vertex alpha in [0, 1] including exact 0 and 1.** It weights every layer's
-  blend, and at 0 the whole splat collapses to its initial values.
+Units check for the borrowed driver: the family reads t0-t2 at TEXCOORD0.xy,
+the blight at .zw, and TEXCOORD1 / 2 / 3 / 10 as HD does; it never reads t7.
+The front face is hd's random one (the normal is flipped on back faces here).
 
-Units check for the borrowed driver: terrain reads TEXCOORD0.xy as the splat
-UV and .zw as the blight UV (hd: UV0 / AO UV -- plain coordinates in both),
-TEXCOORD1 / 2 / 3 / 10 as the same view position, frame and world position,
-and never reads t7, the one slot hd's texture model reshapes.
-
-Outputs compared: SV_TARGET0 plus the two deferred targets on MRT perms.
-
-    python tools/shader_diff_terrain_ps.py
-    python tools/shader_diff_terrain_ps.py --perms 0,2,4
+    python tools/shader_diff_cliffblightmiscterrain_ps.py
 """
 
 import argparse
 import hashlib
-import random
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dxbc_interp import f2b, i2b                                    # noqa: E402
 from shader_diff import load, compare, perm_path                    # noqa: E402
-from wc3_uber_validate import DRIVERS, HdTextures, hd_inputs        # noqa: E402
+from wc3_uber_validate import DRIVERS, HdTextures                   # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
-RETAIL_DIR = REPO / "wc3_re_shaders" / "terrain"
-SLANG_DIR = REPO / "slang_out" / "d3d11" / "terrain_ps"
+RETAIL_DIR = REPO / "wc3_re_shaders" / "cliffblightmiscterrain"
+SLANG_DIR = REPO / "slang_out" / "d3d11" / "cliffblightmiscterrain_ps"
 DECOMPILER = Path("C:/Tools/3Dmigoto/cmd_Decompiler/cmd_Decompiler.exe")
-NPERMS = 128
+NPERMS = 256
 OUTPUT_REGS = (0, 1, 2)
-NO_LAYER = 0xFFFF
 
 
-class TerrainTextures(HdTextures):
-    """hd's texture model with the splat albedo alpha spread past the cut-out."""
+class CliffTextures(HdTextures):
+    """hd's texture model with the albedo alpha spread across the cut-out."""
 
     def sample(self, slot, coords):
         out = super().sample(slot, coords)
@@ -66,24 +48,11 @@ class TerrainTextures(HdTextures):
         return out
 
 
-def terrain_inputs(seed):
-    inp = dict(hd_inputs(seed))
-    r = random.Random(31337 + seed)
-    if seed % 16 == 5:
-        layers = [NO_LAYER] * 4
-    else:
-        layers = [NO_LAYER if r.random() < 0.25 else r.randrange(0, 16) for _ in range(4)]
-    inp[("TEXCOORD", 8)] = [i2b(x) for x in layers]
-    color = inp[("COLOR", 0)]
-    a = {0: 0.0, 1: 1.0}.get(seed % 7, r.uniform(0, 1))
-    inp[("COLOR", 0)] = color[:3] + [f2b(a)]
-    return inp
-
-
 DRIVER = dict(DRIVERS['hd'])
-DRIVER.update(inputs_fn=terrain_inputs, texture=TerrainTextures())
+DRIVER.update(texture=CliffTextures())
 
-_BITS = (("SC2", 1), ("MRT", 2), ("DP", 4), ("DBG", 8), ("PTS", 16), ("SC", 32), ("b6", 64))
+_BITS = (("SC2", 1), ("MRT", 2), ("DP", 4), ("DBG", 8), ("PTS", 16), ("SC", 32),
+         ("b6", 64), ("AT", 128))
 
 
 def feat(idx):
@@ -142,7 +111,7 @@ def main(argv=None):
         else:
             seen[key] = (idx, None)
 
-    print(f"\n=== terrain_ps 3.0.0: {len(perms)} perms x {args.trials} trials ===")
+    print(f"\n=== cliffblightmiscterrain_ps 3.0.0: {len(perms)} perms x {args.trials} trials ===")
     print(f"output regs      : {list(OUTPUT_REGS)}")
     print(f"distinct classes : {len(seen)}")
     print(f"worst divergence : {worst_all:.3e}")

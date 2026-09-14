@@ -91,10 +91,15 @@ def _parse_lit(t):
     bits = []
     for n in nums:
         n = n.strip()
-        if ('.' in n) or ('e' in n) or ('E' in n) and 'x' not in n:
-            bits.append(f2b(_win_float(n)))
-        elif n.startswith('0x') or n.startswith('-0x'):
+        # Hex FIRST: a hex literal can contain the digit `e`, and water_ps's
+        # `l(0x1e3ce508, ...)` (the bits of 1e-20, used as an `and` mask) used
+        # to fall into the float branch below. The old single condition
+        # `'.' in n or 'e' in n or 'E' in n and 'x' not in n` also bound its
+        # `and` to the last test only, so the `x` guard never covered `e`.
+        if n.startswith('0x') or n.startswith('-0x'):
             bits.append(int(n, 16) & 0xFFFFFFFF)
+        elif ('.' in n) or ('e' in n) or ('E' in n):
+            bits.append(f2b(_win_float(n)))
         else:
             bits.append(i2b(int(n)))
     while len(bits) < 4:

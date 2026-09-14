@@ -2,204 +2,110 @@
 // Copyright (c) 2026, Fernando Sahmkow
 // See LICENSE in the repository root for full terms.
 //
-// Foliage vertex shader body. Two compile-time axes:
+// Foliage vertex shader body — Warcraft III Reforged 3.0.0.
 //
-//   HAS_SHADOWS — RECEIVE_SHADOWS && !SHADOW_PASS in engine terms.
-//                 When false the cascade outputs are gated out via the
-//                 VSOutput's `Conditional<>` slots.
-//   HAS_WIND    — sample the wind-direction texture at three nearby
-//                 texels, recover a 2D gradient, and pre-displace +
-//                 swing the vertex XY in world space. Z stays fixed.
-//                 The displaced XY feeds the clip-space transform,
-//                 the world-space position output, and (when shadows
-//                 are active) the shadow projection.
+// 3.0.0 moved foliage onto the HD mesh's vertex banks: `hdVsCB1` (the blight
+// rect) and `hdVsCB2` (world / worldView / worldViewProj, the tint, the UV0
+// matrix and the wind clock), read at HD's offsets. What stayed foliage's own
+// is the wind: the b3 wind-area rect and the t0 wind field, both only reached
+// on the WIND permutation.
 //
-// Wind algorithm (matches the shipped engine VS bit-for-bit):
-//   1. Skip the entire block when `vertColor.w == 0` (vertex isn't
-//      wind-affected).
-//   2. Strength `s = 0.015 · vertColor.w · min(100, |tangent.w|)`.
-//   3. Map vertex world XY into wind-area UV via cb3[0] (origin .xy,
-//      size .zw). Sample the wind texture at three taps — center,
-//      `-1 texel` in U, `-1 texel` in V — and take the differences as
-//      a 2D gradient clamped to [-1, 1].
-//   4. Pre-displace world XY by `10 · |tangent.w| · gradient`, then
-//      add a `(cos, sin) · s` swing whose phase is
-//      `2π · (frac(time) + preDisp)`.
+// Against 2.0.0 the payload is HD's (view-space position, normal and tangent,
+// the homogeneous world position on TEXCOORD10) with the blight UV folded into
+// TEXCOORD0.zw, and the cascade projections are gone: the pixel shader
+// reprojects the world position itself. The wind algorithm is unchanged,
+// instruction for instruction.
 //
-// Tangent-handedness stencil:
-//   `worldTangent.w = sign(tangent.w)` ∈ {-1, 0, +1}. The PS uses this
-//   to flip the bitangent (bitangent = cross(N, T) · sign).
+// Wind (HAS_WIND only, and only for vertices with a positive wind weight):
+//   1. strength s = 0.015 * vertColor.w * min(100, |tangent.w|).
+//   2. Map the vertex XY into the wind area via b3 and sample the wind field
+//      at three taps -- centre, one texel back in U, one texel up in V -- for
+//      a gradient clamped to [-1, 1]. The field is stored V-flipped.
+//   3. Pre-displace XY by 10 * s * |tangent.w| * gradient.
+//   4. Only where the gradient is EXACTLY zero on both axes (a flat field),
+//      add a (cos, sin) * s swing with phase 2*pi * (frac(time) + XY).
+// The displaced XY then feeds every position output; Z never moves, and the
+// normal and tangent are left alone -- wind sways geometry without re-facing
+// it.
 
 implementing wc3_shaders;
 
-// World 3×3 applied to an object-space direction. Each cb2[4..6].xyz
-// is a row of the rotation; the .w lanes are unused. No
-// renormalisation here — callers either re-normalise (for normals)
-// or rely on the result staying in tangent space (for raw tangents).
-float3 foliageTransformDir(float3 d, float4 worldRow0,
-                           float4 worldRow1, float4 worldRow2)
-{
-    float3 r = d.y * worldRow1.xyz;
-    r = d.x * worldRow0.xyz + r;
-    return d.z * worldRow2.xyz + r;
-}
-
-// Object → world point: 3×3 rotation + translation.
-float3 foliageTransformPos(float3 p, float4 worldRow0, float4 worldRow1,
-                           float4 worldRow2, float4 worldTranslate)
-{
-    return foliageTransformDir(p, worldRow0, worldRow1, worldRow2)
-         + worldTranslate.xyz;
-}
-
-// 2π — used to convert the wind phase from [0, 1) into radians.
+// 2*pi, converting the wind phase from turns into radians.
 static const float TWO_PI = 6.28318548;
+// Strength per unit of wind weight and tangent magnitude, and its clamp.
+static const float WIND_STRENGTH_SCALE = 0.0149999997;
+static const float WIND_TANGENT_MAX = 100.0;
+// Pre-displacement gain applied to the field gradient.
+static const float WIND_GRADIENT_GAIN = 10.0;
 
-// Sample the wind texture at three taps and recover a gradient. Inputs
-// are the in-area UV (`uv`) and the texel size (`texelU`, `texelV` —
-// foliage assumes square texels so both are the same value, but we
-// pass both for clarity at the call site). Returns the per-axis
-// gradient clamped to [-1, +1].
-float2 sampleWindGradient(float2 uv, float texelU)
+// The wind field's gradient at an in-area UV, per axis, clamped to [-1, 1].
+float2 sampleWindGradient(float2 uv, float texel)
 {
-    // Engine convention: V is sampled flipped (1 - uv.y).
     float vFlipped = 1.0 - uv.y;
-    float center = t_foliageWind.SampleLevel(s_foliageWind,
+    float centre = t_foliageWind.SampleLevel(s_foliageWind,
                        float2(uv.x, vFlipped), 0).x;
-
-    // -1 texel in V (which corresponds to +1 texel in vFlipped because
-    // of the V flip): sample at vFlipped+texelU.
-    float vMinus  = t_foliageWind.SampleLevel(s_foliageWind,
-                        float2(uv.x - texelU, vFlipped), 0).x;
-    float dx      = vMinus - center;
-
-    // +1 texel in V for the Y gradient: in flipped space that is
-    // `vFlipped - texelU` (retail `-uv.y + (1 - texelU)`), NOT
-    // `vFlipped + texelU` — the latter flips the sign of dh/dy.
-    float uMinus  = t_foliageWind.SampleLevel(s_foliageWind,
-                        float2(uv.x, vFlipped - texelU), 0).x;
-    float dy      = uMinus - center;
-
-    // Engine clamps the gradient to [-1, 1] in both axes.
+    float dx = t_foliageWind.SampleLevel(s_foliageWind,
+                   float2(uv.x - texel, vFlipped), 0).x - centre;
+    // One texel UP in the flipped space is `vFlipped - texel`, not `+ texel`:
+    // the latter flips the sign of the Y gradient.
+    float dy = t_foliageWind.SampleLevel(s_foliageWind,
+                   float2(uv.x, vFlipped - texel), 0).x - centre;
     return clamp(float2(dx, dy), float2(-1, -1), float2(1, 1));
 }
 
-// Wind-driven XY displacement. Returns the (possibly displaced) world
-// XY; Z stays at the input value. When the vertex is wind-inert
-// (vertColor.w == 0) the input XY is returned unchanged.
-//
-// `tangentW` carries the per-vertex wind-strength scalar in the
-// tangent's .w lane (also used as the handedness sign downstream —
-// the abs() here keeps the strength orientation-agnostic).
-float2 applyWindDisplacement(float2 inputXY, float vertWeight,
-                             float tangentW)
+// Wind-displaced XY for one vertex; the input XY unchanged when the vertex
+// carries no wind weight.
+float2 applyWindDisplacement(float2 inputXY, float windWeight, float tangentW)
 {
-    if (vertWeight <= 0.0)
+    if (!(0.0 < windWeight))
         return inputXY;
 
-    // Strength = 0.015 · vertWeight · min(100, |tangent.w|).
-    float strength = 0.0149999997
-                   * vertWeight
-                   * min(100.0, abs(tangentW));
+    float strength = min(abs(tangentW), WIND_TANGENT_MAX) * windWeight
+                   * WIND_STRENGTH_SCALE;
 
-    // Wind-area UV via cb3 origin / size.
-    float2 areaUV = (inputXY - foliageVsCB3.windOrigin) / foliageVsCB3.windSize;
-
-    // Texel size for the gradient taps.
     uint w, h, mips;
     t_foliageWind.GetDimensions(0, w, h, mips);
     float texel = 1.0 / (float)w;
 
-    // Recover the wind direction gradient via three texture samples.
+    float2 areaUV = (inputXY - foliageVsCB3.windOrigin) / foliageVsCB3.windSize;
     float2 gradient = sampleWindGradient(areaUV, texel);
 
-    // Pre-displacement: strength · 10 · |tangent.w| · gradient (retail
-    // `mul r0.y, strength, |tangentW|` then ·10), applied to the input XY
-    // before the swing gate.
-    float2 preDisp = inputXY + strength * 10.0 * abs(tangentW) * gradient;
+    float2 preDisp = (strength * abs(tangentW) * WIND_GRADIENT_GAIN) * gradient
+                   + inputXY;
 
-    // Phase = 2π · (frac(time) + preDisp), one component per axis.
-    float2 phase = (frac(foliageVsCB2.effectTime) + preDisp) * TWO_PI;
-
-    // Swing gate (matches the retail `movc r0.w ? swing : preDisp`): the
-    // cos/sin swing is added ONLY when the gradient is exactly zero in both
-    // axes — a flat wind field gets a uniform oscillation, whereas a vertex
-    // sitting on a real gradient just bends via the pre-displacement. (The
-    // engine's condition is `gateX && gateY`, not its negation.)
-    bool gateX = gradient.x == 0.0;
-    bool gateY = gradient.y == 0.0;
-    bool flatField = gateX && gateY;
-    float2 swing = float2(cos(phase.x), sin(phase.y)) * strength;
-    return flatField ? (preDisp + swing) : preDisp;
+    bool flatField = gradient.x == 0.0 && gradient.y == 0.0;
+    float2 phase = (preDisp + frac(hdVsCB2.effectTime)) * TWO_PI;
+    float2 swung = strength * float2(cos(phase.x), sin(phase.y)) + preDisp;
+    return flatField ? swung : preDisp;
 }
 
-// Tangent-handedness stencil: sign(tangent.w) ∈ {-1, 0, +1}. HLSL's
-// `sign()` lowers to lt+lt+iadd+itof, matching the engine's pattern.
-float foliageHandedness(float tangentW)
-{
-    return sign(tangentW);
-}
-
-public FoliageVSOutput foliageVSBody<
-    let HAS_WIND : bool>(FoliageVSInput input)
+public FoliageVSOutput foliageVSBody<let HAS_WIND : bool>(FoliageVSInput input)
 {
     FoliageVSOutput output;
 
-    // 1. Optionally apply wind to the vertex XY. Z is always fixed.
     float2 xy = HAS_WIND
         ? applyWindDisplacement(input.position.xy, input.vertColor.w, input.tangent.w)
         : input.position.xy;
-    float3 displaced = float3(xy, input.position.z);
+    float3 objectPos = float3(xy, input.position.z);
 
-    // 2. World-space position (uses the displaced XY).
-    float3 worldP = foliageTransformPos(
-        displaced,
-        foliageVsCB2.worldRow0, foliageVsCB2.worldRow1,
-        foliageVsCB2.worldRow2, foliageVsCB2.worldTranslate);
-    output.worldPos = float4(worldP, 0);
+    output.position = transformClipPos(objectPos, hdVsCB2.worldViewProj);
 
-    // 3. Clip-space position (uses the displaced XY).
-    output.position = mul(foliageVsCB2.worldViewProj, float4(displaced, 1.0));
+    // The wind weight rides in .w, so the tint takes an opaque vertex colour.
+    output.color = float4(input.vertColor.xyz, 1.0) * hdVsCB2.diffuseColor;
 
-    // 4. Tint × per-vertex colour (vertColor.w forced to 1 — the .w
-    // lane carries the wind-weight, not a real alpha).
-    float4 vertCol = float4(input.vertColor.xyz, 1.0);
-    output.color = foliageVsCB2.tintColor * vertCol;
-
-    // 5. UV0 transformed by the 2×3 affine in cb2[14..15].xyw, UV1
-    // forwarded raw.
-    float3 uvH = float3(input.uv0, 1.0);
+    float4 worldPos = computeWorldPos4(objectPos, hdVsCB2.world);
+    output.worldPos = worldPos;
     output.texCoord = float4(
-        dot(foliageVsCB2.texMtx0Row0.xyw, uvH),
-        dot(foliageVsCB2.texMtx0Row1.xyw, uvH),
-        input.uv1.x, input.uv1.y);
+        transformUV(input.uv0, hdVsCB2.texMtx0Row0, hdVsCB2.texMtx0Row1),
+        blightMapUV(worldPos.xy, hdVsCB1.rect));
 
-    // 6. World-space normal (uses the original normal — wind sways but
-    // doesn't bend the geometry's facing).
-    float3 worldN = foliageTransformDir(
-        input.normal,
-        foliageVsCB2.worldRow0, foliageVsCB2.worldRow1, foliageVsCB2.worldRow2);
-    output.worldNormal = worldN * rsqrt(dot(worldN, worldN));
+    output.viewPos = float4(transformByWorldView(objectPos, hdVsCB2.worldView), 0);
 
-    // 7. World-space tangent (raw, not normalised) + handedness in .w.
-    float3 worldT = foliageTransformDir(
-        input.tangent.xyz,
-        foliageVsCB2.worldRow0, foliageVsCB2.worldRow1, foliageVsCB2.worldRow2);
-    output.worldTangent = float4(worldT, foliageHandedness(input.tangent.w));
-
-    // 8. Shadow cascades — the pre-shadow transform uses the displaced
-    // XY + original Z, so wind-disturbed pixels self-shadow correctly.
-    // Cascade fields only exist on this perm when WC3_HAS_SHADOWS is set
-    // (gated on the FoliageVSOutput struct in types/vs_io.slang).
-#if WC3_HAS_SHADOWS
-    {
-        float4 shadowPos = mul(foliageVsCB2.shadowWorld,
-                               float4(displaced, 1.0));
-        output.shadowClip0 = mul(vsCB1.cascade0, shadowPos);
-        output.shadowClip1 = mul(vsCB1.cascade1, shadowPos);
-        output.shadowClip2 = mul(vsCB1.cascade2, shadowPos);
-    }
-#endif
+    // sign() lowers to the lt / lt / isub / itof the shipped shader uses, so
+    // a zero handedness stays zero.
+    output.tangentVS = float4(transformNormalRaw(input.tangent.xyz, hdVsCB2.worldView),
+                              sign(input.tangent.w));
+    output.normalVS = transformNormal(input.normal, hdVsCB2.worldView);
 
     return output;
 }

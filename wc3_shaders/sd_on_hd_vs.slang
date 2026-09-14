@@ -24,9 +24,9 @@ public VSOutput sd_on_hd_vs_main<
     // renormalises the skinned normal internally so the raw transform
     // below is safe.
     float3 skinnedPos, skinnedNormal, skinnedTangent;
-    TSkin.transform(
+    TSkin.transform<ClassicBonePalette>(
         input.position, input.normal, input.tangent,
-        input.weights, input.boneIndices, vsCB3,
+        input.weights, input.boneIndices,
         skinnedPos, skinnedNormal, skinnedTangent);
 
     output.worldPos.xyz = transformByWorldView(skinnedPos, vsCB2.worldView);

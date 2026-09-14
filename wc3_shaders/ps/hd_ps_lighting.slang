@@ -34,6 +34,47 @@ public struct HDSurface
     public float  kInv;       // 1 - k
 };
 
+// The surface for a shading normal, eye direction, albedo and the ORM
+// roughness / metal pair, in the shipped order of operations.
+//
+// Authored roughness is remapped away from both extremes -- a perfectly smooth
+// surface has no stable specular lobe, and a perfectly rough one loses the
+// highlight entirely -- and then, when the draw enables it, geometric specular
+// anti-aliasing folds the sub-pixel normal variance into it so high-frequency
+// normals stop sparkling.
+public HDSurface hdBuildSurface(float3 N, float3 V, float3 albedo, float2 roughMetal)
+{
+    float roughness = saturate(roughMetal.x);
+    roughness = roughness * HD_ROUGHNESS_SCALE + HD_ROUGHNESS_BIAS;
+    roughness = (asuint(hdPsCB2.useNdf) != 0) ? specularAA(roughness, N)
+                                              : roughness;
+    return hdSurfaceFromRough(N, V, albedo, roughMetal.y, roughness);
+}
+
+// The same, over a roughness the caller has already remapped. `terrain_ps` has
+// no specular anti-aliasing at all -- no derivative is taken anywhere in its 25
+// programs -- so it remaps and passes the result straight in.
+public HDSurface hdSurfaceFromRough(float3 N, float3 V, float3 albedo, float metal,
+                                    float rough)
+{
+    HDSurface surf;
+    surf.N = N;
+    surf.V = V;
+    surf.albedo = albedo;
+    surf.metal = metal;
+    surf.rough = rough;
+
+    surf.F0 = surf.metal * surf.albedo;
+    surf.diffColor = (surf.albedo - surf.metal * surf.albedo) * INV_PI;
+
+    float rr = surf.rough * surf.rough;
+    surf.a2 = rr * rr;
+    float kSq = (1 + surf.rough) * (1 + surf.rough);
+    surf.kDirect = SCHLICK_K_FACTOR * kSq;
+    surf.kInv = -kSq * SCHLICK_K_FACTOR + 1;
+    return surf;
+}
+
 // GGX with the denominator clamped. The clamp is 3.0.0's, and it is what keeps
 // a mirror-smooth surface from dividing by zero at the exact specular peak.
 static float hdGGX(float ndh, float a2)
@@ -153,6 +194,51 @@ public HDIBLSample sampleHDIBL(float3 viewPos, HDSurface s)
 //     going black.
 public float3 hdMainLight(HDSurface s, float3 viewPos, float mainShadow)
 {
+    return hdMainLightIrr(s, viewPos, mainShadow, 1.0);
+}
+
+// The same, with the probe irradiance's hue normalisation taken against
+// `irrMaxScale` times its largest component instead of the component itself.
+//
+// `foliage_ps` is the one family that passes anything but 1: 0.4, in all 64
+// of its shaded permutations and in none of HD's, crystal's or sd_on_hd's. It
+// is NOT the same as scaling the irradiance by 0.4 -- the normalised colour is
+// still `irradiance / (eps + 0.4 * max)`, unscaled, and only the magnitude it
+// is restored to afterwards shrinks -- so the ambient delta mixed into both
+// halves is weighted down relative to the probe colour. A constant 1 folds
+// away, which keeps the other callers' bytecode where it was.
+public float3 hdMainLightIrr(HDSurface s, float3 viewPos, float mainShadow,
+                             float irrMaxScale)
+{
+    return hdMainLightWith<HDProbeSampler>(s, viewPos, mainShadow, irrMaxScale,
+                                           HDProbeSampler());
+}
+
+// Where the main light gets its probe sample from. HD's is `sampleHDIBL`, in the
+// light-aligned frame. `water_ps` samples the same probes in a different basis --
+// the plain view-to-world rotation with the engine's (x, z, -y) shuffle -- and
+// blends the result in with exactly this arithmetic.
+//
+// A sampler object rather than a sample taken up front, so the fetch stays at the
+// point in the arithmetic where the shipped programs make it: passing the sample
+// as an argument hoists it, which reorders 608 blobs across five families
+// without changing a value.
+public interface IHDProbeSampler
+{
+    HDIBLSample sample(float3 viewPos, HDSurface s);
+}
+
+public struct HDProbeSampler : IHDProbeSampler
+{
+    public HDIBLSample sample(float3 viewPos, HDSurface s)
+    {
+        return sampleHDIBL(viewPos, s);
+    }
+}
+
+public float3 hdMainLightWith<TProbe : IHDProbeSampler>(
+    HDSurface s, float3 viewPos, float mainShadow, float irrMaxScale, TProbe probe)
+{
     float3 L = hdPsCB2.mainLightDir.xyz;
     float3 H = normalize(s.V + L);
     float vdh = dot(H, s.V);
@@ -164,7 +250,7 @@ public float3 hdMainLight(HDSurface s, float3 viewPos, float mainShadow)
     directSpec = directSpec * hdVisibility(s, ndl, ndv);
     float shadowedNdl = max(0, ndl) * mainShadow;
 
-    HDIBLSample ibl = sampleHDIBL(viewPos, s);
+    HDIBLSample ibl = probe.sample(viewPos, s);
 
     float3 ambientColor = hdPsCB2.ambientColor.xyz;
     float maxAmb = max(ambientColor.x, max(ambientColor.y, ambientColor.z));
@@ -174,7 +260,8 @@ public float3 hdMainLight(HDSurface s, float3 viewPos, float mainShadow)
 
     // Hue-separate the probe irradiance and the analytical ambient before
     // mixing, so the blend preserves saturation instead of washing out.
-    float maxIrr = max(ibl.irradiance.x, max(ibl.irradiance.y, ibl.irradiance.z));
+    float maxIrr = irrMaxScale
+                 * max(ibl.irradiance.x, max(ibl.irradiance.y, ibl.irradiance.z));
     float3 irrN = ibl.irradiance * (1.0 / (SAFE_EPS + maxIrr));
     float3 ambDelta = ambientColor * invAmb - irrN;
 
@@ -249,6 +336,19 @@ public float3 hdClusterLights<
     let HAS_LIGHT_DEBUG : bool>(
     HDSurface s, float3 viewPos, float3 worldPos, float2 svPositionXY, float3 lit)
 {
+    return hdClusterLightsOffset<HAS_POINT_SHADOWS, HAS_LIGHT_DEBUG, false>(
+        s, viewPos, worldPos, svPositionXY, lit, float3(0, 0, 0));
+}
+
+// The same loop, with every cube-shadow kernel's centre direction optionally
+// pushed along `cubeOffset` (see hdCubeShadowOffset) -- `water_ps` only.
+public float3 hdClusterLightsOffset<
+    let HAS_POINT_SHADOWS : bool,
+    let HAS_LIGHT_DEBUG : bool,
+    let CUBE_NORMAL_OFFSET : bool>(
+    HDSurface s, float3 viewPos, float3 worldPos, float2 svPositionXY, float3 lit,
+    float3 cubeOffset)
+{
     HDCluster cluster = hdLookupCluster(svPositionXY);
 
     float stripe = 0;
@@ -319,7 +419,8 @@ public float3 hdClusterLights<
         // the address anyway, and a negative one would read before the array.
         int shadowSlot = max(0, lgt.shadowIndex());
         if (HAS_POINT_SHADOWS && shadowValid)
-            lightShadow = hdCubeShadow(shadowSlot, worldPos, cubeDist);
+            lightShadow = hdCubeShadowOffset<CUBE_NORMAL_OFFSET>(
+                shadowSlot, worldPos, cubeOffset, cubeDist);
 
         float3 H = normalize(s.V + Ldir);
         float vdh = dot(H, s.V);

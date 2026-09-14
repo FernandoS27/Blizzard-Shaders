@@ -2,35 +2,38 @@
 // Copyright (c) 2026, Fernando Sahmkow
 // See LICENSE in the repository root for full terms.
 //
-// Water vertex shader entry point.
+// Water vertex shader entry point — Warcraft III Reforged 3.0.0.
 //
-// The water pipeline compiles a single permutation — there's no
-// skinning, shadow, or vertex-format specialisation here. The engine
-// always binds the same 4-attribute stream (position, normal, color,
-// uv) and the same `vsCB2` layout (shared with HD_VS), so this shader
-// is just a small linear transform stack.
+// One permutation. 3.0.0 moved water onto the HD mesh's vertex banks --
+// `hdVsCB1` (the blight rect, plus the wave height in its second row) and
+// `hdVsCB2` (world / worldView / worldViewProj, the UV0 matrix and the shared
+// effect clock) -- and gave it something no other vertex stage in the module
+// has: a VERTEX TEXTURE FETCH. The water normal map is sampled twice at two
+// counter-scrolling coordinates, and the decoded normals' Y components displace
+// the vertex along object Z. Every position output (clip, view, world, and so
+// the blight UV) is taken from the displaced vertex; the normal is not.
 //
-// What the shader emits (consumed by water_ps):
-//   clipPos      — object → clip via `vsCB2.worldViewProj`.
-//   color.rgb    — raw vertex color.
-//   color.a      — shore-opacity remap α' = 0.5·(α² + α) (see below).
-//   texCoord.xy  — UV run through the 2×3 matrix in `texMtx0Row0/Row1`.
-//                  The PS re-scales this into two octave-specific UVs
-//                  and animates them with `effectTime`.
-//   worldPos     — object → world via `vsCB2.world`.
-//   normalWS     — renormalised world-space geometry normal.
-//   upAxisWS.xyz — world Y column of `vsCB2.world` (per-object "up").
-//                  Used by the water PS as the TBN tangent so the
-//                  tangent frame stays aligned with the water surface.
-//   upAxisWS.w   — 1 (consumed by the PS as the bitangent-handedness
-//                  scalar; it's always 1 for water).
+// The two taps are the pixel shader's small octave: the same 0.014 tiling, the
+// same 0.0035 scroll, the same (-0.5, 0.5) shift on the second tap -- so the
+// geometry heaves with the ripples the pixel shader draws on it.
 
 implementing wc3_shaders;
 
-// Shore-opacity remap: α' = 0.5·α² + 0.5·α.
-//   α=0 → 0, α=1 → 1, α=0.5 → 0.375 (slightly concave).
-// Biases low-α vertices further toward transparent so shore lines fade
-// more aggressively than a straight pass-through.
+static const float WATER_WAVE_SCROLL = 0.00350000034;
+static const float WATER_WAVE_TILING = 0.0140000004;
+
+// Height offset from the two ripple taps, before the per-draw wave height.
+float waterWaveHeight(float2 uv, float time)
+{
+    float phase = frac(WATER_WAVE_SCROLL * time);
+    float2 uvA = uv * WATER_WAVE_TILING + phase;
+    float2 uvB = (uv + float2(-0.5, 0.5)) * WATER_WAVE_TILING - phase;
+    float yA = decodeNormalMap(t_waterVsNormal.SampleLevel(s_waterVsNormal, uvA, 0).xyw).y;
+    float yB = decodeNormalMap(t_waterVsNormal.SampleLevel(s_waterVsNormal, uvB, 0).xyw).y;
+    return yA + yB;
+}
+
+// The shore-opacity remap, unchanged from 2.0.0: a' = 0.5 * (a^2 - a) + a.
 float remapShoreAlpha(float a)
 {
     return (a * a - a) * 0.5 + a;
@@ -41,38 +44,22 @@ public WaterVSOutput water_vs_main(WaterVSInput input)
 {
     WaterVSOutput output;
 
-    // Step 1: clip-space position (computed directly from object space
-    // via the combined worldViewProj — avoids the precision loss of an
-    // intermediate world-space round-trip).
-    output.position = transformClipPos(input.position, vsCB2.worldViewProj);
+    float2 uv = transformUV(input.uv, hdVsCB2.texMtx0Row0, hdVsCB2.texMtx0Row1);
+    float height = waterWaveHeight(uv, hdVsCB2.effectTime);
+    float3 objectPos = float3(input.position.xy,
+                              height * hdVsCB1.waterWave.x + input.position.z);
 
-    // Step 2: vertex color pass-through + alpha remap.
-    output.color.rgb = input.vertColor.rgb;
-    output.color.a   = remapShoreAlpha(input.vertColor.a);
+    output.position = transformClipPos(objectPos, hdVsCB2.worldViewProj);
+    output.color = float4(input.vertColor.rgb, remapShoreAlpha(input.vertColor.a));
 
-    // Step 3: transformed UV. The water VS only uses UV0; the 2×3
-    // affine matrix in texMtx0Row0/Row1 is shared with the HD path.
-    output.texCoord = transformUV(
-        input.uv, vsCB2.texMtx0Row0, vsCB2.texMtx0Row1);
+    float4 worldPos = computeWorldPos4(objectPos, hdVsCB2.world);
+    output.worldPos = worldPos;
+    output.texCoord = float4(uv, blightMapUV(worldPos.xy, hdVsCB1.rect));
 
-    // Step 4: view-space position (emitted as the PS's "worldPos" — the
-    // PS transforms it back out through `invView` when sampling probes).
-    output.worldPos = transformByWorldView(input.position, vsCB2.worldView);
-
-    // Step 5: view-space normal (renormalised). Same space as the
-    // position above; the water PS's TBN frame and Snell refraction
-    // operate in this space.
-    output.normalWS = transformNormal(input.normal, vsCB2.worldView);
-
-    // Step 6: per-object up axis. The water PS's TBN frame uses this as
-    // the tangent direction (rather than a per-vertex tangent attr) —
-    // it's the world Y axis rotated by the object's worldView (so it
-    // stays co-located with `normalWS` above in view space). Extracted
-    // via `mul(worldView, (0,1,0,0))` rather than `worldView[1]`
-    // because the latter returns row 1 in HLSL/Slang matrix indexing,
-    // not column 1. .w = 1 is the bitangent handedness (always 1).
-    output.upAxisWS.xyz = mul(vsCB2.worldView, float4(0, 1, 0, 0)).xyz;
-    output.upAxisWS.w   = 1;
+    output.viewPos = transformByWorldView(objectPos, hdVsCB2.worldView);
+    output.normalVS = transformNormal(input.normal, hdVsCB2.worldView);
+    // The object's Y axis: worldView's second column.
+    output.tangentVS = float4(transformNormalRaw(float3(0, 1, 0), hdVsCB2.worldView), 1);
 
     return output;
 }

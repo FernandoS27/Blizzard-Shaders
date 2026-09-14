@@ -50,19 +50,26 @@ FAMILIES = {
     "sd_on_hd_vs":    ("sd_on_hd_vs", 144, 3),
     "sd_highspec_vs": ("sd_highspec_vs", 162, 3),
     "popcorn_vs":     ("popcornfx_vs", 72, 3),
-    "terrain_vs":     ("terrain_vs", 8, 3),
-    "foliage_vs":     ("foliage_vs", 8, 3),
+    "terrain_vs":     ("terrain_vs", 2, 3),
+    "foliage_vs":     ("foliage_vs", 2, 3),
     "water_vs":       ("water_vs", 1, 3),
     "sprite_vs":      ("sprite_vs", 1, 3),
+    "cliffblightmiscterrain_vs": ("cliffblightmiscterrain_vs", 1, 3),
+    "sd_lowspec_vs":  ("sd_lowspec_vs", 162, 3),
+    "volumetricfog_vs":   ("volumetricfog_vs", 1, 3),
+    "cameraocclusion_vs": ("cameraocclusion_vs", 1, 3),
+    "coneindicator_vs":   ("coneindicator_vs", 1, 3),
 }
 
 
-def input_attrs(path: Path) -> tuple[int, ...]:
+def input_attrs(path: Path, inflated: bool) -> tuple[int, ...]:
     """The ATTR indices of a disassembly's input signature, in register order.
 
     slangc names an input semantic ``ATTR<n*10>`` where fxc emits ``ATTR<n>``
-    (the same inflation recorded in `project_dxbc_sig_uninflate`), so exact
-    multiples of ten are divided back down. ATTR0 is unambiguous either way.
+    (the same inflation recorded in `project_dxbc_sig_uninflate`), so on the
+    slang leg (``inflated``) the indices are divided back down. Only that leg:
+    retail's ``ATTR10`` is a real attribute (`cameraocclusion_vs`'s billboard
+    size), and dividing it too turned (0, 10, 1, 7) into (0, 1, 1, 7).
     """
     out: list[int] = []
     in_sig = False
@@ -73,8 +80,9 @@ def input_attrs(path: Path) -> tuple[int, ...]:
         if line.startswith("// Output signature:"):
             break
         if in_sig and line.startswith("// ATTR"):
-            idx = int(line.split()[2])
-            out.append(idx // 10 if idx >= 10 and idx % 10 == 0 else idx)
+            out.append(int(line.split()[2]))
+    if inflated and out and max(out) >= 10 and all(i % 10 == 0 for i in out):
+        out = [i // 10 for i in out]
     return tuple(out)
 
 
@@ -110,7 +118,7 @@ def check(family: str, verbose: bool = False) -> tuple[int, int, int]:
         if not sp.exists():
             skipped += 1
             continue
-        a, b = input_attrs(sp), input_attrs(rp)
+        a, b = input_attrs(sp, True), input_attrs(rp, False)
         if a == b:
             ok += 1
         else:

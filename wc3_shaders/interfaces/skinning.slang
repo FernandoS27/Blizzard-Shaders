@@ -4,7 +4,8 @@
 //
 // Compile-time skinning policy. `Rigid` passes vertex attributes through
 // unchanged; `FourBoneSkinning` / `SDFourBoneSkinning` apply a 4-bone
-// linear blend against the bone palette in `BonePalette`.
+// linear blend against a bone palette chosen by `TBones` -- the classic
+// 256-bone buffer, or `sd_lowspec_vs`'s 72-bone one.
 //
 // Each bone is a float4x3 affine transform (transpose of the engine's
 // 3x4 row-major upload). The position multiply puts the vector on the
@@ -13,14 +14,32 @@
 
 implementing wc3_shaders;
 
+// Where a classic (2.0.0-layout) bone palette lives. The two shipped palettes
+// are the same record at b3 in different lengths: 256 bones for the
+// highspec / SD-on-HD shaders, 72 for the lowspec one, which is what a
+// feature-level-9 constant buffer can hold.
+public interface ISDBoneSource
+{
+    static float4x3 fetch(uint index);
+};
+
+public struct ClassicBonePalette : ISDBoneSource
+{
+    static float4x3 fetch(uint index) { return vsCB3.matrices[index]; }
+};
+
+public struct LowspecBonePalette : ISDBoneSource
+{
+    static float4x3 fetch(uint index) { return sdLowspecVsCB3.matrices[index]; }
+};
+
 public interface ISkinning
 {
     static const bool isSkinned;
 
-    static void transform(
+    static void transform<TBones : ISDBoneSource>(
         float3 objectPos, float3 objectNormal, float4 objectTangent,
         float4 weights, uint4 boneIndices,
-        BonePalette bones,
         out float3 skinnedPos, out float3 skinnedNormal, out float3 skinnedTangent);
 };
 
@@ -29,10 +48,9 @@ public struct Rigid : ISkinning
 {
     static const bool isSkinned = false;
 
-    static void transform(
+    static void transform<TBones : ISDBoneSource>(
         float3 objectPos, float3 objectNormal, float4 objectTangent,
         float4 weights, uint4 boneIndices,
-        BonePalette bones,
         out float3 skinnedPos, out float3 skinnedNormal, out float3 skinnedTangent)
     {
         skinnedPos     = objectPos;
@@ -53,20 +71,19 @@ public struct FourBoneSkinning : ISkinning
 {
     static const bool isSkinned = true;
 
-    static void transform(
+    static void transform<TBones : ISDBoneSource>(
         float3 objectPos, float3 objectNormal, float4 objectTangent,
         float4 weights, uint4 boneIndices,
-        BonePalette bones,
         out float3 skinnedPos, out float3 skinnedNormal, out float3 skinnedTangent)
     {
 
         float weightSum = dot(weights, float4(1, 1, 1, 1));
         if (weightSum != 0.0)
         {
-            float4x3 M  = bones.matrices[boneIndices.y] * weights.y;
-            M          += bones.matrices[boneIndices.x] * weights.x;
-            M          += bones.matrices[boneIndices.z] * weights.z;
-            M          += bones.matrices[boneIndices.w] * weights.w;
+            float4x3 M  = TBones.fetch(boneIndices.y) * weights.y;
+            M          += TBones.fetch(boneIndices.x) * weights.x;
+            M          += TBones.fetch(boneIndices.z) * weights.z;
+            M          += TBones.fetch(boneIndices.w) * weights.w;
 
             float3x3 R = (float3x3)M;
 
@@ -98,19 +115,18 @@ public struct SDFourBoneSkinning : ISkinning
 {
     static const bool isSkinned = true;
 
-    static void transform(
+    static void transform<TBones : ISDBoneSource>(
         float3 objectPos, float3 objectNormal, float4 objectTangent,
         float4 weights, uint4 boneIndices,
-        BonePalette bones,
         out float3 skinnedPos, out float3 skinnedNormal, out float3 skinnedTangent)
     {
         float weightSum = dot(weights, float4(1, 1, 1, 1));
         if (weightSum != 0.0)
         {
-            float4x3 M  = bones.matrices[boneIndices.y] * weights.y;
-            M          += bones.matrices[boneIndices.x] * weights.x;
-            M          += bones.matrices[boneIndices.z] * weights.z;
-            M          += bones.matrices[boneIndices.w] * weights.w;
+            float4x3 M  = TBones.fetch(boneIndices.y) * weights.y;
+            M          += TBones.fetch(boneIndices.x) * weights.x;
+            M          += TBones.fetch(boneIndices.z) * weights.z;
+            M          += TBones.fetch(boneIndices.w) * weights.w;
 
             float3x3 R = (float3x3)M;
 

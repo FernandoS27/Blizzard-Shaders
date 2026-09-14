@@ -31,7 +31,7 @@
 // blend order all mirror the shipped DXBC. The body reconstructs the UV from
 // `SV_Position` and never reads the interpolated TEXCOORD0, exactly as the
 // shipped shader does (it is declared on `SpritePSInput` only so the ISGN
-// matches). The optional far-field-only flag (cb1[2].w) is a Warcraft addition
+// matches). The optional far-field-only flag (cb3[2].w) is a Warcraft addition
 // over the reference, clamping the CoC positive to suppress foreground blur.
 
 implementing wc3_shaders;
@@ -62,12 +62,12 @@ float dofSampleDepth(float2 uv)
 [shader("fragment")]
 public float4 depth_of_field_ps_main(SpritePSInput input) : SV_Target0
 {
-    const float2 texelSize    = depthOfFieldPsCB1.invResolution;
-    const float  maxBlurSize  = depthOfFieldPsCB1.maxBlurSize;
-    const float  radiusScale  = depthOfFieldPsCB1.radiusScale;
-    const float  focusScale   = depthOfFieldPsCB1.focusScale;
-    const float  invFocus     = 1.0 / depthOfFieldPsCB1.focusDistance;
-    const bool   farFieldOnly = depthOfFieldPsCB1.farFieldOnly == 1.0;
+    const float2 texelSize    = depthOfFieldPsCB3.invResolution;
+    const float  maxBlurSize  = depthOfFieldPsCB3.maxBlurSize;
+    const float  radiusScale  = depthOfFieldPsCB3.radiusScale;
+    const float  focusScale   = depthOfFieldPsCB3.focusScale;
+    const float  invFocus     = 1.0 / depthOfFieldPsCB3.focusDistance;
+    const bool   farFieldOnly = depthOfFieldPsCB3.farFieldOnly == 1.0;
 
     // Center UV is rebuilt from pixel coordinates, not the TEXCOORD0 input.
     float2 centerUv = texelSize * input.svPosition.xy;
