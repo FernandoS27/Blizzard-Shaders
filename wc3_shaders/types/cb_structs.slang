@@ -210,7 +210,16 @@ public [[vk::binding(3, 0)]] ConstantBuffer<HDBonePalette> hdVsCB3 : register(b3
 // Alternative bone palette: one structured buffer shared by many draws,
 // indexed from a per-draw base in `hdVsCB2.boneBufferBase`. Selected by the
 // BONE_BUFFER permutation axis, which is only observable on skinned meshes.
-public [[vk::binding(16, 1)]] StructuredBuffer<BoneTransform> t_hdBones : register(t16);
+//
+// Vertex-stage structured buffers sit past both stages' texture slots in set
+// 1 (binding = VsBufferBindingOffset + register): VS register t16 would
+// otherwise land on the pixel stage's t0.
+#ifdef WGSL_TARGET
+public static const int VsBufferBindingOffset = 2 * PsSrvBindingOffset;
+#else
+public static const int VsBufferBindingOffset = 2 * PsBindingOffset;
+#endif
+public [[vk::binding(VsBufferBindingOffset + 16, 1)]] StructuredBuffer<BoneTransform> t_hdBones : register(t16);
 
 // Per-draw pixel constants for the 3.0.0 HD mesh shader (b2).
 //
