@@ -16,7 +16,7 @@ if errorlevel 1 goto :error
 
 rem Repack from the committed wc3_bls_templates.json (extracted layout metadata)
 rem so the build needs no shipped shader binaries. Regenerate that JSON with
-rem `py extract_templates.py --templates war3.w3mod\shaders` when targeting a
+rem `py tools\extract_templates.py --templates war3.w3mod\shaders --merge` when targeting a
 rem new game patch. Pass --templates war3.w3mod\shaders here to fall back to
 rem the shipped BLS for any family the JSON lacks.
 py build_bls.py --output bls_out --strip

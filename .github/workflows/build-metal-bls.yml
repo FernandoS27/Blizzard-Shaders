@@ -17,7 +17,7 @@ name: Build Metal BLS
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
     inputs:
       macos_min:
@@ -28,10 +28,12 @@ permissions:
   contents: read
 
 env:
-  # shader-slang/slang release for the compile stage. Bump to pick up a
-  # newer slangc; clear to use the latest release. The setup-slang action
-  # falls back to latest if this tag's asset is missing.
-  SLANG_VERSION: "2026.9.3"
+  # shader-slang/slang release for the compile stage. Must name a tag that
+  # actually exists (setup-slang fails the build otherwise) — clear it only
+  # if you deliberately want to track the latest release. The module is
+  # validated against this compiler; bump it and re-run the full sweep
+  # together, never one without the other.
+  SLANG_VERSION: "2026.9.2"
   MACOS_MIN: "11"
 
 jobs:
@@ -53,6 +55,11 @@ jobs:
 
       - name: Compile Metal source
         run: python3 compile_all_slang.py --target metal --slangc "$SLANGC"
+
+      # compile_all_slang.py always exits 0, so a family that stopped
+      # compiling would otherwise ride through as a partial artifact.
+      - name: Verify every perm compiled
+        run: python3 tools/check_build_coverage.py --compiled metal
 
       - name: Upload .metal sources
         uses: actions/upload-artifact@v4
@@ -94,8 +101,17 @@ jobs:
           min="${{ github.event.inputs.macos_min || env.MACOS_MIN }}"
           python3 tools/metal_compile_libs.py --macos-min "$min"
 
+      - name: Verify every .metal linked
+        run: python3 tools/check_build_coverage.py --compiled metallib
+
       - name: Pack Metal BLS
         run: python3 build_bls.py --output bls_out --verbose
+
+      # build_bls.py catches its own per-family errors and still exits 0.
+      # This is what turns a missing template or a short bundle into a
+      # failed build instead of a quietly incomplete download.
+      - name: Verify every BLS bundle
+        run: python3 tools/check_build_coverage.py --packed metal --bls-out bls_out
 
       - name: Upload BLS artifact
         uses: actions/upload-artifact@v4

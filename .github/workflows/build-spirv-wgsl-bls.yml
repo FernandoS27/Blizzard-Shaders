@@ -13,15 +13,23 @@ name: Build SPIR-V + WGSL BLS
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  # shader-slang/slang release; see setup-slang action for fallback behaviour.
-  SLANG_VERSION: "2026.9.3"
+  # shader-slang/slang release. Must name a tag that actually exists —
+  # setup-slang fails the build rather than silently floating onto the
+  # latest compiler. Keep in step with build-metal-bls.yml.
+  SLANG_VERSION: "2026.9.2"
+
+  # ffxcmaaedge1 / ffxcmaaedgecombine cannot be expressed in WGSL (they
+  # need unorm storage textures, which WGSL has no format for), so they are
+  # excluded by name instead of by a blanket tolerance — that way a *new*
+  # WGSL failure still fails the build.
+  WGSL_UNSUPPORTED: "--allow ffxcmaaedge1:webgpu --allow ffxcmaaedgecombine:webgpu"
 
 jobs:
   build:
@@ -46,8 +54,21 @@ jobs:
       - name: Compile WGSL
         run: python3 compile_all_slang.py --target webgpu --slangc "$SLANGC"
 
+      # Neither compile_all_slang.py nor build_bls.py can fail on its own
+      # (both always exit 0), so these are the steps that notice a family
+      # dropping out of the grid.
+      - name: Verify every perm compiled
+        run: |
+          python3 tools/check_build_coverage.py --compiled vulkan
+          python3 tools/check_build_coverage.py --compiled webgpu $WGSL_UNSUPPORTED
+
       - name: Pack BLS
         run: python3 build_bls.py --output bls_out --verbose
+
+      - name: Verify every BLS bundle
+        run: |
+          python3 tools/check_build_coverage.py --packed vulkan --bls-out bls_out
+          python3 tools/check_build_coverage.py --packed webgpu --bls-out bls_out $WGSL_UNSUPPORTED
 
       - name: Upload BLS artifact
         uses: actions/upload-artifact@v4

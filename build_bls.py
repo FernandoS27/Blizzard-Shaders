@@ -1527,7 +1527,7 @@ def main():
                          'extract_templates.py (default: %(default)s). Used as the '
                          'template source when --templates is not given, or for any '
                          'family the --templates directory lacks. Generate it with '
-                         '`python extract_templates.py --templates war3.w3mod/shaders`.')
+                         '`python tools/extract_templates.py --templates war3.w3mod/shaders`.')
     ap.add_argument('--output', required=True,
                     help='output directory base. Two trees are written:\n'
                          '  <output>_1_8/{ps,vs,mtlfs,mtlvs}/*.bls — the\n'
@@ -1562,7 +1562,7 @@ def main():
     if json_templates is None and not args.templates:
         ap.error(
             'no template source: pass --templates DIR, or generate '
-            f'{args.templates_json} with extract_templates.py')
+            f'{args.templates_json} with tools/extract_templates.py')
 
     def get_dx_template(fam, cfg):
         """DX template dict for a family, JSON-first then --templates dir."""

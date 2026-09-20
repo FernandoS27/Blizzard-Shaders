@@ -44,8 +44,20 @@ runs:
         }
 
         ver="${SLANG_VERSION}"
-        if [ -z "$ver" ] || ! fetch "$ver"; then
-          echo "Pinned slang '${SLANG_VERSION:-<unset>}' unavailable — resolving latest release"
+        if [ -n "$ver" ]; then
+          # An explicit pin that does not resolve is a build error, never a
+          # cue to take whatever shipped since. slangc version drift has
+          # silently changed emitted bytecode before (the popcorn_vs
+          # 2026.1-vs-2026.8 miscompile), and a pin typo — e.g. a version
+          # that was never released — would otherwise float the whole
+          # pipeline onto the latest compiler without a word in the log.
+          if ! fetch "$ver"; then
+            echo "::error::pinned slang v$ver has no ${asset_arch} asset."
+            echo "::error::Pin a released version, or leave SLANG_VERSION empty to track latest."
+            exit 1
+          fi
+        else
+          echo "No slang pin set — resolving latest release"
           if [ -n "$GH_TOKEN" ]; then
             ver=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
                     https://api.github.com/repos/shader-slang/slang/releases/latest \

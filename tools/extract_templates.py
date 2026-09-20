@@ -23,8 +23,14 @@ only ~15 distinct binding chunks and ~5 distinct signatures), so the JSON
 stores distinct-value pools and references them by index — the whole file
 is a few KB.
 
-Usage:
-  extract_templates.py --templates war3.w3mod/shaders [-o wc3_bls_templates.json]
+Usage (from the repo root):
+  python tools/extract_templates.py --templates war3.w3mod/shaders
+  python tools/extract_templates.py --templates war3.w3mod/shaders --merge
+
+``--merge`` keeps whatever this run does not re-extract, per family and per
+section. Use it whenever the ``--templates`` tree is incomplete: a tree with
+only ``ps/`` and ``vs/`` would otherwise drop every Metal null pattern in the
+file, and a ``--family`` run would drop all 44 other families.
 """
 
 import argparse
@@ -33,10 +39,13 @@ import os
 import sys
 from pathlib import Path
 
-from shader_config import load_families
-from build_bls import read_template, read_metal_template_nulls
+# This script lives in tools/ but reads the repo-root modules and writes the
+# repo-root JSON, so the root has to go on the path before those imports.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 
-REPO_ROOT = Path(__file__).resolve().parent
+from shader_config import load_families  # noqa: E402  (needs REPO_ROOT on path)
+from build_bls import read_template, read_metal_template_nulls  # noqa: E402
 
 
 def _isgn_to_json(entries):
@@ -100,12 +109,28 @@ def main():
                     help='output JSON path (default: %(default)s)')
     ap.add_argument('--family', action='append',
                     help='limit to specific family (repeatable; default: all)')
+    ap.add_argument('--merge', action='store_true',
+                    help='update the existing output JSON in place instead of '
+                         'replacing it: families — and per-family "dx" / "metal" '
+                         'sections — this run did not extract are kept. Use this '
+                         'whenever the --templates tree is incomplete; a tree with '
+                         'only ps/ and vs/ otherwise silently drops every Metal '
+                         'null pattern in the file.')
     ap.add_argument('--verbose', '-v', action='store_true')
     args = ap.parse_args()
 
     families = load_families()
     names = args.family or list(families)
 
+    # --merge keeps what this run does not re-extract. Without it a partial
+    # run replaces the file wholesale, which is how a configured family can
+    # vanish from the JSON while every build stays green.
+    prev = {}
+    if args.merge and os.path.isfile(args.output):
+        with open(args.output) as fp:
+            prev = json.load(fp).get('families', {})
+
+    skipped = []
     out_families = {}
     for fam in names:
         if fam not in families:
@@ -140,9 +165,37 @@ def main():
                 print(f'  {fam} metal: {sum(nulls)} null / {len(nulls)} perms')
 
         if have_any:
+            if fam in prev:
+                # Overlay onto the previous entry so a DX-only --templates
+                # tree keeps the Metal section (and vice versa).
+                merged = dict(prev[fam])
+                merged.update(entry)
+                entry = merged
             out_families[fam] = entry
-        elif args.verbose:
-            print(f'  {fam}: no template found, skipped')
+        elif fam in prev:
+            out_families[fam] = prev[fam]
+            if args.verbose:
+                print(f'  {fam}: no template found, kept previous entry')
+        else:
+            skipped.append(fam)
+
+    # Anything --merge is carrying over but this run did not visit, in
+    # config order so the file stays diff-friendly.
+    if prev:
+        union = {**prev, **out_families}
+        ordered = {f: union[f] for f in families if f in union}
+        for f, e in union.items():
+            if f not in ordered:
+                ordered[f] = e      # in the JSON but no longer configured
+        out_families = ordered
+
+    # Loud, not verbose-only: a configured family with no template is packed
+    # through build_bls.py's no-template fallback (and skipped entirely for
+    # DX), which is a silent hole in every downstream build.
+    if skipped:
+        print(f'WARNING: no template found for {len(skipped)} configured '
+              f'famil{"y" if len(skipped) == 1 else "ies"}: '
+              f'{", ".join(skipped)}', file=sys.stderr)
 
     doc = {
         '_comment': 'Extracted BLS layout metadata (null pattern, stage, '
