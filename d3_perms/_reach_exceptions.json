@@ -1,0 +1,89 @@
+{
+  "_comment": "Retail decisions the D4 schedule cannot flip, each with the reason the retail program cannot reach the other outcome inside the engine's input domain. tools/d3_coverage.py (gate D4c) fails on any one-sided decision not listed here.",
+  "decisions": [
+    {
+      "subfamily": "Scene.fx__vs_scene_aux",
+      "insn": "ge r1.x, r0.w, -r0.w",
+      "lane": "x",
+      "reason": "tests x >= -x on x = (randFloat.z * 16 + |position.z|) / 16; randFloat is the engine's per-instance phase in [0, 1), so x is never negative (a negative randFloat also indexes the 20-row wave table out of range)"
+    },
+    {
+      "subfamily": "Residue__vs",
+      "insn": "ge r1.x, r0.w, -r0.w",
+      "lane": "x",
+      "reason": "the Scene.fx__vs_scene_aux wave phase again (scene_foliage_transparent_noisy_deform_vertextest): x = (randFloat.z * 16 + |position.z|) / 16 with randFloat in [0, 1), never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap",
+      "insn": "ge r0.z, r0.x, -r0.x",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap",
+      "insn": "ge r1.z, r1.y, -r1.y",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap",
+      "insn": "ge r0.x, r1.y, -r1.y",
+      "lane": "x",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_gray",
+      "insn": "ge r0.z, r0.x, -r0.x",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_gray",
+      "insn": "ge r1.z, r1.y, -r1.y",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_gray",
+      "insn": "ge r0.x, r1.y, -r1.y",
+      "lane": "x",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_blend",
+      "insn": "ge r0.z, r0.x, -r0.x",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_blend",
+      "insn": "ge r1.z, r1.y, -r1.y",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_blend",
+      "insn": "ge r0.x, r1.y, -r1.y",
+      "lane": "x",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_blend_gray",
+      "insn": "ge r0.z, r0.x, -r0.x",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_blend_gray",
+      "insn": "ge r1.z, r1.y, -r1.y",
+      "lane": "z",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    },
+    {
+      "subfamily": "PostFX.fx__main_ps_tonemap_blend_gray",
+      "insn": "ge r0.x, r1.y, -r1.y",
+      "lane": "x",
+      "reason": "fxc's sign handling of fmod(x, 1) on the colour-grading LUT coordinate x = scene texel * 63/8 (or * 7.875); the scene colour is sampled from an unsigned-normalized target, so x is never negative"
+    }
+  ]
+}

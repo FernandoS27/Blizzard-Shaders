@@ -1,0 +1,487 @@
+{
+ "0be8a882cee0021e6b9bcb6b53edd23f5453fd6b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "27dde24a0d1794781a086882536bb088853cf51f": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CoveragePrepass<AlphaUnshaped, 0>",
+   "DiscardLT"
+  ]
+ },
+ "2837a95feed894187d2836b400eaa1530fa4116b": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceSplitPixel<AlbedoOverlay, FactorUniform, CoveragePremultiplied, false, false, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "2a015e70c09ec0b8a0da56eb1c5372ad9780571f": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradiancePrepassVertex"
+  ]
+ },
+ "2a662eb7d033e4b2e208f1b7eb31077d6224c6a1": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceBumpPixel<ShadowHardwareCompare, true, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "2a6f636f0a61dc2335733fb7186845d894d51150": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "2fd88c5a296c37bd75b8bb84e393146b5e96c062": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "30897b335c56b20aae85d42bda3b92164164cbe6": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "35cce55f352d8c0ddc6e73bf48f41320ec844ee0": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1025U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "3621d4648b2d2f0941b88290f5c9b42f6724029b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "36f427c3a26d3baf5b7501e768830ce1896170ab": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "SkinnedMesh",
+   "MeshSurface<VertexLit<false, false, false, VertexMaterialAlpha>, PlanarProjection>"
+  ]
+ },
+ "40f0c351796d1b90ff43a1aa5ea69ab4c16c120d": {
+  "root": "legacy_aux_ps_main",
+  "specialize": [
+   "DistortionTwoLayer",
+   "AlphaTestOff"
+  ]
+ },
+ "4199efa853aed5fe5aaae6dceb1d83d0079cbcf7": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceBumpPixel<ShadowPackedDepth, true, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "4651cebb88d33cb79050423c88ec5a19d36e6ed4": {
+  "root": "filter_vs_main",
+  "specialize": [
+   "FilterTapsCentered"
+  ]
+ },
+ "472b0129193cfd43444787bcdbb646e1ff758ce5": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 1, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStage<2, TexGenMatrix<2, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "4a3f0ffc3ccd2ffd47fc05c84085c8220c8e6b02": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "4dcede51177063cb87af3e7198c7f7dfa3fbbbb7": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "MeshSurface<VertexLit<false, true, false, MaterialAlpha>, ShiftedScreenReflection>"
+  ]
+ },
+ "5aac558298e5f5125372753cc66e873d7e01d31b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "5ac6f14bf88ae9f15fa806ce5c4f9d1687ad0dbd": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "6019aea888b773786ce2905a4d82a6bc24ba7cc1": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "635e0ab7b10a41a27720f2246c107d0fe3be3c43": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "68a7e28f57c02feb850321b94f371a487bf890fe": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenMatrix<0, 0, 0>>, TexStage<5, TexGenMatrix<0, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "6909898d5bfb4a3b8eeb64ef381306d37b45ee94": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "6b584c50b9be078081933cabcf68a001ec421077": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "6d3868bfad071831e56e86b6067709abac007800": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceSplitPixel<AlbedoHeroTint, FactorUniform, CoverageAsIs, true, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "738da67a49839fb52490787825c3dc9b431bf47f": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "MeshSurface<TangentFrame<8, MaterialAlpha>, ShiftedScreenReflection>"
+  ]
+ },
+ "7badf48eb8a1cb342e8510b82ed3ad5543703008": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "823db14654aca587998d29c4dfc2c9a4ff0df418": {
+  "root": "particle_vs_main",
+  "specialize": [
+   "ColorEdgeAlpha",
+   "TexcoordMatrix<0, 0, 0>",
+   "TexcoordUnused",
+   "TexcoordUnused",
+   "TexcoordUnused"
+  ]
+ },
+ "843bd41ad6353be98cfbf7ded5c2358b7f0a188c": {
+  "root": "legacy_aux_ps_main",
+  "specialize": [
+   "PrepassDepthOnly",
+   "AlphaTestOff"
+  ]
+ },
+ "84f68052b0ec25f9820b923ab937f70478457768": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceBumpPixel<ShadowNone, true, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "85275cd622b26cc018b2e7bb0cafbf4cf3af988e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, Stage<Sampler1, 1, 5U, 5U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "865934355e4be647fe587e551fa7f4930b17e050": {
+  "root": "legacy_aux_ps_main",
+  "specialize": [
+   "PrepassDepthOnly",
+   "AlphaTestOff"
+  ]
+ },
+ "888f1cfb93fee1d7089d8472aeb3684bd1b74833": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameByteNormal<SkinNone>",
+   "ActorVertexLit<true>"
+  ]
+ },
+ "9552094185b89d863c5e355332971714f81eb504": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "9aed666442d82b774b12fa55d4abbef16503eef2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, Stage<Sampler1, 1, 5U, 9U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "a33258749539f14fdb254c1cb8fff6ebf6a9e59b": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradiancePrepassVertex"
+  ]
+ },
+ "a4e85fa335b839d77c46c6ab1f7474679cfdcae4": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 69U>, Stage<Sampler1, 1, 1U, 9U>, Stage<Sampler2, 2, 9U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "a75ba92896f4f68da50c7897e50dedb2c2962bf3": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseOneBone",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "b30b401a51a47a1b97e751f35d47b3336f74aa54": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "b8c16b1f64b9c71182a1678e7a06a79947a555b9": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 257U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "b8fe20533c3405f43b6040d5d18041ca4423e77e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 257U>, Stage<Sampler1, 1, 1U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "bc77648830b4495e1ca65301c82b5032cc412aaa": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<true>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c198e4d7f9012f27fbadfcc7fc4579c7f76e04c8": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c7399b7f8d11610d9bfc1d999bbcea2771d1fb69": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c892c22674c528efdc0598af6a4675ef6ad2cc72": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "caa7d6432147e222c26f26568bf5ba30b909603c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "d7697ff7f9ce2cd7bfdf27d23cf3610abef2507b": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "d94f6304034f6b8ac285a0927674389a36bdf0f5": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CoveragePrepass<AlphaUnshaped, 2>",
+   "DiscardLT"
+  ]
+ },
+ "d95c2c6b71a30e5229d32299bb1336383af322ce": {
+  "root": "particle_vs_main",
+  "specialize": [
+   "ColorPassthrough",
+   "TexcoordMatrix<0, 0, 0>",
+   "TexcoordMatrix<1, 1, 1>",
+   "TexcoordMatrix<2, 0, 2>",
+   "TexcoordMatrix<3, 1, 3>"
+  ]
+ },
+ "de6e634e1fdff03d54ed68e6b6df808f5d3cfbff": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardGT"
+  ]
+ },
+ "e7d7875808bd750cb2eb19979e741c1c423e0877": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenSphereMap>, TexStage<3, TexGenSphereMap>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "e7f14b527337459b053b38df14ffb5fef4118391": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceSplitVertex<LightVertexColor, SplitDiffuseAmbient, FacingAuthored, TexgenProjection<RestFromPosition>, AlphaFromVertex>"
+  ]
+ },
+ "ebf5f4ef8a4763dd7526218fbd12a56ff0ff8912": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 69U>, Stage<Sampler1, 1, 9U, 5U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "effd5ef2c18bd51e1406e0965fdf3d914be639a5": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "f6da6f633f5e5e6f8e5eefbb1bea8d094bae85d6": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 65U>, Stage<Sampler1, 1, 0U, 9U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLT"
+  ]
+ },
+ "fc13ee93130d549581d097784a5ae79cfc1bc247": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ }
+}

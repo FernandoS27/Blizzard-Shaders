@@ -34,3 +34,6 @@ tools/crc_collide/words_engine.txt
 tools/crc_collide/seeds.txt
 tools/crc_collide/crc3.exe
 tools/crc_collide/__pycache__
+d3_slang_out/
+d3_work/
+d3_re_residue/

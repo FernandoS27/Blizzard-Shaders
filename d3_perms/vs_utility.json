@@ -1,0 +1,995 @@
+[
+ {
+  "slot": 0,
+  "roots": [
+   "filter_vs_main"
+  ],
+  "program": "bd9a67324e57e0335bfcef5369205945358fea80",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_vs_ssao",
+    "hash": "0336a1e9",
+    "defines": {},
+    "shaders": [
+     "postfx",
+     "ssao",
+     "blur"
+    ]
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_highlight",
+    "hash": "23ee9344",
+    "defines": {},
+    "shaders": [
+     "postfx",
+     "highlight",
+     "blur",
+     "postfx",
+     "highlight",
+     "text",
+     "blur",
+     "postfx",
+     "highlight",
+     "text",
+     "blur_con"
+    ]
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_ssao",
+    "hash": "41489e8e",
+    "defines": {},
+    "shaders": [
+     "postfx",
+     "ssao",
+     "postfx",
+     "ssao",
+     "upscale"
+    ]
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_highlight",
+    "hash": "9d0a8559",
+    "defines": {},
+    "shaders": [
+     "postfx",
+     "highlight",
+     "blur_con_ppc"
+    ]
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_ssao_normal",
+    "hash": "1573aeeb",
+    "defines": {},
+    "shaders": [
+     "postfx ssao normal"
+    ],
+    "residue": "singleton"
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_5x5_separable_blur",
+    "hash": "348013dd",
+    "defines": {},
+    "shaders": [
+     "postfx bloom blur horizontal_con",
+     "postfx bloom blur vertical_con"
+    ],
+    "residue": "singleton"
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_retro",
+    "hash": "8252bab5",
+    "defines": {},
+    "shaders": [
+     "postfx retro"
+    ],
+    "residue": "singleton"
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_bloom_shrink_4x4",
+    "hash": "9356eae2",
+    "defines": {},
+    "shaders": [
+     "postfx bloom shrink_con"
+    ],
+    "residue": "singleton"
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs_motion_blur",
+    "hash": "e0dd8510",
+    "defines": {},
+    "shaders": [
+     "postfx motion blur"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     18,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 1,
+  "roots": [
+   "cookie_vs_main"
+  ],
+  "program": "922b25e380113ba32157d2f22e8d28919367b512",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__vs_write_cookie",
+    "hash": "176f5a5b",
+    "defines": {
+     "SKIN": "1"
+    },
+    "shaders": [
+     "cookie_skin"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__vs_write_cookie",
+    "hash": "82b9b9d2",
+    "defines": {
+     "SKIN": "1"
+    },
+    "shaders": [
+     "cookie_skin_tint"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "1": [
+     135,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "BLENDINDICES",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "BLENDWEIGHT",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 2,
+  "roots": [
+   "filter_vs_main"
+  ],
+  "program": "367cffb81d212d97d31a4b643d8ad91cd3a8b026",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_vs",
+    "hash": "605e44ac",
+    "defines": {},
+    "shaders": [
+     "color_resolve_ps3",
+     "hardware_scalar_ps3",
+     "postfx",
+     "upscale",
+     "quincunx_color_resolve_ps3"
+    ]
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_vs",
+    "hash": "db61a5b6",
+    "defines": {},
+    "shaders": [
+     "postfx",
+     "bloom",
+     "blur",
+     "horizontal",
+     "postfx",
+     "bloom",
+     "blur",
+     "vertical",
+     "postfx",
+     "bloom",
+     "shrink",
+     "postfx",
+     "copy",
+     "postfx",
+     "copy",
+     "alpha",
+     "postfx",
+     "highlight",
+     "horizontal",
+     "blur",
+     "postfx",
+     "highlight",
+     "horizontal",
+     "blur_con",
+     "postfx",
+     "highlight",
+     "horizontal",
+     "blur_con_ppc",
+     "postfx",
+     "highlight",
+     "text",
+     "horizontal",
+     "blur",
+     "postfx",
+     "highlight",
+     "text",
+     "horizontal",
+     "blur_con",
+     "postfx",
+     "highlight",
+     "text",
+     "vertical",
+     "blur",
+     "postfx",
+     "highlight",
+     "text",
+     "vertical",
+     "blur_con",
+     "postfx",
+     "highlight",
+     "vertical",
+     "blur",
+     "postfx",
+     "highlight",
+     "vertical",
+     "blur_con",
+     "postfx",
+     "highlight",
+     "vertical",
+     "blur_con_ppc",
+     "shadow_blur",
+     "vsm",
+     "filter",
+     "horizontal",
+     "vsm",
+     "filter",
+     "horizontal_con",
+     "vsm",
+     "filter",
+     "vertical",
+     "vsm",
+     "filter",
+     "vertical_con",
+     "vsm",
+     "filter_con_ppc"
+    ]
+   },
+   {
+    "subfamily": "Residue__vs",
+    "hash": "2f65a606",
+    "defines": {},
+    "shaders": [
+     "msaa2_depth_resolve_ps3"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     18,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 3,
+  "roots": [
+   "cookie_vs_main"
+  ],
+  "program": "a41e44a1b21196e499057bb0a33d33a39fc46348",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__vs_write_cookie",
+    "hash": "b0cf74dc",
+    "defines": {},
+    "shaders": [
+     "cookie",
+     "cookie_banner"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__vs_write_cookie",
+    "hash": "b51abbe6",
+    "defines": {},
+    "shaders": [
+     "cookie_tint"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 4,
+  "roots": [],
+  "program": "e47ae6ae214dbc56e378902114e20986703342fb",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_vs_gamma_correction",
+    "hash": "0505badc",
+    "defines": {},
+    "shaders": [
+     "gamma_correction"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xy",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 5,
+  "roots": [],
+  "program": "6b759841ec57256c11aacaa1802f6c7cb763b28f",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__vs_write_cookie_vertalpha",
+    "hash": "264b4631",
+    "defines": {},
+    "shaders": [
+     "cookie_vertalpha"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 6,
+  "roots": [
+   "filter_vs_main"
+  ],
+  "program": "4651cebb88d33cb79050423c88ec5a19d36e6ed4",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_vs_highlight_con",
+    "hash": "9fad6a86",
+    "defines": {},
+    "shaders": [
+     "postfx highlight blur_con"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     18,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 7,
+  "roots": [],
+  "program": "6811387145aad2e92da7e476fc39c2d83512e80a",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_vs_letterbox",
+    "hash": "bf089ef1",
+    "defines": {},
+    "shaders": [
+     "postfx letterbox"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     16,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ }
+]

@@ -1,0 +1,129 @@
+{
+  "_comment": "Diablo III shader bundles: stage x domain. A root is one slang entry; its subfamilies are the retail (fx, entry) pairs whose programs it reproduces. Slot counts are distinct retail programs and are checked by tools/d3_perm_manifest.py --check. See docs/D3_SHADERS_MODULE_DESIGN.md section 3.",
+  "legacy": {
+    "ps": {
+      "bls_name": "legacy.bls",
+      "slots": 736,
+      "roots": {
+        "combiner_ps_main": [
+          "Legacy.fx__ps_legacy", "Billboard.fx__ps_legacy", "SoftBillboard.fx__ps_legacy",
+          "Billboard.fx__ps_firewall_flow", "Legacy.fx__ps_firewall_flow",
+          "Billboard.fx__ps_particle_flow", "Legacy.fx__ps_particle_flow",
+          "Billboard.fx__ps_legacy_flow", "Billboard.fx__ps_billboard_blendAdd_flowMult",
+          "Legacy.fx__ps_legacy_Malthael_wings_flow"
+        ],
+        "legacy_aux_ps_main": [
+          "Legacy.fx__highlight_ps", "Legacy.fx__ps_erase_highlight", "Legacy.fx__ps_highlight_text",
+          "Legacy.fx__ps_prepass", "Legacy.fx__ps_projected_layer_pma",
+          "Distortion.fx__ps_distortion2tex", "Scene.fx__ps_scene_opaque_glow"
+        ]
+      }
+    },
+    "vs": {
+      "bls_name": "legacy.bls",
+      "slots": 529,
+      "roots": {
+        "texgen_vs_main": [
+          "Legacy.fx__vs_legacy", "Distortion.fx__vs_legacy", "Scene.fx__vs_legacy",
+          "PostFX.fx__vs_legacy", "Legacy.fx__vs_legacy_weather", "Legacy.fx__vs_prepass",
+          "Legacy.fx__vs_projected_layer_pma"
+        ],
+        "particle_vs_main": ["Billboard.fx__vs_legacy", "SoftBillboard.fx__vs_legacy"]
+      }
+    }
+  },
+  "surface": {
+    "ps": {
+      "bls_name": "surface.bls",
+      "slots": 551,
+      "roots": {
+        "scene_ps_main": [
+          "Scene.fx__ps_scene", "Scene.fx__ps_scene_act4_floor", "Scene.fx__ps_scene_aux",
+          "Scene.fx__ps_scene_battlenet", "Scene.fx__ps_scene_glow_2tex", "Scene.fx__ps_scene_overlay",
+          "Scene.fx__ps_scene_prepass", "Prop.fx__ps_prop", "Prop.fx__ps_prop_prepass",
+          "InteractiveFog.fx__ps_fog", "InteractiveFog.fx__ps_fog_vert_alpha"
+        ],
+        "landscape_ps_main": [
+          "Landscape.fx__ps_landscape2_emmissive", "Landscape.fx__ps_landscape5",
+          "Landscape.fx__ps_landscape5_sideproj", "Landscape.fx__ps_landscape5_sideproj_gloss_c",
+          "Landscape.fx__ps_landscape_webskin"
+        ],
+        "water_ps_main": [
+          "Reflection.fx__main_ps_largewater", "Reflection.fx__main_ps_largewater_reflect",
+          "Reflection.fx__main_ps_river", "Landscape.fx__ps_landscape5_water", "Puddle.fx__ps_puddle"
+        ]
+      }
+    },
+    "vs": {
+      "bls_name": "surface.bls",
+      "slots": 93,
+      "roots": {
+        "surface_vs_main": [
+          "Scene.fx__vs_scene", "Scene.fx__vs_scene_act4_floor", "Scene.fx__vs_scene_aux",
+          "Scene.fx__vs_scene_glow_2tex", "Scene.fx__vs_scene_overlay", "Scene.fx__vs_scene_vertalpha",
+          "Prop.fx__vs_prop", "Prop.fx__vs_prop_prepass", "Prop.fx__vs_prop_vertalpha",
+          "Landscape.fx__vs_landscape2", "Landscape.fx__vs_landscape5",
+          "Landscape.fx__vs_landscape5_sideproj", "Landscape.fx__vs_landscape5_sideproj_gloss_c",
+          "Landscape.fx__vs_landscape5_water", "Landscape.fx__vs_landscape_webskin",
+          "Reflection.fx__main_vs_largewater", "Reflection.fx__main_vs_river",
+          "InteractiveFog.fx__vs_fog", "InteractiveFog.fx__vs_fog_vert_alpha"
+        ]
+      }
+    }
+  },
+  "actor": {
+    "ps": {
+      "bls_name": "actor.bls",
+      "slots": 107,
+      "roots": {
+        "actor_ps_main": [
+          "Actor.fx__main_ps_alphacomp", "ActorIrrad.fx__ps_animated_pv",
+          "ActorIrrad.fx__ps_bump2_pp_edgeglow", "ActorIrrad.fx__ps_bump_pp",
+          "ActorIrrad.fx__ps_bump_pp_edgeglow", "ActorIrrad.fx__ps_bump_pp_edgeglow_noirrad",
+          "ActorIrrad.fx__ps_disintegrate_death_pv", "ActorIrrad.fx__ps_elemental_death_pv",
+          "ActorIrrad.fx__ps_elemental_wipe_death_pv", "ActorIrrad.fx__ps_ghost_pv_zpass",
+          "ActorIrrad.fx__ps_irrad_prepass", "ActorIrrad.fx__ps_irrad_pv",
+          "ActorIrrad.fx__ps_irrad_pvdo", "ActorIrrad.fx__ps_irrad_pvdo_highlight",
+          "ActorIrrad.fx__ps_irrad_pvdo_necro_bloodgolem", "ActorIrrad.fx__ps_pulverize_death_pv",
+          "banner.fx__ps_banner"
+        ]
+      }
+    },
+    "vs": {
+      "bls_name": "actor.bls",
+      "slots": 75,
+      "roots": {
+        "actor_vs_main": [
+          "Actor.fx__main_vs", "ActorIrrad.fx__vs_animated_pv", "ActorIrrad.fx__vs_bump2_pp",
+          "ActorIrrad.fx__vs_bump_pp", "ActorIrrad.fx__vs_crystal",
+          "ActorIrrad.fx__vs_disintegrate_death_pv", "ActorIrrad.fx__vs_elemental_death_pv",
+          "ActorIrrad.fx__vs_elemental_wipe_death_pv", "ActorIrrad.fx__vs_irrad_prepass",
+          "ActorIrrad.fx__vs_irrad_pv", "ActorIrrad.fx__vs_irrad_pvdo",
+          "ActorIrrad.fx__vs_irrad_pvdo_necro_bloodgolem", "ActorIrrad.fx__vs_irrad_pvdo_necro_pet",
+          "ActorIrrad.fx__vs_pulverize_death_pv", "banner.fx__vs_banner"
+        ]
+      }
+    }
+  },
+  "utility": {
+    "ps": {
+      "bls_name": "utility.bls",
+      "slots": 57,
+      "roots": {
+        "cookie_ps_main": ["Shadows.fx__ps_write_cookie", "Shadows.fx__ps_write_cookie_banner"],
+        "blur_ps_main": ["TextureFilter.fx__main_ps_highlight_blur_con_ppc"]
+      }
+    },
+    "vs": {
+      "bls_name": "utility.bls",
+      "slots": 8,
+      "roots": {
+        "cookie_vs_main": ["Shadows.fx__vs_write_cookie"],
+        "filter_vs_main": [
+          "TextureFilter.fx__main_vs", "TextureFilter.fx__main_vs_highlight",
+          "TextureFilter.fx__main_vs_ssao"
+        ]
+      }
+    }
+  }
+}

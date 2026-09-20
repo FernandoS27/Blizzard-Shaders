@@ -2,7 +2,7 @@
 
 **Blizzard Shaders** is an open-source recreation of the shaders used by Blizzard's games. The shaders are reverse-engineered from the games' shipped shader containers, reimplemented in [Slang](https://shader-slang.com/), verified against the retail bytecode, and re-packed into the engine's own shader-bundle wire formats so they can be dropped back into the game.
 
-The project currently covers **Warcraft III: Reforged** and **StarCraft II** (whose engine is shared with **Heroes of the Storm**), with **World of Warcraft** shaders planned in the future.
+The project currently covers **Warcraft III: Reforged**, **StarCraft II** (whose engine is shared with **Heroes of the Storm**) and **Diablo III**, with **World of Warcraft** shaders planned in the future.
 
 All of these games run on a shared lineage of Blizzard engine tech — the same StormLib SComp compression and the same `.fx` / BLS shader tooling — so the reconstruction toolchain is shared across sub-projects: shaders are authored once in Slang, compiled to the target bytecode, verified against the retail blobs, and packed back into each game's bundle format.
 
@@ -12,6 +12,7 @@ All of these games run on a shared lineage of Blizzard engine tech — the same 
 | --- | --- | --- |
 | **Warcraft III: Reforged** | ✅ Complete & verified | [README-Warcraft3.md](README-Warcraft3.md) |
 | **StarCraft II** / **Heroes of the Storm** | ✅ All 18 families reimplemented, validated & packed | [README-Starcraft2.md](README-Starcraft2.md) |
+| **Diablo III** | ✅ All 1,594 retail programs reimplemented, validated against retail & packed | [README-Diablo3.md](README-Diablo3.md) |
 | **World of Warcraft** | 🔮 Planned | — |
 
 ### Warcraft III: Reforged
@@ -43,6 +44,14 @@ python tools/sc2_validate_all.py                            # slang vs original 
 # portability check: every family, every other backend, 12 perms per stage
 python compile_all_sc2.py --all --target d3d12,vulkan,webgpu,metal,opengl --sample 12
 ```
+
+### Diablo III
+
+A recreation of Diablo III's `.fx` über-shaders under [d3_shaders/](d3_shaders/). The game's 2,848 retail permutation keys compile to **1,594 distinct programs**; the module reproduces exactly that set in **8 bundles** (pixel | vertex × legacy / surface / actor / utility), with the 105 retail shader families as subfamilies of 14 generic roots.
+
+Like Warcraft III, the reference is the **shipped retail DXBC**: every slot's declarations (signatures, registers, constant buffers) match its retail program row for row, and its behaviour is checked through the DXBC interpreter on a per-slot schedule that includes exact alpha-test ties and NaN references — **1,360 slots bit-exact, 234 identical up to float32 evaluation order, 0 failing**, with 196 deliberate mutations all caught.
+
+**→ Bundles, build and validation commands live in [README-Diablo3.md](README-Diablo3.md).**
 
 ### World of Warcraft (planned)
 

@@ -1,0 +1,6386 @@
+[
+ {
+  "slot": 0,
+  "roots": [
+   "cookie_ps_main"
+  ],
+  "program": "36e25c09939670377fcceb04f2044a08cc36452d",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "0cd0904f",
+    "defines": {
+     "COLOR_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie_skin"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "20b968d1",
+    "defines": {
+     "COLOR_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie_skin"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "4939fc0e",
+    "defines": {
+     "COLOR_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie_skin"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "627f095c",
+    "defines": {
+     "COLOR_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie",
+     "cookie_vertalpha"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "9454d1de",
+    "defines": {
+     "COLOR_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie",
+     "cookie_vertalpha"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "e5e7745f",
+    "defines": {
+     "COLOR_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie",
+     "cookie_vertalpha"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "diffuseMaps"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "vignetteMaps"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "diffuseMapt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "vignetteMapt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 1,
+  "roots": [
+   "cookie_ps_main"
+  ],
+  "program": "2c75b9db9a495105ec0399d1c2b24e23ddd51170",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie_banner",
+    "hash": "0f90207b",
+    "defines": {},
+    "shaders": [
+     "cookie_banner"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie_banner",
+    "hash": "16b30b01",
+    "defines": {},
+    "shaders": [
+     "cookie_banner"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "3c417067",
+    "defines": {},
+    "shaders": [
+     "cookie_skin"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "6af4ff58",
+    "defines": {},
+    "shaders": [
+     "cookie_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "865a142b",
+    "defines": {},
+    "shaders": [
+     "cookie",
+     "cookie_vertalpha"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "94ae02f6",
+    "defines": {},
+    "shaders": [
+     "cookie",
+     "cookie_vertalpha"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "a1fddfd5",
+    "defines": {},
+    "shaders": [
+     "cookie_skin"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "b554878e",
+    "defines": {},
+    "shaders": [
+     "cookie_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "e0cb70d5",
+    "defines": {},
+    "shaders": [
+     "cookie_skin_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "f553b4dc",
+    "defines": {},
+    "shaders": [
+     "cookie_skin_tint"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,lit)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 2,
+  "roots": [
+   "cookie_ps_main"
+  ],
+  "program": "c36e1111920d1207208f2d5fa9f851f1ae84574b",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie_banner",
+    "hash": "1ab5c258",
+    "defines": {
+     "BANNER_MAP": "1",
+     "COLORED": "1"
+    },
+    "shaders": [
+     "cookie_banner"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie_banner",
+    "hash": "54960eb5",
+    "defines": {
+     "BANNER_MAP": "1",
+     "COLORED": "1"
+    },
+    "shaders": [
+     "cookie_banner"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie_banner",
+    "hash": "89c82b52",
+    "defines": {
+     "BANNER_MAP": "1",
+     "COLORED": "1"
+    },
+    "shaders": [
+     "cookie_banner"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "bannerMaps"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "vignetteMaps"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "bannerMapt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "vignetteMapt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 3,
+  "roots": [
+   "cookie_ps_main"
+  ],
+  "program": "b9e021d78c328fc8236ff14505de03fa634b7279",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "27120458",
+    "defines": {
+     "COLOR_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_skin_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "5424ceb8",
+    "defines": {
+     "COLOR_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "5819f9a1",
+    "defines": {
+     "COLOR_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "60625393",
+    "defines": {
+     "COLOR_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "aa493737",
+    "defines": {
+     "COLOR_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_skin_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "d611e93e",
+    "defines": {
+     "COLOR_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_skin_tint"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "vignetteMaps"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "vignetteMapt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 4,
+  "roots": [
+   "cookie_ps_main"
+  ],
+  "program": "b8c0fb1f0077af42fa9ac7afb3e4b45152d5d203",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "43c075e5",
+    "defines": {
+     "DEPTH_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie",
+     "cookie_vertalpha"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "e0bb4760",
+    "defines": {
+     "DEPTH_COOKIE": "1",
+     "ALPHA_KEY": "1"
+    },
+    "shaders": [
+     "cookie_skin"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "diffuseMaps"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "diffuseMapt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 5,
+  "roots": [
+   "cookie_ps_main"
+  ],
+  "program": "882ed1339a06336341b36b5c745f877e33d8ad63",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie_banner",
+    "hash": "45fa1e14",
+    "defines": {
+     "BANNER_MAP": "1"
+    },
+    "shaders": [
+     "cookie_banner"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "bannerMaps"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "bannerMapt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 6,
+  "roots": [
+   "blur_ps_main"
+  ],
+  "program": "a7f55880d5b0d750d6a338784d539d428c53e849",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_blur_con_ppc",
+    "hash": "805784bf",
+    "defines": {},
+    "shaders": [
+     "postfx",
+     "highlight",
+     "text",
+     "blur_con"
+    ]
+   },
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_blur_con_ppc",
+    "hash": "eeb0da32",
+    "defines": {},
+    "shaders": [
+     "postfx",
+     "highlight",
+     "blur_con_ppc"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texBlurredHighlights"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texOriginalHighlights"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texBlurredHighlightt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalHighlightt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 7,
+  "roots": [
+   "cookie_ps_main"
+  ],
+  "program": "6b073e04c960def98b51dfda90d5c4fd2af1d600",
+  "retail": [
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "eaffedaa",
+    "defines": {
+     "DEPTH_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_tint"
+    ]
+   },
+   {
+    "subfamily": "Shadows.fx__ps_write_cookie",
+    "hash": "f5b204fa",
+    "defines": {
+     "DEPTH_COOKIE": "1"
+    },
+    "shaders": [
+     "cookie_skin_tint"
+    ]
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     4,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 8,
+  "roots": [],
+  "program": "f56af4dfad51d26e0e4d8afe86ba3709255cf6da",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_copy_depthMS8",
+    "hash": "00a7653d",
+    "defines": {},
+    "shaders": [
+     "postfx copy depth ms8"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "t0",
+     "texture",
+     "texture2dms",
+     false,
+     "texDepth"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_DEPTH",
+     0,
+     4294967295,
+     "x",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 9,
+  "roots": [],
+  "program": "285e7e71f41503643bad10f0a2909ad477433174",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_copy_depthMS",
+    "hash": "016a108a",
+    "defines": {},
+    "shaders": [
+     "postfx copy depth ms"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "t0",
+     "texture",
+     "texture2dms",
+     false,
+     "texDepth"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_DEPTH",
+     0,
+     4294967295,
+     "x",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 10,
+  "roots": [],
+  "program": "bddb53f6659b196f4adadb7ce7d54dffb70e83d8",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_ssao_blur",
+    "hash": "03115aa9",
+    "defines": {},
+    "shaders": [
+     "postfx ssao blur"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texNormals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSSAOBuffers"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texNormalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSSAOBuffert"
+    ]
+   ],
+   "banks": {
+    "0": [
+     68,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 11,
+  "roots": [],
+  "program": "2ecb6327286a9df0aa565c1e1875e7b5c918fdc0",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "0a9b6f38",
+    "defines": {},
+    "shaders": [
+     "shadow_blur"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSampler1s"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texSampler2s"
+    ],
+    [
+     "s3",
+     "sampler",
+     "",
+     false,
+     "texSampler3s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler1t"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler2t"
+    ],
+    [
+     "t3",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler3t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     84,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 12,
+  "roots": [],
+  "program": "6f9606b77e9924d643c5d6c160780a4da8694f09",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "1b231def",
+    "defines": {},
+    "shaders": [
+     "v14 postfx distortion"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texDistortions"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texDistortiont"
+    ]
+   ],
+   "banks": {
+    "0": [
+     68,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 13,
+  "roots": [],
+  "program": "027888f7eb199167fcda9e8971515e7028d58eda",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_alpha_copy",
+    "hash": "1effde4e",
+    "defines": {},
+    "shaders": [
+     "postfx copy alpha"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 14,
+  "roots": [],
+  "program": "86bd8f31f5626f2c8890520f15ff4fef84ba8159",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_text_vertical_blur",
+    "hash": "2859b08e",
+    "defines": {},
+    "shaders": [
+     "postfx highlight text vertical blur"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 15,
+  "roots": [],
+  "program": "acc5eda9bc7e7f8506f3a1b2c15486a8bf94ba8e",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_desaturate",
+    "hash": "3661e6a8",
+    "defines": {},
+    "shaders": [
+     "v11 postfx desaturate"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 16,
+  "roots": [],
+  "program": "6d648266eb59a1cf8ff9dff29aae7c955f342f98",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "36e350c2",
+    "defines": {},
+    "shaders": [
+     "hardware_scalar_interlace_ps3"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     1,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 17,
+  "roots": [],
+  "program": "ef06258642180d6c8ebfdc5a2ac1c1d5f16f041f",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_tonemap_blend",
+    "hash": "39cbec86",
+    "defines": {},
+    "shaders": [
+     "postfx tonemap blend"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSatVignette1s"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectA1s"
+    ],
+    [
+     "s3",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectB1s"
+    ],
+    [
+     "s4",
+     "sampler",
+     "",
+     false,
+     "texSatVignette2s"
+    ],
+    [
+     "s5",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectA2s"
+    ],
+    [
+     "s6",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectB2s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSatVignette1t"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectA1t"
+    ],
+    [
+     "t3",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectB1t"
+    ],
+    [
+     "t4",
+     "texture",
+     "texture2d",
+     false,
+     "texSatVignette2t"
+    ],
+    [
+     "t5",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectA2t"
+    ],
+    [
+     "t6",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectB2t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     104,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 18,
+  "roots": [],
+  "program": "af167f2e33d2e1aa72fe0d3440bcbb919fd31ff4",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_motion_blur",
+    "hash": "3c47b8ab",
+    "defines": {},
+    "shaders": [
+     "postfx motion blur"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texVelocitys"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texVelocityt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 19,
+  "roots": [],
+  "program": "2a941d350a42be873078b65d634fff23dba1305d",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_ssao",
+    "hash": "4ca7a55d",
+    "defines": {},
+    "shaders": [
+     "postfx ssao"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texNormals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texRandoms"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texNormalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texRandomt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     137,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 20,
+  "roots": [],
+  "program": "162631cf8ef1be6691356512aa120ab31050236a",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_tonemap_blend_gray",
+    "hash": "4d890ba3",
+    "defines": {},
+    "shaders": [
+     "postfx tonemap blend gray"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSatVignette1s"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectA1s"
+    ],
+    [
+     "s3",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectB1s"
+    ],
+    [
+     "s4",
+     "sampler",
+     "",
+     false,
+     "texSatVignette2s"
+    ],
+    [
+     "s5",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectA2s"
+    ],
+    [
+     "s6",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectB2s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSatVignette1t"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectA1t"
+    ],
+    [
+     "t3",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectB1t"
+    ],
+    [
+     "t4",
+     "texture",
+     "texture2d",
+     false,
+     "texSatVignette2t"
+    ],
+    [
+     "t5",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectA2t"
+    ],
+    [
+     "t6",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectB2t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     104,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 21,
+  "roots": [],
+  "program": "52efb01c549ed5d0c20e66d17454db0d2c232dd5",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_ssao_upscale",
+    "hash": "5c1ed2b0",
+    "defines": {},
+    "shaders": [
+     "postfx ssao upscale"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texNormals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSSAOBuffers"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texDepths"
+    ],
+    [
+     "s3",
+     "sampler",
+     "",
+     false,
+     "texVignettes"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texNormalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSSAOBuffert"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texDeptht"
+    ],
+    [
+     "t3",
+     "texture",
+     "texture2d",
+     false,
+     "texVignettet"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 22,
+  "roots": [],
+  "program": "63c10e873e84486f7703287d41fa5d2a2dc016a8",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_gamma_correction",
+    "hash": "5c9cb698",
+    "defines": {},
+    "shaders": [
+     "gamma_correction"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xy",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSampler1s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler1t"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 23,
+  "roots": [],
+  "program": "3ba48cfc113394da847c7c4a98dfac7903f0cf0b",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "5d2e84de",
+    "defines": {},
+    "shaders": [
+     "postfx depthoffield",
+     "sm3_postfx depthoffield"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texBlurreds"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texDepths"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texBlurredt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texDeptht"
+    ]
+   ],
+   "banks": {
+    "0": [
+     90,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 24,
+  "roots": [],
+  "program": "6c2b586e4a0283e2fa0508c1e248ae455037e9c8",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_colorblind_daltonize",
+    "hash": "679b39fd",
+    "defines": {},
+    "shaders": [
+     "postfx colorblind daltonize"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     148,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 25,
+  "roots": [],
+  "program": "41ac2d430f8100f181bb90f77bcf2c4a916193bc",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_softfocus",
+    "hash": "6ff21170",
+    "defines": {},
+    "shaders": [
+     "v11 postfx softfocus"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texBlooms"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texBloomt"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 26,
+  "roots": [],
+  "program": "0ac53d9b0d5060fbf686ff3b414aa2b65d263d7b",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_bloom_horizontal",
+    "hash": "712f1145",
+    "defines": {},
+    "shaders": [
+     "postfx bloom blur horizontal"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 27,
+  "roots": [],
+  "program": "8e4831e3c75e1e87da503814add6a8833c2bfae9",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "72352535",
+    "defines": {},
+    "shaders": [
+     "quincunx_color_resolve_ps3"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSampler1s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler1t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 28,
+  "roots": [],
+  "program": "639001f9b94ad2a8c771466bf93bde893da8c6b5",
+  "retail": [
+   {
+    "subfamily": "FSAA.fx__fxaa_ps",
+    "hash": "89356c04",
+    "defines": {},
+    "shaders": [
+     "postfx fsaa fxaa"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     92,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "offsets": true,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 29,
+  "roots": [],
+  "program": "0fe557370d8ff44c7f4b6302a84eaae2ceb377de",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_letterbox",
+    "hash": "8a5a6532",
+    "defines": {},
+    "shaders": [
+     "postfx letterbox"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 30,
+  "roots": [],
+  "program": "befa9fb93ec31d5ac4ba17bec7c0029e3631ff27",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_bloom_vertical",
+    "hash": "910c9992",
+    "defines": {},
+    "shaders": [
+     "postfx bloom blur vertical"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 31,
+  "roots": [],
+  "program": "5108f72c8f823ba38eb3e90d11d2495c7cc052a9",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_tonemap",
+    "hash": "91d28cbc",
+    "defines": {},
+    "shaders": [
+     "postfx tonemap"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSatVignettes"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectAs"
+    ],
+    [
+     "s3",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectBs"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSatVignettet"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectAt"
+    ],
+    [
+     "t3",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectBt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     68,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 32,
+  "roots": [],
+  "program": "79d4a2413d7e2a011a7be57d4f8202e78ca82b2b",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_ssao_normal",
+    "hash": "96b15884",
+    "defines": {},
+    "shaders": [
+     "postfx ssao normal"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texDepths"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texDeptht"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 33,
+  "roots": [],
+  "program": "be6878e7fa4f1a2de7ae5634a51bfd9d43becebe",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_bloom_shrink",
+    "hash": "995b800a",
+    "defines": {},
+    "shaders": [
+     "postfx bloom shrink"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 34,
+  "roots": [],
+  "program": "e99c7279d893b67a171af419b97de70421a74217",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_vsm_horizontal",
+    "hash": "9bf4525f",
+    "defines": {},
+    "shaders": [
+     "vsm filter horizontal"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 35,
+  "roots": [],
+  "program": "40ab7da18f60055b4737e65bb2e38edcaf808c15",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "9c49fd2f",
+    "defines": {},
+    "shaders": [
+     "minimap_debug"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texDiffuses"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texMasks"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texExploreds"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texDiffuset"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texMaskt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texExploredt"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 36,
+  "roots": [],
+  "program": "8b04d711dc0bc29b1234a7a89e16d051987dc2c3",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_vsm_vertical",
+    "hash": "9d4e7555",
+    "defines": {},
+    "shaders": [
+     "vsm filter vertical"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 37,
+  "roots": [],
+  "program": "7fbfe85de5f3cc9b1d05ba3b49ce0716f3e17f4a",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_sharpen",
+    "hash": "a0427eac",
+    "defines": {},
+    "shaders": [
+     "postfx upscale"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 38,
+  "roots": [],
+  "program": "1d27b8203eed7544fe1ef0b991c70a1a8a6fd103",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_tonemap_gray",
+    "hash": "a62d2c39",
+    "defines": {},
+    "shaders": [
+     "postfx tonemap gray"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texSatVignettes"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectAs"
+    ],
+    [
+     "s3",
+     "sampler",
+     "",
+     false,
+     "texColorCorrectBs"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texSatVignettet"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectAt"
+    ],
+    [
+     "t3",
+     "texture",
+     "texture2d",
+     false,
+     "texColorCorrectBt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     104,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 39,
+  "roots": [],
+  "program": "9af5b4795d90c4ef90e53e64bb33940f3a555cf8",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_colorblind_sim",
+    "hash": "abc50e0c",
+    "defines": {},
+    "shaders": [
+     "postfx colorblind sim"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     149,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 40,
+  "roots": [],
+  "program": "6517288a7cdac0bc20acb507b3cc7a6822b16ad3",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_resolve_eqaa",
+    "hash": "b19f316e",
+    "defines": {},
+    "shaders": [
+     "postfx resolve eqaa"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texColorMSs"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texColorMSt"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 41,
+  "roots": [],
+  "program": "edf1211277854aaef163bed86c263c4d527faaf5",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "b5da4421",
+    "defines": {},
+    "shaders": [
+     "v11 postfx blur"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texBlurreds"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texFracs"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texBlurredt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texFract"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 42,
+  "roots": [],
+  "program": "f855b19ea08b9fa25b90aab6d0e5c334c595bdd1",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_text_horizontal_blur",
+    "hash": "ba343c69",
+    "defines": {},
+    "shaders": [
+     "postfx highlight text horizontal blur"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 43,
+  "roots": [],
+  "program": "69ddfff77e00b61e9b3972494ba2f99dacbdf947",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "c0c5d99c",
+    "defines": {},
+    "shaders": [
+     "msaa2_depth_resolve_ps3"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texDepths"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texDeptht"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_DEPTH",
+     0,
+     4294967295,
+     "x",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 44,
+  "roots": [],
+  "program": "f02085a7730f79d008a398c20d25293fdfc22d60",
+  "retail": [
+   {
+    "subfamily": "PostFX.fx__main_ps_softfocus_con",
+    "hash": "cc033f36",
+    "defines": {},
+    "shaders": [
+     "v11 postfx softfocus_con"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texOriginals"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texBlooms"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texBloomt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     68,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 45,
+  "roots": [],
+  "program": "7f6e2521c17d0b6fedd02301e464d423bf56647c",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_copy_depthMS2",
+    "hash": "d0aaf973",
+    "defines": {},
+    "shaders": [
+     "postfx copy depth ms2"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "t0",
+     "texture",
+     "texture2dms",
+     false,
+     "texDepth"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_DEPTH",
+     0,
+     4294967295,
+     "x",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 46,
+  "roots": [],
+  "program": "f807fcdf73943b02aadc7eb26418b36cc46425e7",
+  "retail": [
+   {
+    "subfamily": "Minimap.fx__ps_minimap",
+    "hash": "d3fb0110",
+    "defines": {},
+    "shaders": [
+     "minimap"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texDiffuses"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texMasks"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texExploreds"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texDiffuset"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texMaskt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texExploredt"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 47,
+  "roots": [],
+  "program": "25d2081b29ddc8d5f3dc83eba734897401c62396",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_copy_depth",
+    "hash": "d490f0dc",
+    "defines": {},
+    "shaders": [
+     "postfx copy depth"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texDepths"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texDeptht"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_DEPTH",
+     0,
+     4294967295,
+     "x",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 48,
+  "roots": [],
+  "program": "6a3809ebcd0590d3645763881494248d16b86120",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_copy_MS",
+    "hash": "daa1925a",
+    "defines": {},
+    "shaders": [
+     "postfx copy ms"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 49,
+  "roots": [],
+  "program": "e50e69cbe045a1a7cf031af77c959c925adc82e0",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "dd909850",
+    "defines": {},
+    "shaders": [
+     "vsm filter_con_ppc"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 50,
+  "roots": [],
+  "program": "162d0740a994bc154872a947ba4c3e100ce52364",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_copy_depthMS4",
+    "hash": "ed88a425",
+    "defines": {},
+    "shaders": [
+     "postfx copy depth ms4"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "t0",
+     "texture",
+     "texture2dms",
+     false,
+     "texDepth"
+    ]
+   ],
+   "banks": {},
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_DEPTH",
+     0,
+     4294967295,
+     "x",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 51,
+  "roots": [],
+  "program": "bbe8ef052841f368610bfd5cbc5d5d3cb8a23323",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_bloom_shrink_4x4",
+    "hash": "f260c742",
+    "defines": {},
+    "shaders": [
+     "postfx bloom shrink_con"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 52,
+  "roots": [],
+  "program": "5d56cd303ff2c0603b41554abad77fdadd53fa8c",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_blur_con",
+    "hash": "f6aa85c8",
+    "defines": {},
+    "shaders": [
+     "postfx highlight blur_con"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texBlurredHighlights"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texOriginalHighlights"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texBlurredHighlightt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalHighlightt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "lt(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 53,
+  "roots": [],
+  "program": "2d0466fea26eb5ea82a54ae282bb9130af805ee9",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_retro",
+    "hash": "f84d3353",
+    "defines": {},
+    "shaders": [
+     "postfx retro"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texColors"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "texDepths"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texDithers"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texColort"
+    ],
+    [
+     "t1",
+     "texture",
+     "texture2d",
+     false,
+     "texDeptht"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texDithert"
+    ]
+   ],
+   "banks": {
+    "0": [
+     140,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 54,
+  "roots": [],
+  "program": "5ec5b77e414b149af334390f989936773986944e",
+  "retail": [
+   {
+    "subfamily": "FSAA.fx__rgbl_ps",
+    "hash": "ffe51d55",
+    "defines": {},
+    "shaders": [
+     "postfx fsaa rgbl"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     68,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ }
+]

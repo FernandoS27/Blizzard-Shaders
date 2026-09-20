@@ -464,26 +464,35 @@ class _Ret(Exception):
 class Outputs:
     """Result of ``execute``: output registers plus the discard flag."""
 
-    def __init__(self, regs, discarded, coverage=None, depth=None):
+    def __init__(self, regs, discarded, coverage=None, depth=None, wide=None):
         self.regs = regs            # {register_number: [4 uint32 lanes]}
         self.discarded = discarded
         #: SV_Coverage (``oMask``) as a uint32, or None if the shader never wrote it.
         self.coverage = coverage
         #: SV_Depth (``oDepth``/``oDepthLE``/``oDepthGE``) as a float, else None.
         self.depth = depth
+        #: ``{(reg, lane): float}`` -- the unrounded value of each output lane a
+        #: ``wide=True`` run computed in floating point (see :func:`execute`).
+        self.wide = wide or {}
 
     def bits(self, reg, lane):
         return self.regs.get(reg, [0, 0, 0, 0])[lane]
 
     def f(self, reg, lane):
-        return b2f(self.bits(reg, lane))
+        w = self.wide.get((reg, lane))
+        return w if w is not None else b2f(self.bits(reg, lane))
 
     def i(self, reg, lane):
         return b2i(self.bits(reg, lane))
 
 
 class _VM:
-    def __init__(self, program, cbufs, inputs, texture, deriv_scale):
+    def __init__(self, program, cbufs, inputs, texture, deriv_scale, wide=False):
+        #: wide mode: ``{(id(register array), lane): float}`` shadows of float
+        #: writes, valid only while the lane's bits still equal their rounding.
+        self.wide = wide
+        self.shadow = {}
+        self.ieee = False
         self.r = [[0, 0, 0, 0] for _ in range(max(program.num_temps, 12))]
         self.cb = cbufs
         self.icb = program.icb
@@ -585,8 +594,35 @@ class _VM:
             return self._raw(opd)
         return [f2b(x) for x in self.fread(opd)]
 
+    def bitread_wide(self, opd):
+        """``(bits, wide)``: :meth:`bitread` plus, in wide mode, the unrounded
+        float behind each lane (None where the lane holds no float shadow)."""
+        if not self.wide:
+            return self.bitread(opd), None
+        neg, absf = (opd[2], opd[3]) if opd[0] == 'lit' else (opd[5], opd[6])
+        if neg or absf:
+            fv = self.fread(opd)
+            return [f2b(x) for x in fv], fv
+        if opd[0] == 'lit':
+            return self._raw(opd), None
+        _, base, num, spec, swz, _, _ = opd
+        arr = self._base(base, num, spec)
+        aid, sh = id(arr), self.shadow
+        bits, wide = [], []
+        for k in range(4):
+            lane = swz[k] if k < len(swz) else swz[-1]
+            b = arr[lane]
+            s = sh.get((aid, lane))
+            bits.append(b)
+            wide.append(s if (s is not None and f2b(s) == b) else None)
+        return bits, wide
+
     def fread(self, opd):
-        vals = [b2f(x) for x in self._raw(opd)]
+        if self.wide and opd[0] == 'reg':
+            bits, wide = self.bitread_wide(opd[:5] + (False, False))
+            vals = [w if w is not None else b2f(b) for b, w in zip(bits, wide)]
+        else:
+            vals = [b2f(x) for x in self._raw(opd)]
         neg, absf = (opd[2], opd[3]) if opd[0] == 'lit' else (opd[5], opd[6])
         if absf:
             vals = [abs(x) for x in vals]
@@ -603,7 +639,7 @@ class _VM:
         return [x & 0xFFFFFFFF for x in self._raw(opd)]
 
     # writeback (channel-aligned: dest channel c <- ALU lane c) --------------
-    def write_bits(self, dest, lane_bits, sat=False):
+    def write_bits(self, dest, lane_bits, sat=False, wide=None):
         base, num, spec, comps = dest
         if base == 'null':
             return
@@ -613,11 +649,18 @@ class _VM:
             if sat:
                 b = f2b(min(1.0, max(0.0, b2f(b))))
             arr[c] = b & 0xFFFFFFFF
+            if self.wide:
+                w = wide[c] if wide is not None else None
+                if w is None:
+                    self.shadow.pop((id(arr), c), None)
+                else:
+                    self.shadow[(id(arr), c)] = min(1.0, max(0.0, w)) if sat else w
 
     def write_f(self, dest, fvals, sat=False):
         if sat:
             fvals = [min(1.0, max(0.0, x)) for x in fvals]
-        self.write_bits(dest, [f2b(x) for x in fvals], False)
+        self.write_bits(dest, [f2b(x) for x in fvals], False,
+                        fvals if self.wide else None)
 
     def write_i(self, dest, ivals):
         self.write_bits(dest, [i2b(x) for x in ivals], False)
@@ -629,7 +672,7 @@ def _cond_lane(opd):
 
 
 def execute(program, inputs=None, cbufs=None, *, texture=None, structured=None,
-            deriv_scale=1.0, max_loop=1 << 16):
+            deriv_scale=1.0, max_loop=1 << 16, trace=None, wide=False, ieee=False):
     """Run ``program`` once.
 
     Args:
@@ -644,18 +687,51 @@ def execute(program, inputs=None, cbufs=None, *, texture=None, structured=None,
                   rather than hanging — almost always means a constant buffer
                   feeding a loop count (e.g. light count) was left as garbage
                   random bits instead of being driven to a sane integer.
+        trace:    ``trace(vm, node, phase)`` observer. Called with ``'pre'`` before
+                  every node, and with ``'post'`` after an instruction node. For a
+                  control node (``if`` / ``breakcz`` / ``continuecz`` / ``discard`` /
+                  ``retc``) the ``'pre'`` call comes before its condition is tested.
+                  Operands are readable through ``vm.fread`` / ``vm.uread`` /
+                  ``vm.bitread``; a ``'pre'`` read sees a source before an instruction
+                  that overwrites it. Observe only -- a tracer must not write.
+        wide:     evaluate floats in double precision *across* instructions. Every
+                  float write keeps its unrounded value beside the float32 bits, and
+                  a float read uses it while the lane still holds exactly those bits
+                  (integer and bitwise writes drop it). Two programs computing the
+                  same real-valued function then agree up to double rounding even
+                  when their float32 evaluation ORDER differs (``mad`` against
+                  ``mul`` + ``add``, a reassociated sum), while a different formula
+                  still diverges. ``Outputs.f`` returns the wide value. Branches are
+                  decided on wide values too, so a compare within a ULP of its
+                  threshold can go the other way than it would in float32.
+        ieee:     NaN semantics that do not depend on operand ORDER. By default
+                  ``min`` / ``max`` are Python's, which keep the FIRST operand when
+                  the other is NaN (``max(nan, 0)`` is NaN, ``max(0, nan)`` is 0),
+                  and ``log`` / ``rsq`` map NaN and negatives to -inf / +inf. Two
+                  programs that compute the same thing with swapped min/max
+                  operands then diverge on any NaN -- an interpreter artefact, not
+                  a shader difference. With ``ieee=True`` min/max are IEEE 754
+                  minNum/maxNum (a NaN operand is dropped, whichever side) and
+                  ``log`` / ``rsq`` return NaN for NaN or negative input (0 still
+                  gives -inf / +inf).
 
     Returns:
         :class:`Outputs`.
     """
-    vm = _VM(program, cbufs or {}, inputs or {}, texture or TextureModel(), deriv_scale)
+    vm = _VM(program, cbufs or {}, inputs or {}, texture or TextureModel(), deriv_scale,
+             wide=wide)
+    vm.ieee = ieee
     vm.sbuf = structured or StructuredModel()
 
     def run(nodes):
         for n in nodes:
             t = n[0]
+            if trace is not None:
+                trace(vm, n, 'pre')
             if t == 'op':
                 _do_op(vm, n)
+                if trace is not None:
+                    trace(vm, n, 'post')
             elif t == 'if':
                 _, want_nz, cond, then_n, else_n = n
                 c = vm.uread(cond)[_cond_lane(cond)]
@@ -709,9 +785,17 @@ def execute(program, inputs=None, cbufs=None, *, texture=None, structured=None,
         run(program.ast)
     except _Ret:
         pass                    # early return: keep whatever outputs were written
+    wide_out = {}
+    if wide:
+        for reg, arr in vm.o.items():
+            for lane in range(4):
+                s = vm.shadow.get((id(arr), lane))
+                if s is not None and f2b(s) == arr[lane]:
+                    wide_out[(reg, lane)] = s
     return Outputs(dict(vm.o), vm.discarded,
                    coverage=vm.omask[0] if vm.wrote_omask else None,
-                   depth=b2f(vm.odepth[0]) if vm.wrote_odepth else None)
+                   depth=b2f(vm.odepth[0]) if vm.wrote_odepth else None,
+                   wide=wide_out)
 
 
 def _texslot(tok):
@@ -731,6 +815,26 @@ def _operand_as_dest(opd):
     """
     # ('reg', base, num, index, swizzle, neg, abs) -> (base, num, index, comps)
     return (opd[1], opd[2], opd[3], opd[4])
+
+
+_AOFFIMMI = re.compile(r'_aoffimmi\((-?\d+),(-?\d+),(-?\d+)\)')
+
+
+def _texel_offset(op):
+    """``(u, v, w)`` of an ``_aoffimmi(u,v,w)`` immediate texel offset, else None."""
+    m = _AOFFIMMI.search(op)
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def _sample_coord(vm, opd, off):
+    """A sample op's normalized coordinate, moved by its texel offset (offset / size):
+    a neighbour tap must read a different texel than the centre (ignoring the offset
+    made every FXAA / CMAA neighbourhood read one texel)."""
+    coord = vm.fread(opd)
+    if not off:
+        return coord
+    return [coord[k] + (off[k] / vm.tex.dims[k] if k < 3 and vm.tex.dims[k] else 0.0)
+            for k in range(len(coord))]
 
 
 def _do_op(vm, node):
@@ -776,14 +880,21 @@ def _do_op(vm, node):
             idx = 0; off = vm.iread(srcs[0])[0]; res = srcs[1]
         raw = vm.sbuf.load(res[2], idx, off)
         vm.write_bits(dest, _apply_swz(raw, res[4]), False); return
+    off = _texel_offset(base)
     if base.startswith('ldms'):           # multisample load: sample index ignored
-        coord = vm.fread(srcs[0]); res = srcs[1]
+        # integer texel coordinates, as for `ld` (read as float bits they were all ~0,
+        # so every fetch landed on one texel)
+        coord = [float(x) for x in vm.iread(srcs[0])]; res = srcs[1]
+        if off:
+            coord = [coord[k] + (off[k] if k < 2 else 0) for k in range(len(coord))]
         vm.write_f(dest, _apply_swz(vm.tex.sample(res[2], coord), res[4]), False); return
     if base.startswith('ld'):             # typed texel fetch: ld dest, coord, t#
         # Integer texel coords (xyz = u,v,mip). Feed them through the same
         # smooth field as `sample` so a shader that fetches and one that samples
         # the same slot stay comparable.
         coord = [float(x) for x in vm.iread(srcs[0])]; res = srcs[1]
+        if off:
+            coord = [coord[k] + (off[k] if k < 2 else 0) for k in range(len(coord))]
         vm.write_f(dest, _apply_swz(vm.tex.sample(res[2], coord), res[4]), False); return
     if base.startswith('eval_'):
         # eval_sample_index / eval_centroid / eval_snapped: per-sample attribute
@@ -791,14 +902,14 @@ def _do_op(vm, node):
         # IS the interpolated value -- pass v# through unchanged.
         vm.write_bits(dest, vm._raw(srcs[0]), False); return
     if base.startswith('sample_c'):       # sample_c / sample_c_lz (PCF compare)
-        coord = vm.fread(srcs[0]); slot = srcs[1][2]; ref = vm.fread(srcs[3])[0]
+        coord = _sample_coord(vm, srcs[0], off); slot = srcs[1][2]; ref = vm.fread(srcs[3])[0]
         val = vm.tex.sample_compare(slot, coord, ref)
         vm.write_f(dest, [val] * 4, False); return
     if base.startswith('sample_l'):       # explicit-LOD sample
-        coord = vm.fread(srcs[0]); slot = srcs[1][2]; swz = srcs[1][4]; lod = vm.fread(srcs[3])[0]
+        coord = _sample_coord(vm, srcs[0], off); slot = srcs[1][2]; swz = srcs[1][4]; lod = vm.fread(srcs[3])[0]
         vm.write_f(dest, _apply_swz(vm.tex.sample_lod(slot, coord, lod), swz), False); return
     if base.startswith('sample'):         # plain sample (incl. sample_indexable)
-        coord = vm.fread(srcs[0]); slot = srcs[1][2]; swz = srcs[1][4]
+        coord = _sample_coord(vm, srcs[0], off); slot = srcs[1][2]; swz = srcs[1][4]
         vm.write_f(dest, _apply_swz(vm.tex.sample(slot, coord), swz), False); return
     if base.startswith('resinfo'):
         swz = srcs[1][4]
@@ -809,10 +920,16 @@ def _do_op(vm, node):
 
     # ---- float ALU ----
     if base == 'mov':
-        vm.write_bits(dest, vm.bitread(srcs[0]), sat); return
+        bits, wide = vm.bitread_wide(srcs[0])
+        vm.write_bits(dest, bits, sat, wide); return
     if base == 'movc':
-        c = vm.uread(srcs[0]); a = vm.bitread(srcs[1]); b = vm.bitread(srcs[2])
-        vm.write_bits(dest, [a[k] if c[k] != 0 else b[k] for k in range(4)], sat); return
+        c = vm.uread(srcs[0])
+        a, wa = vm.bitread_wide(srcs[1]); b, wb = vm.bitread_wide(srcs[2])
+        wide = None
+        if vm.wide:
+            wa = wa or [None] * 4; wb = wb or [None] * 4
+            wide = [wa[k] if c[k] != 0 else wb[k] for k in range(4)]
+        vm.write_bits(dest, [a[k] if c[k] != 0 else b[k] for k in range(4)], sat, wide); return
     if base == 'dp2':
         a = vm.fread(srcs[0]); b = vm.fread(srcs[1])
         vm.write_f(dest, [a[0] * b[0] + a[1] * b[1]] * 4, sat); return
@@ -835,13 +952,21 @@ def _do_op(vm, node):
         elif base == 'div':
             b = vm.fread(srcs[1]); r = [_fdiv(a[k], b[k]) for k in range(4)]
         elif base == 'min':
-            b = vm.fread(srcs[1]); r = [min(a[k], b[k]) for k in range(4)]
+            b = vm.fread(srcs[1])
+            r = ([_min_num(a[k], b[k]) for k in range(4)] if vm.ieee
+                 else [min(a[k], b[k]) for k in range(4)])
         elif base == 'max':
-            b = vm.fread(srcs[1]); r = [max(a[k], b[k]) for k in range(4)]
+            b = vm.fread(srcs[1])
+            r = ([_max_num(a[k], b[k]) for k in range(4)] if vm.ieee
+                 else [max(a[k], b[k]) for k in range(4)])
         elif base == 'sqrt':
             r = [math.sqrt(x) if x >= 0 else float('nan') for x in a]
         elif base == 'rsq':
-            r = [(1.0 / math.sqrt(x) if x > 0 else float('inf')) for x in a]
+            if vm.ieee:
+                r = [(1.0 / math.sqrt(x) if x > 0 else float('inf') if x == 0 else float('nan'))
+                     for x in a]
+            else:
+                r = [(1.0 / math.sqrt(x) if x > 0 else float('inf')) for x in a]
         elif base == 'rcp':
             r = [_fdiv(1.0, x) for x in a]
         elif base == 'exp':
@@ -853,7 +978,11 @@ def _do_op(vm, node):
                 except OverflowError:
                     r.append(float('inf'))
         elif base == 'log':
-            r = [(math.log2(x) if x > 0 else -float('inf')) for x in a]
+            if vm.ieee:
+                r = [(math.log2(x) if x > 0 else -float('inf') if x == 0 else float('nan'))
+                     for x in a]
+            else:
+                r = [(math.log2(x) if x > 0 else -float('inf')) for x in a]
         elif base == 'frc':
             # NaN/inf pass through as NaN (GPU: frac of non-finite is undefined→NaN);
             # math.floor would raise on non-finite.
@@ -1011,6 +1140,24 @@ def _fdiv(a, b):
     return math.inf * (1 if a > 0 else -1 if a < 0 else 0)
 
 
+def _min_num(a, b):
+    """IEEE 754 minNum: a NaN operand is dropped, whichever side it is on."""
+    if a != a:
+        return b
+    if b != b:
+        return a
+    return a if a <= b else b
+
+
+def _max_num(a, b):
+    """IEEE 754 maxNum: a NaN operand is dropped, whichever side it is on."""
+    if a != a:
+        return b
+    if b != b:
+        return a
+    return a if a >= b else b
+
+
 # --------------------------------------------------------------------------
 # self-test — `python tools/dxbc_interp.py`
 # --------------------------------------------------------------------------
@@ -1088,6 +1235,44 @@ def _selftest():
             "  and r2.x, r0.x, l(1)\n  iadd r0.x, r0.x, l(1)\n  continuec_nz r2.x\n"
             "  iadd r1.x, r1.x, r0.x\nendloop\nmov o0.x, r1.x")
     check("loop+continue", o.i(0, 0), 1 + 3 + 5 + 7 + 9)   # counter incremented before the add
+    # wide mode: the same real function in a different float32 ORDER agrees, a
+    # different formula does not. (0.333333*3 - 1) rounds differently fused vs split.
+    def run_w(body, **kw):
+        return execute(Program.from_text("ps_5_0\ndcl_temps 8\n" + body + "\nret\n"), **kw)
+    pre = "mov r1.xyz, l(0.333333, 3.000000, -1.000000, 0)\n"
+    fused = pre + "mad r0.x, r1.x, r1.y, r1.z\nmov o0.x, r0.x"
+    split = pre + "mul r0.x, r1.x, r1.y\nmov r2.x, r0.x\nadd r0.x, r2.x, r1.z\nmov o0.x, r0.x"
+    bumped = ("mov r1.xyz, l(0.333333, 3.000003, -1.000000, 0)\n"
+              "mad r0.x, r1.x, r1.y, r1.z\nmov o0.x, r0.x")
+    check("f32: fused != split", run_w(fused).f(0, 0) != run_w(split).f(0, 0), True)
+    check("wide: fused == split",
+          abs(run_w(fused, wide=True).f(0, 0) - run_w(split, wide=True).f(0, 0)) <= 1e-12, True)
+    check("wide: changed literal differs",
+          abs(run_w(fused, wide=True).f(0, 0) - run_w(bumped, wide=True).f(0, 0)) > 1e-7, True)
+    # a bitwise write drops the shadow even when it leaves the bits unchanged
+    kept = run_w(pre + "mul r0.x, r1.x, r1.y\nmov o0.x, r0.x", wide=True).f(0, 0)
+    o = run_w(pre + "mul r0.x, r1.x, r1.y\nand r0.x, r0.x, l(0xffffffff)\nmov o0.x, r0.x",
+              wide=True)
+    check("wide: bitwise write drops shadow",
+          (o.f(0, 0) == b2f(o.bits(0, 0)), kept != o.f(0, 0)), (True, True))
+    # ieee NaN semantics: min/max drop a NaN operand whichever side it is on
+    nan = "mov r0.x, l(0.0)\nlog r0.x, r0.x\nmul r0.x, r0.x, l(0.0)\n"   # -inf * 0 = NaN
+    nan_first = nan + "max r1.x, r0.x, l(2.0)\nmov o0.x, r1.x"
+    nan_second = nan + "max r1.x, l(2.0), r0.x\nmov o0.x, r1.x"
+    check("python max is order-dependent on NaN",
+          math.isnan(run_w(nan_first).f(0, 0)) and run_w(nan_second).f(0, 0) == 2.0, True)
+    check("ieee max drops NaN either side",
+          (run_w(nan_first, ieee=True).f(0, 0), run_w(nan_second, ieee=True).f(0, 0)), (2.0, 2.0))
+    check("ieee log/rsq of negative is NaN",
+          math.isnan(run_w("mov r0.x, l(-1.0)\nlog r1.x, r0.x\nrsq r1.y, r0.x\n"
+                           "add o0.x, r1.x, r1.y", ieee=True).f(0, 0)), True)
+    # trace sees a source BEFORE the instruction overwrites it
+    seen = []
+    def tr(vm, node, phase):
+        if phase == 'pre' and node[0] == 'op' and node[1] == 'lt':
+            seen.append(vm.fread(node[3][0])[0])
+    run_w("mov r0.x, l(0.25)\nlt r0.x, r0.x, l(0.5)\nmov o0.x, r0.x", trace=tr)
+    check("trace pre-read", seen, [0.25])
     # unsupported opcode must raise, not miscompute
     try:
         run("texkill r0.x")
