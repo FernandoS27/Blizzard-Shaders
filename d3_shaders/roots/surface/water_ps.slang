@@ -261,3 +261,216 @@ public float4 water_ps_main<TModel : IWaterPixelModel, TAlpha : IAlphaTest>(D3In
     TAlpha.apply(color.a);
     return color;
 }
+
+/// g^0.4 * 0.6 + 0.4: a dull, almost uniform reflection.
+public struct FresnelFlat : IWaterFresnel
+{
+    public static float weight(float grazing) { return pow(grazing, 0.4) * 0.6 + 0.4; }
+};
+
+/// The environment map projected from TEXCOORD1 (xy / w), its uv perturbed by
+/// the normal in projected space; tinted and fogged.
+public struct WaterReflectProjectedEnvironment : IWaterReflection
+{
+    public static float3 reflection(D3Interpolants i, WaterSurface s)
+    {
+        float4 projected = i.texcoord1();
+        float2 uv = (s.normal.xy * 0.12 * projected.w + projected.xy) / projected.w;
+        float3 env = texEnvMap.Sample(texEnvMap_s, uv).xyz;
+        return d3ApplyFog(env * s.tint, s.fog);
+    }
+};
+
+/// The perturbed surface normal of a water surface.
+public interface IWaterNormal
+{
+    static float3 normal(D3Interpolants i);
+}
+
+/// Two scrolling normal maps (TEXCOORD2.xy, .wz) plus the ripple gradient
+/// (TEXCOORD0.zw).
+public struct WaterNormalLayered : IWaterNormal
+{
+    public static float3 normal(D3Interpolants i)
+    {
+        float3 bump = texNormalMap.Sample(texNormalMap_s, i.texcoord2().xy).xyz * 2.0 - 1.0;
+        bump += texNormalMap2.Sample(texNormalMap2_s, i.texcoord2().wz).xyz * 2.0 - 1.0;
+        return normalize(bump + normalize(waterRippleGradient(texRipple, texRipple_s, i.texcoord0().zw)));
+    }
+};
+
+/// The ripple gradient alone (TEXCOORD0.zw).
+public struct WaterNormalRipple : IWaterNormal
+{
+    public static float3 normal(D3Interpolants i)
+    {
+        return normalize(waterRippleGradient(texRipple, texRipple_s, i.texcoord0().zw));
+    }
+};
+
+/// Another normal with its tangent-plane part scaled by normalMapScale.x (the
+/// normal is not renormalised).
+public struct WaterNormalScaled<TNormal : IWaterNormal> : IWaterNormal
+{
+    public static float3 normal(D3Interpolants i)
+    {
+        float3 n = TNormal.normal(i);
+        n.xy = n.xy * normalMapScale.x;
+        return n;
+    }
+};
+
+/// How much of the murk layer covers what is under the water, before COLOR0.a.
+public interface IWaterMurkMask
+{
+    static float opacity(D3Interpolants i, float murkAlpha);
+}
+
+/// The murk texture's own alpha.
+public struct MurkAlpha : IWaterMurkMask
+{
+    public static float opacity(D3Interpolants i, float murkAlpha) { return murkAlpha; }
+};
+
+/// The murk alpha cleared where the ripple map's green channel (TEXCOORD0.zw)
+/// is set.
+public struct MurkRippleCleared : IWaterMurkMask
+{
+    public static float opacity(D3Interpolants i, float murkAlpha)
+    {
+        return (1.0 - texRipple.Sample(texRipple_s, i.texcoord0().zw).y) * murkAlpha;
+    }
+};
+
+/// The specular of the light rig reflected off the surface (TEXCOORD7 is the
+/// view-space position).
+float3 waterHighlights(D3Interpolants i, WaterSurface s)
+{
+    float3 viewNormal = normalize(float3(dot(matWorldView[0].xyz, s.normal), dot(matWorldView[1].xyz, s.normal),
+                                         dot(matWorldView[2].xyz, s.normal)));
+    return landscapeLightRig(i.texcoord7().xyz, viewNormal, false).specular;
+}
+
+/// What the gloss map (texAlpha at TEXCOORD0.xy) does to a water surface: it
+/// can mask the reflection and carry the coverage.
+public interface IWaterGloss
+{
+    static float reflectionWeight(D3Interpolants i, float fresnel);
+    static float4 finish(D3Interpolants i, WaterSurface s, float3 color);
+}
+
+/// No gloss map; coverage is COLOR0.a. HIGHLIGHTS adds the light rig's specular.
+public struct WaterGlossNone<let HIGHLIGHTS : bool> : IWaterGloss
+{
+    public static float reflectionWeight(D3Interpolants i, float fresnel) { return fresnel; }
+
+    public static float4 finish(D3Interpolants i, WaterSurface s, float3 color)
+    {
+        if (HIGHLIGHTS)
+        {
+            color += waterHighlights(i, s);
+        }
+        return float4(color, i.color0().w);
+    }
+};
+
+/// The gloss alpha masks the reflection; coverage is COLOR0.a. HIGHLIGHTS adds
+/// the light rig's specular.
+public struct WaterGlossReflection<let HIGHLIGHTS : bool> : IWaterGloss
+{
+    public static float reflectionWeight(D3Interpolants i, float fresnel)
+    {
+        return fresnel * texAlpha.Sample(texAlpha_s, i.texcoord0().xy).w;
+    }
+
+    public static float4 finish(D3Interpolants i, WaterSurface s, float3 color)
+    {
+        return WaterGlossNone<HIGHLIGHTS>.finish(i, s, color);
+    }
+};
+
+/// The gloss alpha times COLOR0.a is the coverage, premultiplied into the
+/// colour and into the fogged highlights.
+public struct WaterGlossCoverage : IWaterGloss
+{
+    public static float reflectionWeight(D3Interpolants i, float fresnel) { return fresnel; }
+
+    public static float4 finish(D3Interpolants i, WaterSurface s, float3 color)
+    {
+        float coverage = texAlpha.Sample(texAlpha_s, i.texcoord0().xy).w * i.color0().w;
+        float3 highlights = waterHighlights(i, s) * s.fog;
+        return float4(color * coverage + highlights * coverage, coverage);
+    }
+};
+
+/// The water tint: COLOR1 to COLOR0 by the light map's alpha (TEXCOORD6.zw).
+float3 waterTint(D3Interpolants i)
+{
+    return lerp(i.color1().xyz, i.color0().xyz, texLightmap.Sample(texLightmap_s, i.texcoord6().zw).w);
+}
+
+/// The Fresnel term of a surface: 1 - max(N.V, 0), TEXCOORD4 the view vector.
+float waterGrazing(D3Interpolants i, WaterSurface s)
+{
+    return 1.0 - max(dot(normalize(i.texcoord4().xyz), s.normal), 0.0);
+}
+
+/// A refractive water surface. The normal (`TNormal`) offsets a screen-space
+/// refraction that falls back to the undistorted sample where the distorted
+/// texel is in front of the water or on the far plane. A murk layer
+/// (TEXCOORD5) tints and fogs over the refraction by its opacity (`TMurk`)
+/// times COLOR0.a, FOAM lays the whitewater texture (TEXCOORD6.xy, masked at
+/// TEXCOORD0.xy) over that, and the reflection is blended in by the Fresnel
+/// weight; the gloss policy finishes. TEXCOORD4.w is the fog.
+public struct WaterRefracted<TNormal : IWaterNormal, TMurk : IWaterMurkMask, TReflection : IWaterReflection,
+                             TFresnel : IWaterFresnel, TGloss : IWaterGloss, let FOAM : bool> : IWaterPixelModel
+{
+    public static float4 shade(D3Interpolants i)
+    {
+        WaterSurface s;
+        s.normal = TNormal.normal(i);
+
+        s.screen = i.texcoord3().xyz / i.texcoord3().w;
+        float2 straight = float2(s.screen.x, 1.0 - s.screen.y);
+        float2 distorted = s.normal.xy * 0.12 + straight;
+        float sceneDepth = texDepth.Sample(texDepth_s, waterViewportUv(distorted)).x;
+        bool behind = (s.screen.z < sceneDepth) && (0.984375 > sceneDepth);
+        float3 color = texRefraction.Sample(texRefraction_s, waterViewportUv(behind ? distorted : straight)).xyz;
+
+        s.fog = i.texcoord4().w;
+        s.tint = waterTint(i);
+        float4 murk = texMurk.Sample(texMurk_s, s.normal.xy * 0.12 + i.texcoord5().xy);
+        color = lerp(color, d3ApplyFog(s.tint * murk.xyz, s.fog), TMurk.opacity(i, murk.w) * i.color0().w);
+        if (FOAM)
+        {
+            float4 foam = texWhitewater.Sample(texWhitewater_s, i.texcoord6().xy);
+            float mask = texWhitewaterMask.Sample(texWhitewaterMask_s, i.texcoord0().xy).r;
+            color = lerp(color, d3ApplyFog(s.tint * foam.xyz, s.fog), foam.w * mask);
+        }
+
+        float grazing = waterGrazing(i, s);
+        color = lerp(color, TReflection.reflection(i, s), TGloss.reflectionWeight(i, TFresnel.weight(grazing)));
+        return TGloss.finish(i, s, color);
+    }
+};
+
+/// An opaque liquid (tar, sludge): the murk layer (TEXCOORD5), tinted and
+/// fogged, is the whole body; the reflection is blended over it by the Fresnel
+/// weight and the gloss policy finishes.
+public struct WaterOpaque<TNormal : IWaterNormal, TReflection : IWaterReflection, TFresnel : IWaterFresnel,
+                          TGloss : IWaterGloss> : IWaterPixelModel
+{
+    public static float4 shade(D3Interpolants i)
+    {
+        WaterSurface s;
+        s.normal = TNormal.normal(i);
+        s.screen = float3(0.0);
+        s.fog = i.texcoord4().w;
+        s.tint = waterTint(i);
+        float4 murk = texMurk.Sample(texMurk_s, s.normal.xy * 0.12 + i.texcoord5().xy);
+        float3 color = d3ApplyFog(s.tint * murk.xyz, s.fog);
+        float grazing = waterGrazing(i, s);
+        color = lerp(color, TReflection.reflection(i, s), TGloss.reflectionWeight(i, TFresnel.weight(grazing)));
+        return TGloss.finish(i, s, color);
+    }
+};

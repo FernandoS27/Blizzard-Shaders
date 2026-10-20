@@ -14000,7 +14000,9 @@
  },
  {
   "slot": 62,
-  "roots": [],
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "a30562a3f556590704f0cd95e53a7add70698f59",
   "retail": [
    {
@@ -14132,133 +14134,6 @@
  },
  {
   "slot": 63,
-  "roots": [],
-  "program": "1fa13291caf125a4d71d20c05fa20ddeade101e2",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "02a5e7ed",
-    "defines": {},
-    "shaders": [
-     "actor_transparent_groundstomp_cracks_pma"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "sampler2s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "sampler2t"
-    ]
-   ],
-   "banks": {},
-   "alphaCompare": [],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 64,
   "roots": [
    "actor_ps_main"
   ],
@@ -14502,8 +14377,10 @@
   }
  },
  {
-  "slot": 65,
-  "roots": [],
+  "slot": 64,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "7f4ff335f21b77fa67b0cc014453485188886990",
   "retail": [
    {
@@ -14686,8 +14563,10 @@
   }
  },
  {
-  "slot": 66,
-  "roots": [],
+  "slot": 65,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "cf941becb68f7de0463a5bc2f84b231b6743fb3e",
   "retail": [
    {
@@ -14942,152 +14821,10 @@
   }
  },
  {
-  "slot": 67,
-  "roots": [],
-  "program": "7a4391b08dbc3ccbb953b6eed844fad26979fcaf",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "10dea485",
-    "defines": {},
-    "shaders": [
-     "actor2_opaque_glow_gloss_bloom_am4_uv2_skin"
-    ],
-    "residue": "disputed"
-   },
-   {
-    "subfamily": "Residue__ps",
-    "hash": "564702f3",
-    "defines": {},
-    "shaders": [
-     "actor2_opaque_glow_gloss_bloom_am4_skin"
-    ],
-    "residue": "disputed"
-   },
-   {
-    "subfamily": "Residue__ps",
-    "hash": "bb1901c9",
-    "defines": {},
-    "shaders": [
-     "actor2_opaque_glow_gloss_bloom_am4"
-    ],
-    "residue": "disputed"
-   }
+  "slot": 66,
+  "roots": [
+   "actor_ps_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "sampler1s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "sampler1t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 68,
-  "roots": [],
   "program": "b1b10fc24f293ece963f13e7010ef1409d0541b2",
   "retail": [
    {
@@ -15237,156 +14974,10 @@
   }
  },
  {
-  "slot": 69,
-  "roots": [],
-  "program": "d35d7c2641583d2d5044e46ae38f4ce8ac3bc30d",
-  "retail": [
-   {
-    "subfamily": "Actor.fx__main_ps_glowingwing",
-    "hash": "214163ce",
-    "defines": {},
-    "shaders": [
-     "actor_glowtendril_skin_v11"
-    ],
-    "residue": "singleton"
-   }
+  "slot": 67,
+  "roots": [
+   "actor_ps_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     3,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     4,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "texDiffuses"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "texGlows"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "texAlphaMasks"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "texDiffuset"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "texGlowt"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "texAlphaMaskt"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 70,
-  "roots": [],
   "program": "5bbf8c0923c18fd28d2b9327ce18065ca75a8439",
   "retail": [
    {
@@ -15608,8 +15199,10 @@
   }
  },
  {
-  "slot": 71,
-  "roots": [],
+  "slot": 68,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "117745b1929bde31eb53fa1aeb80c986bae7aa22",
   "retail": [
    {
@@ -15735,8 +15328,10 @@
   }
  },
  {
-  "slot": 72,
-  "roots": [],
+  "slot": 69,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "7d93772d7b565e3bf17dc27d00da1d8a556cd687",
   "retail": [
    {
@@ -15899,7 +15494,7 @@
   }
  },
  {
-  "slot": 73,
+  "slot": 70,
   "roots": [
    "actor_ps_main"
   ],
@@ -16129,8 +15724,10 @@
   }
  },
  {
-  "slot": 74,
-  "roots": [],
+  "slot": 71,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "aa52188af527d71b6b42d41f68c2335ac4af2101",
   "retail": [
    {
@@ -16304,310 +15901,10 @@
   }
  },
  {
-  "slot": 75,
-  "roots": [],
-  "program": "8ed29527bab77555dc136396dc5bbfdcc7814cf2",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "4dd0cdb2",
-    "defines": {},
-    "shaders": [
-     "actor2_alphatest_gloss_glow_bloom",
-     "actor2_alphatest_gloss_glow_bloom_alphamask",
-     "actor2_alphatest_gloss_glow_bloom_herotint",
-     "actor2_alphatest_glow_bloom",
-     "actor2_gloss_glow_bloom_herotint",
-     "actor2_opaque_glow_bloom",
-     "actor2_opaque_glow_gloss_bloom"
-    ],
-    "residue": "disputed"
-   },
-   {
-    "subfamily": "Residue__ps",
-    "hash": "7037b51a",
-    "defines": {},
-    "shaders": [
-     "actor2_alphatest_gloss_glow_bloom_herotint_skin",
-     "actor2_alphatest_gloss_glow_bloom_skin",
-     "actor2_alphatest_gloss_glow_bloom_skin_alphamask",
-     "actor2_alphatest_glow_bloom_skin",
-     "actor2_fade_glow_bloom_skin",
-     "actor2_opaque_glow_bloom_skin",
-     "actor2_opaque_glow_gloss_bloom_skin",
-     "actor2_opaque_glow_gloss_bloom_skin_ground"
-    ],
-    "residue": "disputed"
-   }
+  "slot": 72,
+  "roots": [
+   "actor_ps_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     4,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     88,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 76,
-  "roots": [],
-  "program": "9e5c3cd44bf8b6cadfc1cba3d0a9afc72af1976e",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "4de752f9",
-    "defines": {},
-    "shaders": [
-     "actor_glowtendril_common_skin_forjill"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     7,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "sampler1s"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "sampler2s"
-    ],
-    [
-     "s3",
-     "sampler",
-     "",
-     false,
-     "sampler3s"
-    ],
-    [
-     "s4",
-     "sampler",
-     "",
-     false,
-     "sampler4s"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "sampler1t"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "sampler2t"
-    ],
-    [
-     "t3",
-     "texture",
-     "texture2d",
-     false,
-     "sampler3t"
-    ],
-    [
-     "t4",
-     "texture",
-     "texture2d",
-     false,
-     "sampler4t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 77,
-  "roots": [],
   "program": "fcb3d364b891bf41943c2474e71ed65dd995d357",
   "retail": [
    {
@@ -16848,7 +16145,7 @@
   }
  },
  {
-  "slot": 78,
+  "slot": 73,
   "roots": [
    "actor_ps_main"
   ],
@@ -17106,18 +16403,20 @@
   }
  },
  {
-  "slot": 79,
-  "roots": [],
-  "program": "d2f259eaa268f54390beffa4ba69d1955c959ebc",
+  "slot": 74,
+  "roots": [
+   "actor_ps_main"
+  ],
+  "program": "6078c832b9efa329e42fc00b1f5402604e9bcf1b",
   "retail": [
    {
     "subfamily": "Residue__ps",
-    "hash": "5bd42a5a",
+    "hash": "5a19baed",
     "defines": {},
     "shaders": [
-     "actor2_transparent_glow_bloom2"
+     "tree_deform_spec"
     ],
-    "residue": "disputed"
+    "residue": "no_shd"
    }
   ],
   "measured": {
@@ -17139,25 +16438,65 @@
      "float"
     ],
     [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
      "TEXCOORD",
      0,
-     3,
-     "xyzw",
+     2,
+     "xy",
      "NONE",
      "float"
     ],
     [
      "TEXCOORD",
      1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
      4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     5,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     6,
+     6,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     6,
+     "z",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     7,
      "xyzw",
      "NONE",
      "float"
@@ -17165,7 +16504,7 @@
     [
      "SV_CLIPDISTANCE",
      0,
-     5,
+     8,
      "xyzw",
      "CLIPDST",
      "float"
@@ -17173,7 +16512,7 @@
     [
      "SV_CLIPDISTANCE",
      1,
-     6,
+     9,
      "xyzw",
      "CLIPDST",
      "float"
@@ -17181,18 +16520,60 @@
    ],
    "resources": [
     [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "diffuseMaps"
+    ],
+    [
      "s1",
      "sampler",
      "",
      false,
-     "sampler1s"
+     "irradianceMaps"
+    ],
+    [
+     "s4",
+     "sampler",
+     "",
+     false,
+     "glossMaps"
+    ],
+    [
+     "s5",
+     "sampler",
+     "",
+     false,
+     "environmentMaps"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "diffuseMapt"
     ],
     [
      "t1",
      "texture",
+     "texturecube",
+     false,
+     "irradianceMapt"
+    ],
+    [
+     "t4",
+     "texture",
      "texture2d",
      false,
-     "sampler1t"
+     "glossMapt"
+    ],
+    [
+     "t5",
+     "texture",
+     "texture2d",
+     false,
+     "environmentMapt"
     ]
    ],
    "banks": {
@@ -17202,7 +16583,7 @@
     ]
    },
    "alphaCompare": [
-    "lt(ref,a)"
+    "ge(a,ref)"
    ],
    "lights": false,
    "outputs": [
@@ -17218,8 +16599,10 @@
   }
  },
  {
-  "slot": 80,
-  "roots": [],
+  "slot": 75,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "f6724f91f63e745ebad21b918e39bebcce14cd7c",
   "retail": [
    {
@@ -17410,8 +16793,10 @@
   }
  },
  {
-  "slot": 81,
-  "roots": [],
+  "slot": 76,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "4afe4adc46436d5252505778403d5706be8d0eeb",
   "retail": [
    {
@@ -17522,7 +16907,7 @@
   }
  },
  {
-  "slot": 82,
+  "slot": 77,
   "roots": [
    "actor_ps_main"
   ],
@@ -17686,8 +17071,10 @@
   }
  },
  {
-  "slot": 83,
-  "roots": [],
+  "slot": 78,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "2722c42612ff114d20e70a1d41a4c9c581d1b7d4",
   "retail": [
    {
@@ -17851,468 +17238,10 @@
   }
  },
  {
-  "slot": 84,
-  "roots": [],
-  "program": "b3a0c6ea029c36d3a21db702244f2eec865eea40",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "7e001e3c",
-    "defines": {},
-    "shaders": [
-     "actor_additive_lightning_bloom"
-    ],
-    "residue": "no_shd"
-   },
-   {
-    "subfamily": "Residue__ps",
-    "hash": "f240aff3",
-    "defines": {},
-    "shaders": [
-     "actor_additive_lightning_bloom_skin"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 79,
+  "roots": [
+   "actor_ps_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     7,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "diffuseSampler0s"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "diffuseSampler1s"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "diffuseSampler2s"
-    ],
-    [
-     "s3",
-     "sampler",
-     "",
-     false,
-     "flowSampler0s"
-    ],
-    [
-     "s4",
-     "sampler",
-     "",
-     false,
-     "flowSampler1s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "diffuseSampler0t"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "diffuseSampler1t"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "diffuseSampler2t"
-    ],
-    [
-     "t3",
-     "texture",
-     "texture2d",
-     false,
-     "flowSampler0t"
-    ],
-    [
-     "t4",
-     "texture",
-     "texture2d",
-     false,
-     "flowSampler1t"
-    ]
-   ],
-   "banks": {},
-   "alphaCompare": [],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 85,
-  "roots": [],
-  "program": "995c13da091fe8a2e361cfd687013fe81f24019f",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "7e1f5ec0",
-    "defines": {},
-    "shaders": [
-     "actor_lavafall",
-     "actor_lavafall_2diff"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     7,
-     "x",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "sampler1s"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "sampler2s"
-    ],
-    [
-     "s3",
-     "sampler",
-     "",
-     false,
-     "sampler3s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "sampler1t"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "sampler2t"
-    ],
-    [
-     "t3",
-     "texture",
-     "texture2d",
-     false,
-     "sampler3t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 86,
-  "roots": [],
-  "program": "f62a56e1bb533c19b8c6e01f6992d54114264b80",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "81671873",
-    "defines": {},
-    "shaders": [
-     "actor_champion_opaque_glow"
-    ],
-    "residue": "disputed"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     4,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     88,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 87,
-  "roots": [],
   "program": "d539e5c1b001ebc07ecca186ac83c267804fcd01",
   "retail": [
    {
@@ -18503,109 +17432,7 @@
   }
  },
  {
-  "slot": 88,
-  "roots": [],
-  "program": "c9f216de54fe24166a8f718e65442ef2d0ddf158",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "8cd17d62",
-    "defines": {},
-    "shaders": [
-     "actor2_fade_glow_gloss_bloom"
-    ],
-    "residue": "disputed"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     4,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     88,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 89,
+  "slot": 80,
   "roots": [
    "actor_ps_main"
   ],
@@ -18863,156 +17690,10 @@
   }
  },
  {
-  "slot": 90,
-  "roots": [],
-  "program": "9bf5c7678cbd22deb1c4266e7adf0bb2551f5f17",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "94aec5ec",
-    "defines": {},
-    "shaders": [
-     "actor_shell_skin_dx8"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 81,
+  "roots": [
+   "actor_ps_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     3,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     4,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "texDiffuses"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "texGlosss"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "texGlows"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "texDiffuset"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "texGlosst"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "texGlowt"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 91,
-  "roots": [],
   "program": "5ae76567e25b89dd7165ed073c141fe4a0c78444",
   "retail": [
    {
@@ -19258,8 +17939,10 @@
   }
  },
  {
-  "slot": 92,
-  "roots": [],
+  "slot": 82,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "7f6a92d0125f931414cb7ea48d525cda976537f1",
   "retail": [
    {
@@ -19422,8 +18105,10 @@
   }
  },
  {
-  "slot": 93,
-  "roots": [],
+  "slot": 83,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "b628dad529e5b42766c9e72798dd896db95539d7",
   "retail": [
    {
@@ -19658,8 +18343,10 @@
   }
  },
  {
-  "slot": 94,
-  "roots": [],
+  "slot": 84,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "fd9cb7249c716936f23b8e06f58fc1b30dca1e38",
   "retail": [
    {
@@ -19826,144 +18513,10 @@
   }
  },
  {
-  "slot": 95,
-  "roots": [],
-  "program": "0fbd10bc5d8a061c9966c2f88933beafb9a33a5c",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "b3c1702f",
-    "defines": {},
-    "shaders": [
-     "actor_void_shadow_alpha"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 85,
+  "roots": [
+   "actor_ps_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     7,
-     "x",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s3",
-     "sampler",
-     "",
-     false,
-     "sampler3s"
-    ],
-    [
-     "t3",
-     "texture",
-     "texture2d",
-     false,
-     "sampler3t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 96,
-  "roots": [],
   "program": "4769ae801aee778b7dbc08622f2bd922a516f7e3",
   "retail": [
    {
@@ -20137,8 +18690,10 @@
   }
  },
  {
-  "slot": 97,
-  "roots": [],
+  "slot": 86,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "8e49cac36e2b3cfb5770f2d4379df0d6bb109534",
   "retail": [
    {
@@ -20335,8 +18890,10 @@
   }
  },
  {
-  "slot": 98,
-  "roots": [],
+  "slot": 87,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "d92779c0b89b431af8ad42e20b44fddc2d0f6778",
   "retail": [
    {
@@ -20533,401 +19090,10 @@
   }
  },
  {
-  "slot": 99,
-  "roots": [],
-  "program": "4c74d457842e17cbabb47144adba1a398eab99c0",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "cc023cfe",
-    "defines": {},
-    "shaders": [
-     "actor2_alphatest_bump_gloss_glow_bloom_skin"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 88,
+  "roots": [
+   "actor_ps_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     4,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 100,
-  "roots": [],
-  "program": "d184373caf4bd94d6cca2521bdf9096dae59a42d",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "cc3f8723",
-    "defines": {},
-    "shaders": [
-     "actor_champion_transparent",
-     "actor_champion_transparent_nobloom"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "sampler2s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "sampler2t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 101,
-  "roots": [],
-  "program": "b3b86b85cc0b91b82b69c7e2c4ede21aaa8c3da5",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "cfb39a81",
-    "defines": {},
-    "shaders": [
-     "p6_necro_characterselection_ghost"
-    ],
-    "residue": "no_shd"
-   },
-   {
-    "subfamily": "Residue__ps",
-    "hash": "f452964a",
-    "defines": {},
-    "shaders": [
-     "cloth_champion_alphatest"
-    ],
-    "residue": "disputed"
-   },
-   {
-    "subfamily": "Residue__ps",
-    "hash": "fcfca6ef",
-    "defines": {},
-    "shaders": [
-     "actor_champion_alphatest",
-     "actor_champion_fakeglass_alphacomp_skin",
-     "actor_shadowvermin_champion"
-    ],
-    "residue": "disputed"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "sampler1s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "sampler1t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 102,
-  "roots": [],
   "program": "782d0d110347d4377672a737d03b3caa37ee1876",
   "retail": [
    {
@@ -21090,8 +19256,207 @@
   }
  },
  {
-  "slot": 103,
-  "roots": [],
+  "slot": 89,
+  "roots": [
+   "actor_ps_main"
+  ],
+  "program": "831073d064a97f70042af6f1598cbe7291cda3bf",
+  "retail": [
+   {
+    "subfamily": "Residue__ps",
+    "hash": "dd853f19",
+    "defines": {},
+    "shaders": [
+     "tree_deform_spec",
+     "tree_deform_transparent_spec"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     5,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     6,
+     6,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     6,
+     "z",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     7,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     9,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "diffuseMaps"
+    ],
+    [
+     "s1",
+     "sampler",
+     "",
+     false,
+     "irradianceMaps"
+    ],
+    [
+     "s4",
+     "sampler",
+     "",
+     false,
+     "glossMaps"
+    ],
+    [
+     "s5",
+     "sampler",
+     "",
+     false,
+     "environmentMaps"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "diffuseMapt"
+    ],
+    [
+     "t1",
+     "texture",
+     "texturecube",
+     false,
+     "irradianceMapt"
+    ],
+    [
+     "t4",
+     "texture",
+     "texture2d",
+     false,
+     "glossMapt"
+    ],
+    [
+     "t5",
+     "texture",
+     "texture2d",
+     false,
+     "environmentMapt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     119,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [
+    "ge(ref,a)"
+   ],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 90,
+  "roots": [
+   "actor_ps_main"
+  ],
   "program": "4ff92ebce79e396efe11b8eb8da6e655a85ef405",
   "retail": [
    {
@@ -21328,317 +19693,6 @@
    "banks": {
     "0": [
      96,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 104,
-  "roots": [],
-  "program": "220afa5138339a51b95aaf8b419cde2b65d273b3",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "fb248c6b",
-    "defines": {},
-    "shaders": [
-     "actor_weaponhalo_transparent",
-     "actor_weaponhalo_transparent_am4x"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "sampler1s"
-    ],
-    [
-     "s2",
-     "sampler",
-     "",
-     false,
-     "sampler2s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "sampler1t"
-    ],
-    [
-     "t2",
-     "texture",
-     "texture2d",
-     false,
-     "sampler2t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     119,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [
-    "lt(ref,a)"
-   ],
-   "lights": false,
-   "outputs": [
-    [
-     "SV_TARGET",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 105,
-  "roots": [],
-  "program": "c58bb56a891dfb3fe2922c2bcea78394057043dd",
-  "retail": [
-   {
-    "subfamily": "Residue__ps",
-    "hash": "fcedd524",
-    "defines": {},
-    "shaders": [
-     "actor_fade_gloss"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     7,
-     "x",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [
-    [
-     "s0",
-     "sampler",
-     "",
-     false,
-     "sampler0s"
-    ],
-    [
-     "s1",
-     "sampler",
-     "",
-     false,
-     "sampler1s"
-    ],
-    [
-     "s3",
-     "sampler",
-     "",
-     false,
-     "sampler3s"
-    ],
-    [
-     "t0",
-     "texture",
-     "texture2d",
-     false,
-     "sampler0t"
-    ],
-    [
-     "t1",
-     "texture",
-     "texture2d",
-     false,
-     "sampler1t"
-    ],
-    [
-     "t3",
-     "texture",
-     "texture2d",
-     false,
-     "sampler3t"
-    ]
-   ],
-   "banks": {
-    "0": [
-     86,
      "immediateIndexed"
     ]
    },

@@ -15565,7 +15565,9 @@
  },
  {
   "slot": 74,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "b40bd1a18c6539759c729c656b4e270cdaca3e56",
   "retail": [
    {
@@ -15712,7 +15714,9 @@
  },
  {
   "slot": 75,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "80f4fce61445b1e0c560238c66a918ee7ed8c26b",
   "retail": [
    {
@@ -15852,7 +15856,9 @@
  },
  {
   "slot": 76,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "888c53b03107522b6efa025c397c3b228955e103",
   "retail": [
    {
@@ -16225,7 +16231,9 @@
  },
  {
   "slot": 78,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "e9b59d427430beb10869e95c6d059751b300d459",
   "retail": [
    {
@@ -16368,7 +16376,9 @@
  },
  {
   "slot": 79,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "743d7852064da759b10ef16aaa1da01bbad025ba",
   "retail": [
    {
@@ -16567,7 +16577,9 @@
  },
  {
   "slot": 80,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "9de4c288e6bb28776a899bd7d18d0b19d7ed532d",
   "retail": [
    {
@@ -16764,7 +16776,9 @@
  },
  {
   "slot": 81,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "d74baa358e81e88bd607a502013efde966d3f4dd",
   "retail": [
    {
@@ -16961,7 +16975,9 @@
  },
  {
   "slot": 82,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "da6e79372fdfa67bc0b92690447a9edfe34e49ad",
   "retail": [
    {
@@ -17161,7 +17177,9 @@
  },
  {
   "slot": 83,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "1c687bc516a2f9eb495fc1558cc1ae434edad622",
   "retail": [
    {
@@ -17344,7 +17362,9 @@
  },
  {
   "slot": 84,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "b069df1035da163f13592fdd6365eef17f6dbe92",
   "retail": [
    {
@@ -17543,7 +17563,9 @@
  },
  {
   "slot": 85,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "ddfb57065156fae10131aabb22c9ad5c8f33f42b",
   "retail": [
    {
@@ -17717,7 +17739,9 @@
  },
  {
   "slot": 86,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "0d306932586889794694a2fca2afca5ff3cbccbc",
   "retail": [
    {
@@ -17837,7 +17861,9 @@
  },
  {
   "slot": 87,
-  "roots": [],
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "ae753057f40c7673375799ee80e9e0e2766da20c",
   "retail": [
    {
@@ -18199,6 +18225,386 @@
   "roots": [
    "surface_vs_main"
   ],
+  "program": "fb54ec704611e04a2de201764215527e33ef958c",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "7ccf5358",
+    "defines": {},
+    "shaders": [
+     "scene_foliage_transparent_noisy_deform_vertextest"
+    ],
+    "residue": "no_shd"
+   },
+   {
+    "subfamily": "Residue__vs",
+    "hash": "89842747",
+    "defines": {},
+    "shaders": [
+     "scene_foliage_transparent_noisy_deform_vertextest"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     2,
+     "w",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     7,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     9,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 90,
+  "roots": [
+   "surface_vs_main"
+  ],
+  "program": "b0a4ce7c06a6bfe15309013d962f44136cadc09e",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "b668b2e5",
+    "defines": {},
+    "shaders": [
+     "prop_gloss_unlit_mult",
+     "prop_gloss_unlit_mult_ground"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     2,
+     "w",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     7,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     5,
+     8,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     9,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     10,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "1": [
+     135,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "BLENDINDICES",
+     0,
+     6,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "BLENDWEIGHT",
+     0,
+     7,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 91,
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "4dcede51177063cb87af3e7198c7f7dfa3fbbbb7",
   "retail": [
    {
@@ -18369,8 +18775,10 @@
   }
  },
  {
-  "slot": 90,
-  "roots": [],
+  "slot": 92,
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "4b3e3ca59385741e0a1e693020f81c70ba11a542",
   "retail": [
    {
@@ -18548,8 +18956,10 @@
   }
  },
  {
-  "slot": 91,
-  "roots": [],
+  "slot": 93,
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "d98adaaa11b6171392c385523186a0cb9052a9c7",
   "retail": [
    {
@@ -18727,8 +19137,10 @@
   }
  },
  {
-  "slot": 92,
-  "roots": [],
+  "slot": 94,
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "e29263f77fcd3c9cae59bb092f99ada87afdff87",
   "retail": [
    {
@@ -18891,8 +19303,10 @@
   }
  },
  {
-  "slot": 93,
-  "roots": [],
+  "slot": 95,
+  "roots": [
+   "surface_vs_main"
+  ],
   "program": "a41eadaed27f0ae9f0bd72efbc193367eef19bed",
   "retail": [
    {

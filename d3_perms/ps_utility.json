@@ -1107,7 +1107,9 @@
  },
  {
   "slot": 8,
-  "roots": [],
+  "roots": [
+   "texdepth_ps_main"
+  ],
   "program": "f56af4dfad51d26e0e4d8afe86ba3709255cf6da",
   "retail": [
    {
@@ -1165,7 +1167,9 @@
  },
  {
   "slot": 9,
-  "roots": [],
+  "roots": [
+   "texdepth_ps_main"
+  ],
   "program": "285e7e71f41503643bad10f0a2909ad477433174",
   "retail": [
    {
@@ -1223,7 +1227,9 @@
  },
  {
   "slot": 10,
-  "roots": [],
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "bddb53f6659b196f4adadb7ce7d54dffb70e83d8",
   "retail": [
    {
@@ -1339,7 +1345,9 @@
  },
  {
   "slot": 11,
-  "roots": [],
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "2ecb6327286a9df0aa565c1e1875e7b5c918fdc0",
   "retail": [
    {
@@ -1483,7 +1491,9 @@
  },
  {
   "slot": 12,
-  "roots": [],
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "6f9606b77e9924d643c5d6c160780a4da8694f09",
   "retail": [
    {
@@ -1623,7 +1633,9 @@
  },
  {
   "slot": 13,
-  "roots": [],
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "027888f7eb199167fcda9e8971515e7028d58eda",
   "retail": [
    {
@@ -1720,7 +1732,114 @@
  },
  {
   "slot": 14,
-  "roots": [],
+  "roots": [
+   "texfilter_ps_main"
+  ],
+  "program": "dcd4fa2a34bbbde96db5756af96c0ac5fb927aea",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_vertical_blur",
+    "hash": "239c6c21",
+    "defines": {},
+    "shaders": [
+     "postfx highlight vertical blur",
+     "postfx highlight vertical blur_con"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 15,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "86bd8f31f5626f2c8890520f15ff4fef84ba8159",
   "retail": [
    {
@@ -1821,8 +1940,10 @@
   }
  },
  {
-  "slot": 15,
-  "roots": [],
+  "slot": 16,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "acc5eda9bc7e7f8506f3a1b2c15486a8bf94ba8e",
   "retail": [
    {
@@ -1942,8 +2063,10 @@
   }
  },
  {
-  "slot": 16,
-  "roots": [],
+  "slot": 17,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "6d648266eb59a1cf8ff9dff29aae7c955f342f98",
   "retail": [
    {
@@ -2023,8 +2146,10 @@
   }
  },
  {
-  "slot": 17,
-  "roots": [],
+  "slot": 18,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "ef06258642180d6c8ebfdc5a2ac1c1d5f16f041f",
   "retail": [
    {
@@ -2233,8 +2358,10 @@
   }
  },
  {
-  "slot": 18,
-  "roots": [],
+  "slot": 19,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "af167f2e33d2e1aa72fe0d3440bcbb919fd31ff4",
   "retail": [
    {
@@ -2349,8 +2476,10 @@
   }
  },
  {
-  "slot": 19,
-  "roots": [],
+  "slot": 20,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "2a941d350a42be873078b65d634fff23dba1305d",
   "retail": [
    {
@@ -2465,8 +2594,10 @@
   }
  },
  {
-  "slot": 20,
-  "roots": [],
+  "slot": 21,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "162631cf8ef1be6691356512aa120ab31050236a",
   "retail": [
    {
@@ -2675,8 +2806,10 @@
   }
  },
  {
-  "slot": 21,
-  "roots": [],
+  "slot": 22,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "52efb01c549ed5d0c20e66d17454db0d2c232dd5",
   "retail": [
    {
@@ -2819,8 +2952,10 @@
   }
  },
  {
-  "slot": 22,
-  "roots": [],
+  "slot": 23,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "63c10e873e84486f7703287d41fa5d2a2dc016a8",
   "retail": [
    {
@@ -2898,8 +3033,10 @@
   }
  },
  {
-  "slot": 23,
-  "roots": [],
+  "slot": 24,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "3ba48cfc113394da847c7c4a98dfac7903f0cf0b",
   "retail": [
    {
@@ -3053,8 +3190,10 @@
   }
  },
  {
-  "slot": 24,
-  "roots": [],
+  "slot": 25,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "6c2b586e4a0283e2fa0508c1e248ae455037e9c8",
   "retail": [
    {
@@ -3179,8 +3318,220 @@
   }
  },
  {
-  "slot": 25,
-  "roots": [],
+  "slot": 26,
+  "roots": [
+   "texfilter_ps_main"
+  ],
+  "program": "df18cac5d07e759566a7748701f07a2dc4d82da2",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_horizontal_blur",
+    "hash": "6b801cf8",
+    "defines": {},
+    "shaders": [
+     "postfx highlight horizontal blur",
+     "postfx highlight horizontal blur_con"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     105,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 27,
+  "roots": [
+   "postfx_ps_main"
+  ],
+  "program": "27f87540ffd2c5217a9d680f393c6176e7dbe7ee",
+  "retail": [
+   {
+    "subfamily": "FSAA_AMD.fx__fxaa_ps",
+    "hash": "6e81ec34",
+    "defines": {},
+    "shaders": [
+     "postfx fsaa amd fxaa"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     92,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "offsets": true,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 28,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "41ac2d430f8100f181bb90f77bcf2c4a916193bc",
   "retail": [
    {
@@ -3314,8 +3665,10 @@
   }
  },
  {
-  "slot": 26,
-  "roots": [],
+  "slot": 29,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "0ac53d9b0d5060fbf686ff3b414aa2b65d263d7b",
   "retail": [
    {
@@ -3416,8 +3769,10 @@
   }
  },
  {
-  "slot": 27,
-  "roots": [],
+  "slot": 30,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "8e4831e3c75e1e87da503814add6a8833c2bfae9",
   "retail": [
    {
@@ -3532,8 +3887,10 @@
   }
  },
  {
-  "slot": 28,
-  "roots": [],
+  "slot": 31,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "639001f9b94ad2a8c771466bf93bde893da8c6b5",
   "retail": [
    {
@@ -3635,8 +3992,10 @@
   }
  },
  {
-  "slot": 29,
-  "roots": [],
+  "slot": 32,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "0fe557370d8ff44c7f4b6302a84eaae2ceb377de",
   "retail": [
    {
@@ -3717,8 +4076,10 @@
   }
  },
  {
-  "slot": 30,
-  "roots": [],
+  "slot": 33,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "befa9fb93ec31d5ac4ba17bec7c0029e3631ff27",
   "retail": [
    {
@@ -3819,8 +4180,10 @@
   }
  },
  {
-  "slot": 31,
-  "roots": [],
+  "slot": 34,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "5108f72c8f823ba38eb3e90d11d2495c7cc052a9",
   "retail": [
    {
@@ -3987,8 +4350,10 @@
   }
  },
  {
-  "slot": 32,
-  "roots": [],
+  "slot": 35,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "79d4a2413d7e2a011a7be57d4f8202e78ca82b2b",
   "retail": [
    {
@@ -4089,8 +4454,10 @@
   }
  },
  {
-  "slot": 33,
-  "roots": [],
+  "slot": 36,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "be6878e7fa4f1a2de7ae5634a51bfd9d43becebe",
   "retail": [
    {
@@ -4186,8 +4553,10 @@
   }
  },
  {
-  "slot": 34,
-  "roots": [],
+  "slot": 37,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "e99c7279d893b67a171af419b97de70421a74217",
   "retail": [
    {
@@ -4288,8 +4657,10 @@
   }
  },
  {
-  "slot": 35,
-  "roots": [],
+  "slot": 38,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "40ab7da18f60055b4737e65bb2e38edcaf808c15",
   "retail": [
    {
@@ -4421,8 +4792,10 @@
   }
  },
  {
-  "slot": 36,
-  "roots": [],
+  "slot": 39,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "8b04d711dc0bc29b1234a7a89e16d051987dc2c3",
   "retail": [
    {
@@ -4523,8 +4896,10 @@
   }
  },
  {
-  "slot": 37,
-  "roots": [],
+  "slot": 40,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "7fbfe85de5f3cc9b1d05ba3b49ce0716f3e17f4a",
   "retail": [
    {
@@ -4625,8 +5000,10 @@
   }
  },
  {
-  "slot": 38,
-  "roots": [],
+  "slot": 41,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "1d27b8203eed7544fe1ef0b991c70a1a8a6fd103",
   "retail": [
    {
@@ -4793,8 +5170,10 @@
   }
  },
  {
-  "slot": 39,
-  "roots": [],
+  "slot": 42,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "9af5b4795d90c4ef90e53e64bb33940f3a555cf8",
   "retail": [
    {
@@ -4919,8 +5298,10 @@
   }
  },
  {
-  "slot": 40,
-  "roots": [],
+  "slot": 43,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "6517288a7cdac0bc20acb507b3cc7a6822b16ad3",
   "retail": [
    {
@@ -4984,8 +5365,10 @@
   }
  },
  {
-  "slot": 41,
-  "roots": [],
+  "slot": 44,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "edf1211277854aaef163bed86c263c4d527faaf5",
   "retail": [
    {
@@ -5133,8 +5516,10 @@
   }
  },
  {
-  "slot": 42,
-  "roots": [],
+  "slot": 45,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "f855b19ea08b9fa25b90aab6d0e5c334c595bdd1",
   "retail": [
    {
@@ -5235,8 +5620,10 @@
   }
  },
  {
-  "slot": 43,
-  "roots": [],
+  "slot": 46,
+  "roots": [
+   "texdepth_ps_main"
+  ],
   "program": "69ddfff77e00b61e9b3972494ba2f99dacbdf947",
   "retail": [
    {
@@ -5340,8 +5727,10 @@
   }
  },
  {
-  "slot": 44,
-  "roots": [],
+  "slot": 47,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "f02085a7730f79d008a398c20d25293fdfc22d60",
   "retail": [
    {
@@ -5480,8 +5869,121 @@
   }
  },
  {
-  "slot": 45,
-  "roots": [],
+  "slot": 48,
+  "roots": [
+   "texfilter_ps_main"
+  ],
+  "program": "67add7e3c7d0097eb52e8a6e7b83796e01d2a3f2",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_5x5_separable_blur",
+    "hash": "d0a74168",
+    "defines": {},
+    "shaders": [
+     "postfx bloom blur horizontal_con",
+     "postfx bloom blur vertical_con",
+     "postfx highlight horizontal blur_con_ppc",
+     "postfx highlight text horizontal blur_con",
+     "postfx highlight text vertical blur_con",
+     "postfx highlight vertical blur_con_ppc",
+     "vsm filter horizontal_con",
+     "vsm filter vertical_con"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texSampler0s"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texSampler0t"
+    ]
+   ],
+   "banks": {
+    "0": [
+     81,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 49,
+  "roots": [
+   "texdepth_ps_main"
+  ],
   "program": "7f6e2521c17d0b6fedd02301e464d423bf56647c",
   "retail": [
    {
@@ -5538,8 +6040,10 @@
   }
  },
  {
-  "slot": 46,
-  "roots": [],
+  "slot": 50,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "f807fcdf73943b02aadc7eb26418b36cc46425e7",
   "retail": [
    {
@@ -5671,8 +6175,10 @@
   }
  },
  {
-  "slot": 47,
-  "roots": [],
+  "slot": 51,
+  "roots": [
+   "texdepth_ps_main"
+  ],
   "program": "25d2081b29ddc8d5f3dc83eba734897401c62396",
   "retail": [
    {
@@ -5736,8 +6242,10 @@
   }
  },
  {
-  "slot": 48,
-  "roots": [],
+  "slot": 52,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "6a3809ebcd0590d3645763881494248d16b86120",
   "retail": [
    {
@@ -5801,8 +6309,10 @@
   }
  },
  {
-  "slot": 49,
-  "roots": [],
+  "slot": 53,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "e50e69cbe045a1a7cf031af77c959c925adc82e0",
   "retail": [
    {
@@ -5898,8 +6408,129 @@
   }
  },
  {
-  "slot": 50,
-  "roots": [],
+  "slot": 54,
+  "roots": [
+   "texfilter_ps_main"
+  ],
+  "program": "2b377f9045e7db5f19c8298e1f71886d05844eb1",
+  "retail": [
+   {
+    "subfamily": "TextureFilter.fx__main_ps_highlight_blur",
+    "hash": "e3dcf9cc",
+    "defines": {},
+    "shaders": [
+     "postfx highlight blur",
+     "postfx highlight text blur"
+    ],
+    "residue": "singleton"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ]
+   ],
+   "resources": [
+    [
+     "s0",
+     "sampler",
+     "",
+     false,
+     "texBlurredHighlights"
+    ],
+    [
+     "s2",
+     "sampler",
+     "",
+     false,
+     "texOriginalHighlights"
+    ],
+    [
+     "t0",
+     "texture",
+     "texture2d",
+     false,
+     "texBlurredHighlightt"
+    ],
+    [
+     "t2",
+     "texture",
+     "texture2d",
+     false,
+     "texOriginalHighlightt"
+    ]
+   ],
+   "banks": {
+    "0": [
+     68,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "outputs": [
+    [
+     "SV_TARGET",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 55,
+  "roots": [
+   "texdepth_ps_main"
+  ],
   "program": "162d0740a994bc154872a947ba4c3e100ce52364",
   "retail": [
    {
@@ -5956,8 +6587,10 @@
   }
  },
  {
-  "slot": 51,
-  "roots": [],
+  "slot": 56,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "bbe8ef052841f368610bfd5cbc5d5d3cb8a23323",
   "retail": [
    {
@@ -6058,8 +6691,10 @@
   }
  },
  {
-  "slot": 52,
-  "roots": [],
+  "slot": 57,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "5d56cd303ff2c0603b41554abad77fdadd53fa8c",
   "retail": [
    {
@@ -6152,8 +6787,10 @@
   }
  },
  {
-  "slot": 53,
-  "roots": [],
+  "slot": 58,
+  "roots": [
+   "texfilter_ps_main"
+  ],
   "program": "2d0466fea26eb5ea82a54ae282bb9130af805ee9",
   "retail": [
    {
@@ -6282,8 +6919,10 @@
   }
  },
  {
-  "slot": 54,
-  "roots": [],
+  "slot": 59,
+  "roots": [
+   "postfx_ps_main"
+  ],
   "program": "5ec5b77e414b149af334390f989936773986944e",
   "retail": [
    {

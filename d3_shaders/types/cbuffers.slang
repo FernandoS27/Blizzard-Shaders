@@ -17,8 +17,18 @@
 //
 // Non-D3D bindings share one space, so the three banks take bindings 0-2 and
 // textures/samplers start at 16 (types/textures.slang).
+//
+// The engine target (D3_TARGET_FLAKES) binds the banks per stage, at b0-b2 in
+// set 0 shifted by `D3_VK_CB_BASE` (the pixel stage's offset on Vulkan and
+// WebGPU), and grows CBBones to the engine's global 256-bone palette in the same
+// row layout. Every bank is std140-safe as declared (no float3 shares a
+// register with a later member), so the HLSL offsets hold on every backend.
 
 implementing d3_shaders;
+
+#if defined(D3_TARGET_FLAKES) && !defined(D3_VK_CB_BASE)
+#define D3_VK_CB_BASE 0
+#endif
 
 public struct D3LightDirectional   // 48 bytes
 {
@@ -72,7 +82,11 @@ public struct D3BoneRows
     public float4 row2;
 };
 
+#ifdef D3_TARGET_FLAKES
+[[vk::binding(D3_VK_CB_BASE + 0, 0)]]
+#else
 [[vk::binding(0, 0)]]
+#endif
 cbuffer CBMain : register(b0)   // 2384 bytes
 {
     float4 Constant0;
@@ -154,13 +168,25 @@ cbuffer CBMain : register(b0)   // 2384 bytes
     row_major float4x4 matColorTransform;
 };
 
+#ifdef D3_TARGET_FLAKES
+[[vk::binding(D3_VK_CB_BASE + 1, 0)]]
+cbuffer CBBones : register(b1)   // 12288 bytes
+{
+    D3BoneRows matBones[256];
+};
+#else
 [[vk::binding(1, 0)]]
 cbuffer CBBones : register(b1)   // 2160 bytes
 {
     D3BoneRows matBones[45];
 };
+#endif
 
+#ifdef D3_TARGET_FLAKES
+[[vk::binding(D3_VK_CB_BASE + 2, 0)]]
+#else
 [[vk::binding(2, 0)]]
+#endif
 cbuffer CBLights : register(b2)   // 6192 bytes
 {
     float4 colAmbient;

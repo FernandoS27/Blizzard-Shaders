@@ -1,4 +1,116 @@
 {
+ "001fbe26c843ebc962bffb437e5b36ffab5e123b": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenFieldTap<-1>>, TexStage<1, TexGenPassthrough<0, 0>>, TexStage<2, TexGenFieldTap<1>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "003bb9bf406696ad69d1dd1702642be3d4be1cac": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 256U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "00ff8c50b9e6a6bc682d3e17ccb3706a9017b0e3": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LegacyGlowLightmap",
+   "AlphaTestOff"
+  ]
+ },
+ "027888f7eb199167fcda9e8971515e7028d58eda": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "CopyAlpha",
+   "AlphaTestOff"
+  ]
+ },
+ "036dea366951b559776f2ec58abe372a5107b6a1": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<1, 1>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "05b339be1bd1dc122a8dc2a232ca041a8022dd1f": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseRawNormal<PoseStatic>",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaOne",
+   "TexGenSet<TexStage<0, TexGenScreenPosition>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "06d124558cd854b793f4cb360dc33ff8f68154db": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 8193U, 0U>, Stage<Sampler3, 3, 0U, 1U>, Stage<Sampler4, 4, 1U, 1U>, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "08ff98a1593103bafd940e0b9f10c7f114ff53cc": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenConstant0>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "0ac53d9b0d5060fbf686ff3b414aa2b65d263d7b": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "GaussianBlur13<AxisHorizontal>",
+   "AlphaTestOff"
+  ]
+ },
+ "0ae031df7aa02f090cc914222a59863f6be464f4": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefractive<WaterReflectPlanar, FresnelSchlick, true, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "0b2fe18f32bdc255382fe46dc77879b67e2974ee": {
+  "root": "particle_vs_main",
+  "specialize": [
+   "ColorPassthrough",
+   "TexcoordMatrix<0, 0, 0>",
+   "TexcoordMatrix<3, 1, 3>",
+   "TexcoordMatrix<4, 0, 0>",
+   "TexcoordMatrix<5, 0, 0>"
+  ]
+ },
+ "0b454d171f9b4d3b53bff76f1a22b10c8501b374": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SceneDebugView<DebugEnvironment>",
+   "AlphaTestOff"
+  ]
+ },
+ "0b70d390f4bbaa4c67acbbb255f6db1fefb75fad": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 1U, 1U>, Stage<Sampler2, 2, 1U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
  "0be8a882cee0021e6b9bcb6b53edd23f5453fd6b": {
   "root": "combiner_ps_main",
   "specialize": [
@@ -8,6 +120,414 @@
    "AlphaTestOff"
   ]
  },
+ "0c6da3254565e40856550d440d7e75b294812a10": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 1, 1>>, TexStage<3, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "0cf5ad53be2c0976031b8d125acef3ac46e35ec4": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 0U, 257U>, Stage<Sampler3, 3, 1U, 0U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "0d306932586889794694a2fca2afca5ff3cbccbc": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "WindSway<false>",
+   "DepthPrepass"
+  ]
+ },
+ "0db1e27f8684388b8506089abb479057723b1de4": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "InactiveGreyscale<false>",
+   "DiscardLE"
+  ]
+ },
+ "0df466db05ea76ba65f1412346ddf58cc5e14841": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<true>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenPassthrough<0, 0>>, TexStage<2, TexGenZero>, TexStage<3, TexGenOrigin>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "0f0fa647eb5f2e3a2c76b92609665e794cf49c7e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 8261U>, Stage<Sampler2, 2, 0U, 8197U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "0f885cd84cc59da7010f033ac13dec98b524c719": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "FogPlaneScum",
+   "DiscardLE"
+  ]
+ },
+ "0fbd10bc5d8a061c9966c2f88933beafb9a33a5c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler3, 3, 1U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "0fe557370d8ff44c7f4b6302a84eaae2ceb377de": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "FillOpaqueBlack",
+   "AlphaTestOff"
+  ]
+ },
+ "10531f62e67b0e8132bf104745ea0766645806b2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 1U, 0U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "117745b1929bde31eb53fa1aeb80c986bae7aa22": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "CloakPixel",
+   "AlphaTestOff"
+  ]
+ },
+ "118e406c093fc741ad06414eaa74794da4b0eaa9": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "123aa094127f04bd431568d70ab200bfb8b7bbaf": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "GlossEnvironmentUnlit",
+   "AlphaTestOff"
+  ]
+ },
+ "1285ccdbf3b6d675edbd5e529990fd7e28c9c79a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler, 0, 1U, 1U>, StageBlended<AlphaSampler, 1, 262145U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "128ac5839e4b8939754a276eac4ad169e7048611": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "1396b1dbf05011fa62cd0586a69b5b21792d5eba": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenPassthrough<0, 0>>, TexStage<2, TexGenPassthrough<1, 1>>, TexStage<3, TexGenOrigin>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "158f3e9e8d98daa6a999be106972b057bbc1cc92": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbTimesVertex<RgbLit<false>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "162631cf8ef1be6691356512aa120ab31050236a": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "ToneMap<GradeCrossFade, true>"
+  ]
+ },
+ "162d0740a994bc154872a947ba4c3e100ce52364": {
+  "root": "texdepth_ps_main",
+  "specialize": [
+   "DepthMultisampled4",
+   "TargetDepth"
+  ]
+ },
+ "165ba41036bcd291c065c3d86b1326e180585918": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 256U>, Stage<Sampler0, 0, 257U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "17a0006cfbe158cb06047584c1c243585f7a3288": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenUvLayer<2, 0>, AlphaFromVertex>"
+  ]
+ },
+ "18e017cb8bd92de4d452034561f1ecc6279fde9b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler, 0, 1U, 1U>, Stage<DiffuseSampler, 0, 10241U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "18f4d68d31fedf4275b9a0bf714168ecdcc454d4": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowPacked, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "1973eadde8cf0c7ecc084a72926b10ff2f0c7f05": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8194U, 8194U>, Stage<Sampler2, 2, 5U, 5U>, Stage<Sampler3, 3, 261U, 261U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "19eb74dc9d65b595f9826ce65b0644b6d8dd75c7": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "ResolveSoftFade<Resolve<8U>, 6, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "1b53384d38242ae0c9347243e86fc9e8415baaad": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 9U, 5U>, Stage<Sampler2, 2, 9U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "1c038e95a89f8ab394d1154e3cb47b91c148346f": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowPacked, OcclusionBaked, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "1c687bc516a2f9eb495fc1558cc1ae434edad622": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "MeshSurface<TangentFrame<6, MaterialAlpha>, TwoTextureGlowUnmapped>"
+  ]
+ },
+ "1d27b8203eed7544fe1ef0b991c70a1a8a6fd103": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "ToneMap<GradeSingle, true>"
+  ]
+ },
+ "1ef428e544c60440912c05b2604de2f04a129fc3": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8194U, 0U>, Stage<Sampler2, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "1fa13291caf125a4d71d20c05fa20ddeade101e2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler2, 2, 0U, 8193U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "202973841c99067b524604f1e89c07fe8c4613bb": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler, 0, 65U, 65U>, StageBlended<AlphaSampler, 1, 2105346U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "208b6f9bfc9ff06740d2acce919f54d513c5df72": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenPassthrough<1, 1>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "21de86052d8aa5e348fd79add1e3e8daf1dbda10": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterOpaque<WaterNormalLayered, WaterReflectEnvironment, FresnelBroad, WaterGlossReflection<true>>",
+   "AlphaTestOff"
+  ]
+ },
+ "220afa5138339a51b95aaf8b419cde2b65d273b3": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 65U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 0U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "22354facc2cee8f9d6cf5bba23d45a9e8add5e5a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 1U, 5U>, Stage<Sampler2, 2, 5U, 5U>, Stage<Sampler3, 3, 1U, 9U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardGE"
+  ]
+ },
+ "22a564613fd570630abf63c3c91d70e6cdb5c516": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "232747364fdb9950ec6a532c56d79204a7966f7a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 5U, 0U>, Stage<Sampler3, 3, 8194U, 0U>, Stage<Sampler4, 4, 0U, 1U>, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "232f48e2150ac165b91f40741e0674b7177c55d6": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameWindSway",
+   "IrradianceCombinedVertex<LightSpecular, MeshLightingIntensity, TexgenNone, AlphaFromVertex>"
+  ]
+ },
+ "23c823a6d98f6f9c882b15ee27bcdff57fd299b7": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseCursor",
+   "IntegerUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "242b5b99bf75f755f740ea805a019fdf47049a4b": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "2483ac421aed11b5c5047ef318b9120a6a672a2f": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8194U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "253c4736912cd4528b2b62c4ebba229c2add87c9": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowSoft, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "2545cb17d150fbca6153bd7734fd8c3e7fb78f4b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler1, 2>, FlowMap<FlowSampler2, 3>, FlowMapNone, 3U>",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler1, 0, 65U, 65U>, Stage<DiffuseSampler2, 1, 5U, 5U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "25768ccdc4974991f90ca8ed034fe8f7eadfb8bd": {
+  "root": "postfx_vs_main",
+  "specialize": [
+   "MinimapLayers"
+  ]
+ },
+ "25a0125136998c74dd479d5cd31567aa945c3d8c": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "DebugFlatGrey",
+   "AlphaTestOff"
+  ]
+ },
+ "25d2081b29ddc8d5f3dc83eba734897401c62396": {
+  "root": "texdepth_ps_main",
+  "specialize": [
+   "DepthSampled",
+   "TargetDepth"
+  ]
+ },
+ "26429a654c66e308ffc00a3b1b860d6a84fb2d28": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 9U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "2722c42612ff114d20e70a1d41a4c9c581d1b7d4": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "CharredLayerPixel",
+   "DiscardLE"
+  ]
+ },
  "27dde24a0d1794781a086882536bb088853cf51f": {
   "root": "scene_ps_main",
   "specialize": [
@@ -15,10 +535,65 @@
    "DiscardLT"
   ]
  },
+ "27f87540ffd2c5217a9d680f393c6176e7dbe7ee": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "Fxaa<ScreenUvDirect>"
+  ]
+ },
+ "28076137f69fa2b52076fd63ec605136d2f62cc7": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<VertexLighting, LandscapeShadowDepthQuad>",
+   "DiscardLE"
+  ]
+ },
+ "2826a3cf2315cfb6923334422f372398c5f9ff97": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowDepthQuad, OcclusionBaked, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "282714cdd5547da18485926f3610c935aced59e6": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "SplitGlowOverlayVertex<LightSpecular>"
+  ]
+ },
  "2837a95feed894187d2836b400eaa1530fa4116b": {
   "root": "actor_ps_main",
   "specialize": [
    "IrradianceSplitPixel<AlbedoOverlay, FactorUniform, CoveragePremultiplied, false, false, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "283c86e34aa8d8aca4e93a1a0e0a87cc0ca0dcfa": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceLayeredVertex"
+  ]
+ },
+ "285e7e71f41503643bad10f0a2909ad477433174": {
+  "root": "texdepth_ps_main",
+  "specialize": [
+   "DepthMultisampled1",
+   "TargetDepth"
+  ]
+ },
+ "2949d4d5fbf68a389db2269250467848aaa9ec45": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenDisintegrate<RestFromPosition>, AlphaFromVertex>"
+  ]
+ },
+ "298ceffd1b4ca888b3d3c2ae0677f12c05e55a84": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "FadeDiffuse",
    "AlphaTestOff"
   ]
  },
@@ -29,6 +604,33 @@
    "IrradiancePrepassVertex"
   ]
  },
+ "2a0cddb61ca4fb9c4c6491cf7c42912de727f7b0": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 0U, 1U>, Stage<Sampler3, 3, 1U, 257U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "2a16f2cb30cb5ba935f3a8aec3f4d91a5e1fe1fd": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "FadeSilhouette",
+   "AlphaTestOff"
+  ]
+ },
+ "2a65612a051febfb19f5ec147f2edbe56fd999b4": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapePixelLit<FogInterpolant<false>, PixelFrameAt8, false>",
+   "LandscapeShadowNone",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
  "2a662eb7d033e4b2e208f1b7eb31077d6224c6a1": {
   "root": "actor_ps_main",
   "specialize": [
@@ -36,11 +638,170 @@
    "AlphaTestOff"
   ]
  },
+ "2a66b3c78bce8801e3f6c5998950834eead44931": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 1U, 9U>, Stage<Sampler2, 2, 5U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardGE"
+  ]
+ },
  "2a6f636f0a61dc2335733fb7186845d894d51150": {
   "root": "combiner_ps_main",
   "specialize": [
    "FlowNone",
    "StageChain<Head<64U, 64U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "2a941d350a42be873078b65d634fff23dba1305d": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "SsaoOcclusion",
+   "AlphaTestOff"
+  ]
+ },
+ "2aac2d785c35cd6badaa678b6592abd35cbcd43a": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbKeyLight",
+   "AlphaFactor<AlphaVertex>",
+   "TexGenSet<TexStage<0, TexGenZero>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "2abb17c0bdfc49347709754f9db34ba47f9c0d06": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<PixelLighting<NormalFromCoveredLayers, 6, false, false>, LandscapeShadowDepth>",
+   "DiscardLE"
+  ]
+ },
+ "2b0de71d751d1efc34ce8866e191d7786d7b6d22": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 256U>, Stage<TexDiffuse, 0, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "2b377f9045e7db5f19c8298e1f71886d05844eb1": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "HighlightMask",
+   "AlphaTestOff"
+  ]
+ },
+ "2c3680a3d8de377dadbfb006469bcf45738d4bd5": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<VertexLighting, LandscapeShadowSoft>",
+   "DiscardLE"
+  ]
+ },
+ "2ca959d4c81d6b7de6e3cd08069b1873cc61aafe": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 5U>, Stage<Sampler2, 2, 5U, 1U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "2d02c9083e163aa3ee70a0edf120e892fdef89f5": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseOneBone",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "2d0466fea26eb5ea82a54ae282bb9130af805ee9": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "RetroPosterize",
+   "AlphaTestOff"
+  ]
+ },
+ "2d26c2c64330b737d3ef38dd1d77354709b5ca2d": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStage<4, TexGenMatrix<4, 0, 0>>, TexStage<5, TexGenMatrix<5, 0, 0>>, TexStageNone>"
+  ]
+ },
+ "2ddea6c52c750bb9314312787158348f7491f225": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 9U>, Stage<Sampler2, 2, 0U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "2e3b8cef51359c73948f416471753eae447a7a1a": {
+  "root": "postfx_vs_main",
+  "specialize": [
+   "FsaaQuadTaps"
+  ]
+ },
+ "2ecb6327286a9df0aa565c1e1875e7b5c918fdc0": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "TapWeighted4",
+   "AlphaTestOff"
+  ]
+ },
+ "2f019b42d98bbd6fc730dea1ed7bf730bfb47ce8": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler, 3>, FlowMapNone, FlowMapNone, 7U>",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 65U>, Stage<Sampler1, 1, 0U, 1U>, Stage<Sampler2, 2, 1U, 8197U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "2f09406798a8f18c3a86604b2055f6ccab7fb252": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefracted<WaterNormalLayered, MurkRippleCleared, WaterReflectEnvironment, FresnelFlat, WaterGlossNone<false>, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "2f4eb4d27469a9637f767f81aba189912a40f42b": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrixAbsentUv<3, 0>>, TexStage<4, TexGenMatrixAbsentUv<4, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "2f50ef2848f9e1b75ed4d9742fc0814d2692f3b4": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenMatrix<4, 1, 1>>, TexStage<5, TexGenMatrix<5, 1, 1>>, TexStageNone>"
+  ]
+ },
+ "2fbef4d2e984168cdad190625395c55dda074d8a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, StageBlended<Sampler1, 1, 786433U, 0U>, Stage<Sampler2, 2, 8197U, 0U>, Stage<Sampler3, 3, 2U, 1U>, StageSkip, StageSkip>",
    "Resolve<0U>",
    "AlphaTestOff"
   ]
@@ -55,6 +816,15 @@
    "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "2fef6ec256139c3b34ab34f9fc182c7358c8d3bc": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<TexLayer0, 0, 1U, 1U>, StageBlended<TexLayer1, 1, 2097154U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
  "30897b335c56b20aae85d42bda3b92164164cbe6": {
   "root": "texgen_vs_main",
   "specialize": [
@@ -63,6 +833,66 @@
    "RgbLit<false>",
    "AlphaEdge<true, false, false, false>",
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "30a6db7251a4123811644ad96bd2cb30b569a78c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 5U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "316085313519e3fadbe422f9f906633cfd70e2a9": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseRawNormal<PoseThreeBones>",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaOne",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenSphereMap>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "33c87b58ce37e43512db0562fa08a6b0017b3931": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "LayerSumExtraFirst<StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 257U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>, StageChain<Head<0U, 0U>, Stage<Sampler3, 3, 65U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "34533ad9d82adfd6049d3eefe99b4a58bf1bb74a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "34596d4c461f3aa83dbfe2e883a1906fd3051d51": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceBumpVertex<LightSpecular, AlphaFromVertex, BumpExtraFade, true>"
+  ]
+ },
+ "34ef933f2992a292f50f91ce6b60b680189d40e3": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 257U>, Stage<Sampler1, 1, 1U, 5U>, StageBlended<Sampler2, 2, 4194305U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "357e2cf5e4cbf5ac983e24614ad802f94f818454": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<PixelLighting<NormalFromCoveredLayers, 6, false, false>, LandscapeShadowCompare>",
+   "DiscardLE"
   ]
  },
  "35cce55f352d8c0ddc6e73bf48f41320ec844ee0": {
@@ -83,11 +913,167 @@
    "DiscardLE"
   ]
  },
+ "3638e7f079fa285fe991f497a7959bee7955869e": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "InactiveGreyscale<true>",
+   "DiscardLE"
+  ]
+ },
  "36f427c3a26d3baf5b7501e768830ce1896170ab": {
   "root": "surface_vs_main",
   "specialize": [
    "SkinnedMesh",
    "MeshSurface<VertexLit<false, false, false, VertexMaterialAlpha>, PlanarProjection>"
+  ]
+ },
+ "36f75be42312f339498cddf5d08d5de8d5e53256": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "GlowFadeComposite",
+   "DiscardLE"
+  ]
+ },
+ "370876e95932bab60dea1dd80ea9bca8eb54c95b": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenEyeLinearFog<0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenZero>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "37af0f380d46fa55c4b82d7d8c1dba4e775c8879": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 256U>, Stage<DiffuseSampler, 0, 5U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "37b0651af457e25fb374b7ab444055cbbfb1f243": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenUvLayer<2, 1>, AlphaFromVertex>"
+  ]
+ },
+ "3976b041ff8b1804b1a082c15ed67c401f4947c6": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenPassthrough<1, 1>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "3a301e69378f235db917c1a42b43a4871be9777b": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 1, 1>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "3ba48cfc113394da847c7c4a98dfac7903f0cf0b": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "DepthOfField"
+  ]
+ },
+ "3bbd0397731c238b777b0ef61d85049037639246": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<PixelLighting<NormalFromCoveredLayers, 6, false, false>, LandscapeShadowNone>",
+   "DiscardLE"
+  ]
+ },
+ "3bd393b87d3b29bd583a9c869313c128989f2d32": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 1U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "3c18c3a7ec20132f540d3d5013d8339d16b744e5": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 9U>, Stage<Sampler2, 2, 5U, 9U>, Stage<Sampler3, 3, 9U, 5U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "3c992f08b365df2f69328e2ad0a273e828b66655": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "FogPlaneCorruption<true>",
+   "DiscardLE"
+  ]
+ },
+ "3ccc80330f1530cdff3eb5349350d0a5cbdd3dca": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenWipe<RestFromPosition>, AlphaFromVertex>"
+  ]
+ },
+ "3d07650aedc27dc69b5ac65cb9097044a336bad6": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenSphereMap>, TexStage<2, TexGenViewDepth>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "3d5dea7afe3663cb6df43e2f3fef931aa75e251b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8193U, 8193U>, Stage<Sampler2, 2, 8193U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "3d9912948afb3b6b24f2ab4d204d77964cb4b4b2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8201U, 8201U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "3de13bb67b6016ce88636ee7ddf89872e82d5f86": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowNone, OcclusionBaked, AlphaOpaqueFrom<254>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "3f2aeee07326d24a8f2db78bcd2cb7bcd164aa8d": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "40ab7da18f60055b4737e65bb2e38edcaf808c15": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "MinimapExploredDebug"
   ]
  },
  "40f0c351796d1b90ff43a1aa5ea69ab4c16c120d": {
@@ -97,11 +1083,128 @@
    "AlphaTestOff"
   ]
  },
+ "41062b683ac59a7f338f38a2ea202c4d450ca940": {
+  "root": "restore_vs_main",
+  "specialize": [
+   "RestoreTexelCentre"
+  ]
+ },
+ "41419108105c573e13a28700e5e784441f0a5eb1": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
  "4199efa853aed5fe5aaae6dceb1d83d0079cbcf7": {
   "root": "actor_ps_main",
   "specialize": [
    "IrradianceBumpPixel<ShadowPackedDepth, true, false>",
    "AlphaTestOff"
+  ]
+ },
+ "419d3d389d5bee68f63886953c2b36b8d98c449d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "LayerSum<StageChain<Head<0U, 0U>, Stage<DiffuseMap, 0, 1U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>, StageChain<Head<0U, 0U>, Stage<AlphaMap, 1, 65U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>, true, true, false>",
+   "ResolveTransmittance<Resolve<0U>>",
+   "AlphaTestOff"
+  ]
+ },
+ "419d51089f7545349c34c94312e40e7c98abe0dc": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8194U, 1U>, Stage<Sampler2, 2, 0U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "41ac2d430f8100f181bb90f77bcf2c4a916193bc": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "SoftFocus<ScreenUvDirect, ScreenUvDirect>"
+  ]
+ },
+ "41cc3eb66480595f628a4b6aa57f8843092f4028": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "42b42b4947a9ee076adfa43bdb3aacb6a3c914ac": {
+  "root": "legacy_aux_ps_main",
+  "specialize": [
+   "ProjectedLayerThresholded",
+   "AlphaTestOff"
+  ]
+ },
+ "4370100b5206b3c068256a73fcc93dac7e6e7016": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "43bf7fa771665d720543652b48638d53bab6725e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 5U, 0U>, Stage<Sampler3, 3, 5U, 0U>, Stage<Sampler4, 4, 0U, 1U>, Stage<Sampler5, 5, 1U, 1U>>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "443cf2e905ad3ec9af30cbf759ed5186cbee1d78": {
+  "root": "legacy_aux_ps_main",
+  "specialize": [
+   "ProjectedLayerUngated",
+   "AlphaTestOff"
+  ]
+ },
+ "44972c391f01796fefacc7e8213210c75a9bee2f": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefractiveVariant<WaterBumpRippleOnly, WaterFogApplied, WaterReflectEnvironment, FresnelSchlick>",
+   "AlphaTestOff"
+  ]
+ },
+ "456045d1acb9711320b7a2aedfa232c64d4685f5": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenViewDepth>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "45b076fff23c9e4511caf2ce6b2da64c2d1f1d50": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "4618c4c77295d6b37da068a2fa97df96e38b8721": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 1U, 1U>, Stage<Sampler2, 2, 1U, 1U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
   ]
  },
  "4651cebb88d33cb79050423c88ec5a19d36e6ed4": {
@@ -120,6 +1223,49 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 1, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStage<2, TexGenMatrix<2, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "4769ae801aee778b7dbc08622f2bd922a516f7e3": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceSplitPixel<AlbedoOverlay, FactorUniform, CoverageAsIs, false, false, false>",
+   "DiscardLE"
+  ]
+ },
+ "47d3d83adca22d57c8eee813c04dbcf1bdb4e4f4": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenCameraPlane<1>>, TexStage<2, TexGenCameraPlane<2>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "497c517af6ed901e46294a94eb4a1ab2522b6128": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LegacyCloudDifference",
+   "AlphaTestOff"
+  ]
+ },
+ "49b18e1781c676d2f4ed29a7cb3ba16609c3b9e8": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler, 3>, FlowMapNone, FlowMapNone, 7U>",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 65U>, Stage<Sampler1, 1, 1U, 5U>, Stage<Sampler2, 2, 5U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "49f74ea32cf25926dda717bebb903847499d0987": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<1, 1>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
  "4a3f0ffc3ccd2ffd47fc05c84085c8220c8e6b02": {
   "root": "combiner_ps_main",
   "specialize": [
@@ -129,11 +1275,284 @@
    "DiscardLE"
   ]
  },
+ "4a742cd61191e058cb29f0fde5b025c06fdb629a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "4aa606f64d4c97255eeb79d1fe0636843fbf8cb6": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, Stage<Sampler1, 1, 5U, 8194U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<64U>",
+   "DiscardLE"
+  ]
+ },
+ "4afe4adc46436d5252505778403d5706be8d0eeb": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "BannerHighlightPixel",
+   "DiscardLE"
+  ]
+ },
+ "4b3e3ca59385741e0a1e693020f81c70ba11a542": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "PuddleSurface<MaterialAlpha>"
+  ]
+ },
+ "4bf3cab80050b2bdbd7c8b0042dc0b47680995c9": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 5U>, Stage<Sampler2, 2, 1U, 8193U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "4c4e51ffe887710d440299e4c0dd3f15fe9c44f9": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "4c74d457842e17cbabb47144adba1a398eab99c0": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 0U, 1025U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "4cbef8e2c289df797890fbb5bf21175b9158bbb5": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStageSecondaryWhite, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
  "4dcede51177063cb87af3e7198c7f7dfa3fbbbb7": {
   "root": "surface_vs_main",
   "specialize": [
    "RigidMesh",
    "MeshSurface<VertexLit<false, true, false, MaterialAlpha>, ShiftedScreenReflection>"
+  ]
+ },
+ "4f6d5b46386db38a89883f965dc8bd85a10bf5dd": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "4fb92cdeaa163f3602c9d4eba7fb9557f16b10e3": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 5U, 0U>, Stage<Sampler3, 3, 8194U, 0U>, Stage<Sampler4, 4, 8194U, 0U>, Stage<Sampler5, 5, 0U, 1U>>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "4ff92ebce79e396efe11b8eb8da6e655a85ef405": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceBumpPixel<ShadowBilinearCompare, true, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "501df93c2b270a70329aa93fc2560ce8f3f6a053": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SphereGlossPixelComposite<LandscapeShadowPacked>",
+   "AlphaTestOff"
+  ]
+ },
+ "508381d51c5e3d5b5e48508ca4541d3e5453b5a1": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefracted<WaterNormalLayered, MurkAlpha, WaterReflectProjectedEnvironment, FresnelSchlick, WaterGlossNone<false>, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "5108f72c8f823ba38eb3e90d11d2495c7cc052a9": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "ToneMap<GradeSingle, false>"
+  ]
+ },
+ "529e373805f7420f9eae1d66499246978411fee6": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "GlossUnlitReflection",
+   "AlphaTestOff"
+  ]
+ },
+ "52ad20e9f2c334c4d6997b70c3bf823b905fcdb1": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "BumpLightmapV11",
+   "AlphaTestOff"
+  ]
+ },
+ "52efb01c549ed5d0c20e66d17454db0d2c232dd5": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "SsaoUpscale",
+   "AlphaTestOff"
+  ]
+ },
+ "52ffca772e6a8d146bc5676c6d01fc2c49a490aa": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingColor, TexgenCrystal, AlphaFromVertex>"
+  ]
+ },
+ "539744b74ad030f906cdc082b29c0362b4424726": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "53b38af913b9bc6e83d62636e1f06782ab7ff94d": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefractive<WaterReflectEnvironment, FresnelSchlick, false, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "53e90cb7dd787f8f8ea275b76c4d48a206796991": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowDepth, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "54214e6e871d030ee5112a7d581c9c42af882e7a": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapeVertexLit<FogInterpolant<false>>",
+   "LandscapeShadowDepthQuad",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "5434c556eb5704702fc6bf7fde893a071e7961ea": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefracted<WaterNormalScaled<WaterNormalLayered>, MurkAlpha, WaterReflectEnvironment, FresnelBroad, WaterGlossCoverage, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "544fc2a64fb5f29004039b4a871da79ab73e3a0a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 5U, 0U>, Stage<Sampler3, 3, 0U, 1U>, Stage<Sampler4, 4, 1U, 1U>, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "576081b8378c6a78145c933df3882cb911ac2145": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaOne",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "5771184bd0525398bcd11b752ee13a9caed429de": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SceneDebugView<DebugGloss>",
+   "AlphaTestOff"
+  ]
+ },
+ "578dcbb6d79a7e8e4053a57eab2c8d2a79f9c2a2": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenPassthrough<1, 1>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "5819b7ab839ef472037a6c6f15e34824401c0993": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowDepthQuad, OcclusionBaked, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "58e1bfe3146a2aea206aa05b5215dc1759d4f351": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "58fab2ddf4c57fef35037a42c79433b34ab76870": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<TexDiffuse0, 0, 129U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "59ae8718fd6ffb14ca5ec49627d50f6360d91fdd": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "59ffa259510a4e7e5d99f74d47fa2609abcb5078": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowDepthQuad, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "5aa3243a28c93077f1895f1fd41abcc578500132": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseRawNormal<PoseOneBone>",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdgeUntinted<true>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
  "5aac558298e5f5125372753cc66e873d7e01d31b": {
@@ -155,6 +1574,159 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "5ad0c035f47b9b18e1ea879fcbf534ac99a3b939": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "RippleHeight",
+   "AlphaTestOff"
+  ]
+ },
+ "5ae76567e25b89dd7165ed073c141fe4a0c78444": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "ReviveRampPixel",
+   "DiscardLE"
+  ]
+ },
+ "5bb6abc1df8a27a43a5a1f7ddf895dd1b14640ab": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowDepth, OcclusionBaked, AlphaOpaqueFrom<254>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "5bbf8c0923c18fd28d2b9327ce18065ca75a8439": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "HealthOrbPixel",
+   "AlphaTestOff"
+  ]
+ },
+ "5bec57b3fa2890a9bbe3a2f635c30c19dbf19cae": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 1U, 0U>, Stage<Sampler2, 2, 8194U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "5c90cfc567f218db09f9f9e3188103dc66bb1a19": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStage<4, TexGenMatrix<4, 1, 1>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "5c953cb617c0b567d7aa648cf6be135f3d4c38b8": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "5c9e38006024c852c83ecd01d85781cb52953c52": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "SwirlLayersVertex<LightDiffuse>"
+  ]
+ },
+ "5d2aee3827bfb07544616ed406e7017d68ed92c4": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "BatchCountRamp",
+   "AlphaTestOff"
+  ]
+ },
+ "5d56cd303ff2c0603b41554abad77fdadd53fa8c": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "HighlightMaskFeathered",
+   "DiscardLE"
+  ]
+ },
+ "5d629ea0d1b66f1e75e9596c1c58316bd7bc7f93": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowNone, OcclusionBaked, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "5dae246c7a3ca645e24b9dad47d470690746650e": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowDepthQuad, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "5e15bd70f413b6f4e87816b9360d82cfd5e5166c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 5U, 265U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "5e260d79396e1afc26d8b36949ac5fb5af2ac6e7": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 5U>, Stage<Sampler1, 1, 8197U, 5U>, Stage<Sampler2, 2, 0U, 1U>, Stage<Sampler3, 3, 0U, 8193U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "5e59c7fffddcbe58b9ae14d4a73f1fd79916ec66": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 1, 1>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "5e6c91679585d20607810b484865d50f9b7a033b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 1U, 5U>, Stage<Sampler2, 2, 1U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "5eb5e44dc5391cca5566e2c9887694baf9abe2ed": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 69U>, Stage<Sampler1, 1, 1U, 9U>, Stage<Sampler2, 2, 0U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "5ec5b77e414b149af334390f989936773986944e": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "LumaToAlpha<ScreenUvViewportClamped>"
+  ]
+ },
+ "5f44b7176529d77a03ae3d80f6653ced5e004582": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStage<4, TexGenMatrix<4, 1, 1>>, TexStage<5, TexGenMatrix<5, 1, 1>>, TexStageNone>"
+  ]
+ },
  "6019aea888b773786ce2905a4d82a6bc24ba7cc1": {
   "root": "combiner_ps_main",
   "specialize": [
@@ -162,6 +1734,33 @@
    "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
    "Resolve<0U>",
    "AlphaTestOff"
+  ]
+ },
+ "6078c832b9efa329e42fc00b1f5402604e9bcf1b": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceGlossPixel",
+   "DiscardLT"
+  ]
+ },
+ "6124ab7195649dcbf3a6fcf08fb0b1a8c12564cf": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenCameraPlane<0>>, TexStage<1, TexGenCameraPlane<1>>, TexStage<2, TexGenSphereMap>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "623518e1a365b38887f7e28ce162e20607e3ea22": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
  "635e0ab7b10a41a27720f2246c107d0fe3be3c43": {
@@ -174,6 +1773,147 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "639001f9b94ad2a8c771466bf93bde893da8c6b5": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "Fxaa<ScreenUvViewportClamped>"
+  ]
+ },
+ "63a69c73d751f4e59cdb4f765ef8675a23dca485": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "63c10e873e84486f7703287d41fa5d2a2dc016a8": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "GammaLookup",
+   "AlphaTestOff"
+  ]
+ },
+ "6418d128b6d0de6e2f02f9fbe22c95acb2caad45": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler, 1>, FlowMap<FlowSampler2, 2>, FlowMapNone, 1U>",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler, 0, 65U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "64c117bd3d3d57f62c475288322ced460a0f7388": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SceneDebugView<DebugSunBand>",
+   "AlphaTestOff"
+  ]
+ },
+ "6516ffeddce6004fb9b4f04c1a72c6ead9b6421c": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceSplitVertex<LightDiffuseVertexTinted, SplitDiffuseAmbient, FacingAuthored, TexgenProjection<RestFromPosition>, AlphaFromVertex>"
+  ]
+ },
+ "6517288a7cdac0bc20acb507b3cc7a6822b16ad3": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "CopyColor<SourceColorMS>",
+   "AlphaTestOff"
+  ]
+ },
+ "652303136ffb56ea316e88c73705966fac95f3f6": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 1, 1>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "655a4cabd0dc6973b69fde42493deed907db640a": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 1, 1>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "65bbda85303cbcd227a47066f50a7bab42a3b89c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "LayerSum<StageChain<Head<0U, 0U>, Stage<DiffuseMap, 0, 1U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>, StageChain<Head<0U, 0U>, Stage<AlphaMap, 1, 65U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>, true, true, false>",
+   "ResolveSoftFade<Resolve<0U>, 2, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "6636d9f74d0050d6833433b0c56a46fd52fdade6": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapePixelLit<FogInterpolant<false>, PixelFrameAt8, false>",
+   "LandscapeShadowDepth",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "666b5db22582025c0f0d4804d72f90b370978396": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 1U>, Stage<Sampler2, 2, 0U, 1U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "6708536f6165a358bc32826b747d5dd7893ebaf0": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefractiveVariant<WaterBumpMapsAndRipple, WaterFogIgnored, WaterReflectEnvironmentUnfogged, FresnelMild>",
+   "AlphaTestOff"
+  ]
+ },
+ "671561325704a658a55790edf50be466dc935f32": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "67add7e3c7d0097eb52e8a6e7b83796e01d2a3f2": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "KernelTaps3",
+   "AlphaTestOff"
+  ]
+ },
+ "6811387145aad2e92da7e476fc39c2d83512e80a": {
+  "root": "texfilter_vs_main",
+  "specialize": [
+   "QuadFarPlane",
+   "CoordsTaps<FilterTapsOffset>"
+  ]
+ },
+ "6875a3afcee18e5f8aadd6582f6a470aca727972": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 256U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
  "68a7e28f57c02feb850321b94f371a487bf890fe": {
   "root": "texgen_vs_main",
   "specialize": [
@@ -184,11 +1924,76 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenMatrix<0, 0, 0>>, TexStage<5, TexGenMatrix<0, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "68d6cfbd5a65bc88cb681e2e6addaa0416afe36f": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbVertex>",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenSphereMap>, TexStage<3, TexGenSphereMap>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "68fd7ccea49a81494b7cddf45778dcde99965297": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 9U, 5U>, Stage<Sampler2, 2, 9U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
  "6909898d5bfb4a3b8eeb64ef381306d37b45ee94": {
   "root": "combiner_ps_main",
   "specialize": [
    "FlowNone",
    "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "69ddfff77e00b61e9b3972494ba2f99dacbdf947": {
+  "root": "texdepth_ps_main",
+  "specialize": [
+   "DepthSampled",
+   "TargetDepthClearColor"
+  ]
+ },
+ "6a3809ebcd0590d3645763881494248d16b86120": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "CopyColor<SourceSampler0>",
+   "AlphaTestOff"
+  ]
+ },
+ "6ad8e373c30d0289e867f9894ff07d4522887355": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 1U, 0U>, Stage<Sampler2, 2, 0U, 69U>, Stage<Sampler3, 3, 0U, 5U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "6ae30b7e9a9d7b1501a0efe1002493b58dbf774d": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowCompare, OcclusionBaked, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "6ae7064b0451e662dd8acf97d5db8d0a4d49e6af": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "IrradianceBumpV11",
+   "AlphaTestOff"
+  ]
+ },
+ "6b15af38dee0e9888ab064635b53c53a57be25f8": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 0U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
    "Resolve<0U>",
    "AlphaTestOff"
   ]
@@ -203,6 +2008,63 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "6b759841ec57256c11aacaa1802f6c7cb763b28f": {
+  "root": "cookie_tint_vs_main",
+  "specialize": [
+   "SkinNone",
+   "TintVertexAlpha"
+  ]
+ },
+ "6b7eb840989079c32e08884d2d0de53b9f43b049": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowNone, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "6b8cccd74ad7d22a68542d75e8fe62fc0c987c67": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "6c2b586e4a0283e2fa0508c1e248ae455037e9c8": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "ColorblindDaltonize"
+  ]
+ },
+ "6cc3c8f1833abfc9631c7af536f8fb96ce525004": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "6cca11f2e7de7a36daaca9841b23f30aa4850c14": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SphereGlossPixelComposite<LandscapeShadowDepth>",
+   "AlphaTestOff"
+  ]
+ },
+ "6d2f14e23d10dc7882ca39355d1b25d05e2d9576": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbVertex>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenPassthrough<1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
  "6d3868bfad071831e56e86b6067709abac007800": {
   "root": "actor_ps_main",
   "specialize": [
@@ -210,11 +2072,267 @@
    "AlphaTestOff"
   ]
  },
+ "6d4c06b1ef7e77a54c4f5932453a03745293e0f8": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<1024U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler3, 3, 0U, 1U>, Stage<Sampler4, 4, 1U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "6d648266eb59a1cf8ff9dff29aae7c955f342f98": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "InterlaceResolve",
+   "AlphaTestOff"
+  ]
+ },
+ "6e19562cb561e3828ef7b99dbdb88aa54150790d": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapePixelLit<FogInterpolant<false>, PixelFrameAt8, false>",
+   "LandscapeShadowSoft",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "6f80bad1e75a113b186f65d2f80de67cdb988cd7": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenPassthrough<1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "6f9606b77e9924d643c5d6c160780a4da8694f09": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "ScreenDistortion"
+  ]
+ },
+ "70119a80608ac7f26b61866472f2a5a6c6087431": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "705c2e4431a9f7436234ed3c3f823269657bed1d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 5U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "722acba432999e98022bdbebd1c520f788acb2ab": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenPassthrough<1, 1>>, TexStage<4, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "725abe731ff31061d077c7f0c54fa0dabe2b0b82": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseGlyphOffset",
+   "FloatUv",
+   "RgbSecondary",
+   "AlphaSecondary",
+   "TexGenSet<TexStage<0, TexGenGlyphOutline>, TexStage<1, TexGenPassthrough<1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "7324b57dd0d68fb6de75da76ed7d92af32894bcd": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbPlusVertex<RgbAmbientBlend<RgbLit<false>>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "732684880eb4f89a1b3ab912eced613d9021764a": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenSphereMap>, TexStage<1, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "732f90e0e64f5b9a88a7650991ef017b0e6ec2c7": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 1, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
  "738da67a49839fb52490787825c3dc9b431bf47f": {
   "root": "surface_vs_main",
   "specialize": [
    "RigidMesh",
    "MeshSurface<TangentFrame<8, MaterialAlpha>, ShiftedScreenReflection>"
+  ]
+ },
+ "73acfafbb2dca78871ee2c897d8a3a0d250fd530": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 5U>, Stage<Sampler2, 2, 5U, 9U>, Stage<Sampler3, 3, 5U, 9U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "743d7852064da759b10ef16aaa1da01bbad025ba": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "SkinnedMesh",
+   "ReflectiveWater<true, true>"
+  ]
+ },
+ "74889892e1164ffe5bbbbaa9b78cf441a62e61c2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "74b33914c96eaba3cc06d880fe8ff2a6578dff99": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 9U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardNE"
+  ]
+ },
+ "74b5e6114682a7ff6e15369f720b6c5382d35ae8": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<VertexLighting, LandscapeShadowDepth>",
+   "DiscardLE"
+  ]
+ },
+ "7500467b036fe4892f7031bb19718b34bd1de89b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 320U>, Stage<Sampler1, 1, 1U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "75ce152d5d02506663d5e7fc5e454b30d01c0fae": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefractiveVariant<WaterBumpMapsAndRipple, WaterFogIgnored, WaterReflectProjectedUnfogged, FresnelSchlick>",
+   "AlphaTestOff"
+  ]
+ },
+ "770fb58ae288628882d2751010a8509b603d92c4": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "781e234b601e65eb9e2022bf49ebff53095bec3b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "782d0d110347d4377672a737d03b3caa37ee1876": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "ElementalLayerPixel<true>",
+   "DiscardLE"
+  ]
+ },
+ "797645b73722f0848b68f2c865c1541d11314ae6": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 5U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "799e52cb4068ece410935cfdd50d0676af86f22b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 0U, 8194U>, Stage<Sampler1, 1, 0U, 5U>, Stage<Sampler2, 2, 1U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "79d4a2413d7e2a011a7be57d4f8202e78ca82b2b": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "SsaoNormalDepth",
+   "AlphaTestOff"
+  ]
+ },
+ "7a4391b08dbc3ccbb953b6eed844fad26979fcaf": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 0U, 1025U>, Stage<Sampler1, 1, 8265U, 5U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "7ad9da7f8487fe9059711173dda5189f56e6731c": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<3, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "7afab85df458d2917af0970ecce1686715287cf8": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "7b8bba45d9696ab2e6aa8426162cbb599ef5c33c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 5U>, Stage<Sampler2, 2, 8194U, 5U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
   ]
  },
  "7badf48eb8a1cb342e8510b82ed3ad5543703008": {
@@ -227,6 +2345,129 @@
    "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "7d93772d7b565e3bf17dc27d00da1d8a556cd687": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "AnimatedMaskPixel",
+   "DiscardLE"
+  ]
+ },
+ "7e62f01235f5fbf7cb49fbbce4b1eaa0ba7a8ebd": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<VertexLighting, LandscapeShadowCompare>",
+   "DiscardLE"
+  ]
+ },
+ "7ed3e344661d7d1900ff6cd14ab9a5bd0a2f5b05": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 8197U>, Stage<Sampler2, 2, 5U, 8197U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "7f049aeec8917971157efd1c6596e3d8d986343a": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "FloatUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrixStream<0, 0>>, TexStage<1, TexGenMatrixStream<1, 1>>, TexStage<2, TexGenMatrixStream<2, 0>>, TexStage<3, TexGenMatrixStream<3, 1>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "7f4ff335f21b77fa67b0cc014453485188886990": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "TornadoPixel<false>",
+   "DiscardLE"
+  ]
+ },
+ "7f6a92d0125f931414cb7ea48d525cda976537f1": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "ElementalLayerPixel<false>",
+   "DiscardLE"
+  ]
+ },
+ "7f6e2521c17d0b6fedd02301e464d423bf56647c": {
+  "root": "texdepth_ps_main",
+  "specialize": [
+   "DepthMultisampled2",
+   "TargetDepth"
+  ]
+ },
+ "7f823420ff50a380d0937a9849696bb0386a7731": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowDepth, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "7fbfe85de5f3cc9b1d05ba3b49ce0716f3e17f4a": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "SharpenDiagonal",
+   "AlphaTestOff"
+  ]
+ },
+ "80bf8b2f14e8d125b28527c1904d4e7ab7259c0e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler1, 2>, FlowMap<FlowSampler2, 3>, FlowMapNone, 3U>",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler1, 0, 65U, 65U>, Stage<DiffuseSampler2, 1, 5U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "80c6452df7fbc3bc181ffb73243af365bd9e3fee": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowPacked, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "80e2bbc70b711a8725e869bdfe7c4538b16f71a0": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenUvLayer<2, 0>, AlphaFromVertex>"
+  ]
+ },
+ "80f4fce61445b1e0c560238c66a918ee7ed8c26b": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "DepthPrepassAt<2, MaterialAlpha>"
+  ]
+ },
+ "8148d7a467a288d8dd033da2cc456f08817af4c3": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowCompare, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "8164690f3a14096ad3cd8f6ddb9a260ee4dba173": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler1, 2>, FlowMap<FlowSampler2, 3>, FlowMapNone, 3U>",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler1, 0, 65U, 65U>, Stage<DiffuseSampler2, 1, 1U, 8197U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "821737a4c94be6071a25e98b81ee28d449a00d2e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, StageBlended<Sampler1, 1, 1310721U, 0U>, Stage<Sampler2, 2, 1U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
  "823db14654aca587998d29c4dfc2c9a4ff0df418": {
   "root": "particle_vs_main",
   "specialize": [
@@ -235,6 +2476,75 @@
    "TexcoordUnused",
    "TexcoordUnused",
    "TexcoordUnused"
+  ]
+ },
+ "826b0075ae2ad76b8c7d55bdf40ec416ec8428f9": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 8193U>, Stage<Sampler1, 1, 8193U, 5U>, Stage<Sampler2, 2, 0U, 1U>, Stage<Sampler3, 3, 0U, 8193U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "82888f2d5f6f83389db9d6f08f65bf60cd082dbb": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8194U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2U>",
+   "AlphaTestOff"
+  ]
+ },
+ "82cc22c22edf8662374c2f91b1a20ca1cc6425be": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 768U>, Stage<Sampler0, 0, 65U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "830034a3a9e3d4c458a47ac952ad2787113a0af6": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<VertexLighting, LandscapeShadowPacked>",
+   "DiscardLE"
+  ]
+ },
+ "830d9a75bd86044cc493c61c477bdd98c50405f9": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapeVertexLit<FogInterpolant<false>>",
+   "LandscapeShadowNone",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "831073d064a97f70042af6f1598cbe7291cda3bf": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceGlossPixel",
+   "DiscardGT"
+  ]
+ },
+ "83223b3f94dc919324d22495d897a83b73d9ae7a": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "GlowOverlay<true>",
+   "DiscardLE"
+  ]
+ },
+ "83c519dbb7c4cec6855e71ff61c9ac15fd90f948": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbVertex>",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
  "843bd41ad6353be98cfbf7ded5c2358b7f0a188c": {
@@ -260,6 +2570,15 @@
    "DiscardLE"
   ]
  },
+ "856860c552a319c152e00b45735ee7f78d21e891": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<DiffuseSampler, 0, 1U, 0U>, StageBlended<AlphaSampler, 1, 2105346U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
  "865934355e4be647fe587e551fa7f4930b17e050": {
   "root": "legacy_aux_ps_main",
   "specialize": [
@@ -267,11 +2586,271 @@
    "AlphaTestOff"
   ]
  },
+ "86bd8f31f5626f2c8890520f15ff4fef84ba8159": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "HighlightGlow<AxisVertical, SpaceTarget, 2>",
+   "AlphaTestOff"
+  ]
+ },
+ "8745b5dcdcba0d16b0a481189678b46e3108b23f": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 5U, 0U>, Stage<Sampler3, 3, 0U, 1U>, Stage<Sampler4, 4, 8194U, 0U>, Stage<Sampler5, 5, 8194U, 0U>>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "876ade08d5b7f348e3387334f71c83b015a4f30d": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenSphereMap>, TexStage<2, TexGenViewDepth>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "8864aaf47800fd7dd003fc0d0957d6b3d7b2902e": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "FogPlaneCorruption<false>",
+   "DiscardLE"
+  ]
+ },
+ "888c53b03107522b6efa025c397c3b228955e103": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMeshPoint",
+   "ReflectiveWaterFrames<true, false, WaterEnvironmentScreen, true>"
+  ]
+ },
  "888f1cfb93fee1d7089d8472aeb3684bd1b74833": {
   "root": "actor_vs_main",
   "specialize": [
    "FrameByteNormal<SkinNone>",
    "ActorVertexLit<true>"
+  ]
+ },
+ "89e89e3a8825fb3a8b0548d900cef75037dad122": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStage<2, TexGenPassthroughAbsentUv<0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "8ab4f0117a0e3052d585e41ce33b2466f1acc87f": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "8b04d711dc0bc29b1234a7a89e16d051987dc2c3": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "BoxBlur7<AxisVertical>",
+   "AlphaTestOff"
+  ]
+ },
+ "8b12d53a6a321c6decaa7592a4c8219cb6489997": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceSplitVertex<LightSpecular, SplitAmbientFloor, FacingAuthored, TexgenReviveGate<false>, AlphaFromVertex>"
+  ]
+ },
+ "8b4e97f3a0964531d5981c67869af8fc45cd1902": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<1, 1>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenPassthrough<1, 1>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenMatrix<4, 0, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "8c946985e75b4006e8ad6bf9acb6508a62e5096e": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<PixelLighting<NormalFromCoveredLayers, 6, false, false>, LandscapeShadowSoft>",
+   "DiscardLE"
+  ]
+ },
+ "8cc745c83a25f8f34cd2882bdb0afbfe02698417": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenPassthrough<1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "8d85292c345eda90b21243928bb7402b7a0a6866": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler1, 2>, FlowMap<FlowSampler2, 3>, FlowMapNone, 3U>",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler1, 0, 65U, 65U>, Stage<DiffuseSampler2, 1, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "8df449b9db8f5e4a11a64a30b4d14141d7f04c00": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenPulverize<RestFromPosition>, AlphaFromVertex>"
+  ]
+ },
+ "8e4831e3c75e1e87da503814add6a8833c2bfae9": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "QuincunxResolve",
+   "AlphaTestOff"
+  ]
+ },
+ "8e49cac36e2b3cfb5770f2d4379df0d6bb109534": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "StoneSkinPixel",
+   "AlphaTestOff"
+  ]
+ },
+ "8ed29527bab77555dc136396dc5bbfdcc7814cf2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 0U, 1025U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "8fe1636c836cde6ee743ee8f18af3654e00a5402": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "LayerSum<StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 1U>, StageBlended<Sampler1, 1, 4194306U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip>, StageChain<Head<0U, 0U>, Stage<Sampler2, 2, 65U, 0U>, Stage<Sampler3, 3, 1U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>, false, false, false>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "8ff962c5ffb5f75ef4bea22b4f551d26a3e2f551": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, Stage<Sampler1, 1, 5U, 5U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<64U>",
+   "DiscardLE"
+  ]
+ },
+ "90d32691fd512a8442a03cd9ef0e9de5b47a0e0a": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "IconMaskTint",
+   "DiscardLE"
+  ]
+ },
+ "90facd409e45e8703ed6477a0764ac3e538dcb9e": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "BumpSpecularV11",
+   "AlphaTestOff"
+  ]
+ },
+ "9195bf8cfcd6e868eb94bb56282ddc05cad04161": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "91ac48869f90607d10f58799849b73156b46d92b": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterOpaque<WaterNormalRipple, WaterReflectEnvironment, FresnelFlat, WaterGlossNone<false>>",
+   "AlphaTestOff"
+  ]
+ },
+ "91ff3c6ceb8aa33ac36fb419587fdc6ad3497b9a": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameRigid",
+   "NormalFrameVertex<LightDiffuse>"
+  ]
+ },
+ "924e84804b32d7334be003d247a6c7fdf81f1ea1": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowDepthQuad, OcclusionBaked, AlphaOpaqueFrom<254>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "934dc874a89667e3892df3fcd4b8fe4c34db5570": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 1U>, Stage<Sampler2, 2, 8194U, 0U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "9354deb87c8018dd22a5bbd1196ed3378212da77": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowSoft, OcclusionBaked, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "9360790efc4596ff546cb21f734124eb8c7c8481": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 257U>, Stage<Sampler1, 1, 8194U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "93678b47f7cb4f1cdcb84d457bc3bcfcd6fbc98a": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8194U, 0U>, Stage<Sampler2, 2, 8194U, 8194U>, Stage<Sampler3, 3, 0U, 9U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "942534bd88d789bda85819e2ad05450cf80b3968": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 0U, 9U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 1U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "9468390146c7f4946efefbe65a22a39fb9580046": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "GlowLayersComposite",
+   "DiscardLE"
+  ]
+ },
+ "9504693c3d3e87b8e816709c342e1e142361d754": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CoveragePrepass<AlphaUnshaped, 2>",
+   "AlphaTestOff"
   ]
  },
  "9552094185b89d863c5e355332971714f81eb504": {
@@ -284,12 +2863,279 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "95769789699abbe052531e28d4b24f3c5168685e": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "LightmapAmbientNoise",
+   "AlphaTestOff"
+  ]
+ },
+ "9585293760357140ce316a79cdca695c630def83": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, StageBlended<Sampler1, 1, 262145U, 0U>, Stage<Sampler2, 2, 1U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "958beec3e650019d8124868cdca95987dfa4edd2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler1, 2>, FlowMap<FlowSampler2, 3>, FlowMapNone, 3U>",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler1, 0, 65U, 65U>, Stage<DiffuseSampler2, 1, 1U, 5U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "95f3001248b18bfe59a3948846db3194dca894ad": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 69U>, Stage<Sampler2, 2, 0U, 8197U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "96b9f3ac74346698c994035dc1a2eb9a3d29b340": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8194U, 0U>, Stage<Sampler2, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "98a5add9a7af771370843713abd72c43faced668": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 1U>, Stage<Sampler2, 2, 1U, 1U>, Stage<Sampler3, 3, 0U, 5U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "990d8025a2dbaaff128bf1f31a87cd8abee2a487": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 9U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2816U>",
+   "AlphaTestOff"
+  ]
+ },
+ "995c13da091fe8a2e361cfd687013fe81f24019f": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 69U>, Stage<Sampler2, 2, 0U, 5U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "99e7008c01fe48495cf8b645a10a78a4b2470212": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "9a00095a9b0f329e1963ee81316a4b62cb4217a1": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrixAbsentUv<3, 0>>, TexStage<4, TexGenMatrixAbsentUv<4, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "9a3b5337573ae47fe8bbeb60b57a42ba9adea4f7": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowNone, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "9a4eda748972d036a4980f5f5af4e5e90f9df0ba": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 5U>, Stage<Sampler2, 2, 0U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "9ada328b5541dd2503a2105930d8fa1a55b9f8f9": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<true>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenPassthrough<0, 0>>, TexStage<2, TexGenZero>, TexStage<3, TexGenOrigin>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
  "9aed666442d82b774b12fa55d4abbef16503eef2": {
   "root": "combiner_ps_main",
   "specialize": [
    "FlowNone",
    "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, Stage<Sampler1, 1, 5U, 9U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
    "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "9af5b4795d90c4ef90e53e64bb33940f3a555cf8": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "ColorblindSimulate"
+  ]
+ },
+ "9b33267a46cca168578c9c1021dcefd0bc4657ba": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "9bf5c7678cbd22deb1c4266e7adf0bb2551f5f17": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<TexDiffuse, 0, 1U, 0U>, Stage<TexGloss, 1, 2U, 0U>, Stage<TexGlow, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "9c04ff7c7ae9e5aa7aa253b4df6b66acef27b8e9": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "9c16e2b5e16516b58384c46173cabc9460b049f0": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "ReflectionFresnelFloor",
+   "AlphaTestOff"
+  ]
+ },
+ "9cc886f97eb37fa3916c52f9d22e39a2b173433e": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbAmbientBlend<RgbVertex>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenSphereMap>, TexStage<3, TexGenSphereMap>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "9d318e36cc0e3dcedf69a2d3f8b26e7f2a07bf30": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenRestProjections<RestFromPosition>, AlphaFromVertex>"
+  ]
+ },
+ "9dcba60fbbfd45d532782dd39db596da2228a9ec": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<1152U>",
+   "AlphaTestOff"
+  ]
+ },
+ "9de4c288e6bb28776a899bd7d18d0b19d7ed532d": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "WindSway<false>",
+   "MeshSurface<VertexLit<false, true, false, VertexMaterialAlpha>, ScreenReflection>"
+  ]
+ },
+ "9e5c3cd44bf8b6cadfc1cba3d0a9afc72af1976e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler1, 1, 65U, 65U>, Stage<Sampler2, 2, 0U, 1U>, Stage<Sampler3, 3, 0U, 9U>, Stage<Sampler4, 4, 0U, 9U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "9e7ed945d3efcde8d5d136fd8e11e5765e5918f5": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowCompare, OcclusionBaked, AlphaOpaqueFrom<254>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "9fdec1d7a3763db867ff58cabc0666036f85a354": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "a090f107dea91c5ac55fe99598357d1daa0adca2": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "PackedUv",
+   "RgbLitHalfDiffuse",
+   "AlphaOne",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenMatrix<4, 0, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "a12b4cb6e17e5f21540fb7ec5c2613339c823180": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SphereGlossPixelComposite<LandscapeShadowNone>",
+   "AlphaTestOff"
+  ]
+ },
+ "a15e3ce5520ea36ef111e3e07d56311d7900728b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 1U, 5U>, Stage<Sampler2, 2, 5U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "a1e9eb720b6a982db5bae134e9b5196080884190": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaWeather<AlphaEdge<true, false, false, false>>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "a274fb8ec44f0b3634dffb1fc1a356c27043b53d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 1U, 1U>, Stage<Sampler2, 2, 5U, 265U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "a30562a3f556590704f0cd95e53a7add70698f59": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "ActorGlowPixel",
    "AlphaTestOff"
   ]
  },
@@ -300,12 +3146,80 @@
    "IrradiancePrepassVertex"
   ]
  },
+ "a406ca54f5d7e025a4e6b7c1326dc694acad28d2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 5U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "a41eadaed27f0ae9f0bd72efbc193367eef19bed": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "DepthPrepassAt<2, VertexMaterialAlpha>"
+  ]
+ },
+ "a4aa9f19b21fe490c48dee624b1efb7acf9a3b7b": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 5U, 9U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
  "a4e85fa335b839d77c46c6ab1f7474679cfdcae4": {
   "root": "combiner_ps_main",
   "specialize": [
    "FlowNone",
    "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 69U>, Stage<Sampler1, 1, 1U, 9U>, Stage<Sampler2, 2, 9U, 9U>, StageSkip, StageSkip, StageSkip>",
    "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "a4fb7640aaf976f874f7ad62c730a2354c4ee493": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "a52f07a3e79e012c3af3a7b39908b4e80e6b2831": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "ReflectionUnderDiffuse",
+   "AlphaTestOff"
+  ]
+ },
+ "a601722cf393dfa4968351d51211f03d3656a2a3": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapeVertexLit<FogInterpolant<false>>",
+   "LandscapeShadowSoft",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "a622badb51c9355be61e222cd4154e3339662a0c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 73U>, Stage<Sampler1, 1, 1U, 5U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<64U>",
+   "DiscardLE"
+  ]
+ },
+ "a62997c702a114baf8d7998574a13fc02eb9c2b2": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<VertexLighting, LandscapeShadowNone>",
    "DiscardLE"
   ]
  },
@@ -319,6 +3233,155 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "a862ad76616f95e5f5d80f32bc2dcf7b84df7115": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenSphereMap>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "a8719de2d247067d9b7903ac6d0584e31e22df9d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 9U, 9U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "a92b061c3f47950dc9d75196e4c5c8bf173c9c13": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<1024U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 69U>, Stage<Sampler2, 2, 0U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "a94b5643a92a38d50a2642aed26fb62f015d5bd2": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowSoft, OcclusionBaked, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "aa52188af527d71b6b42d41f68c2335ac4af2101": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "GhostIrradiancePixel<DiscardLE, GhostFadeDissipate<1>>",
+   "AlphaTestOff"
+  ]
+ },
+ "aaf49f0d2644d1141730edd6ea5ecb3be8ea99f4": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 257U>, Stage<Sampler1, 1, 1U, 8194U>, Stage<Sampler2, 2, 5U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "ab1f5ac8d42e6e56546ac3b4ba0f900237993e99": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "ac72a97dfda82cdb29a94ba858b96532156cc0a5": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowCompare, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "acc5eda9bc7e7f8506f3a1b2c15486a8bf94ba8e": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "Desaturate"
+  ]
+ },
+ "ada4891e010531edc2feb44fa58814fa56d1b26c": {
+  "root": "depth_clear_ps_main",
+  "specialize": [
+   "AlphaTestOff"
+  ]
+ },
+ "ae4707ab5552543d95c654bfd159e2160445eb30": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowPacked, OcclusionBaked, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "ae753057f40c7673375799ee80e9e0e2766da20c": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "MeshSurface<VertexLit<false, false, false, MaterialAlpha>, PlayerFadeFloor>"
+  ]
+ },
+ "af167f2e33d2e1aa72fe0d3440bcbb919fd31ff4": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "MotionBlur13",
+   "AlphaTestOff"
+  ]
+ },
+ "af707b03ee23c878587c7e855490af68d7cf4ba4": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 17U, 1U>, Stage<Sampler1, 1, 25U, 9U>, Stage<Sampler2, 2, 8729U, 265U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<514U>",
+   "AlphaTestOff"
+  ]
+ },
+ "b069df1035da163f13592fdd6365eef17f6dbe92": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "SkinnedWindSway<false>",
+   "MeshSurface<VertexLit<false, true, false, MaterialAlpha>, ScreenReflection>"
+  ]
+ },
+ "b0a4ce7c06a6bfe15309013d962f44136cadc09e": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "SkinnedMesh",
+   "MeshSurface<ShadingNone, ScreenReflection>"
+  ]
+ },
+ "b10b0d4d83a58b1997876f5f14a63ee737094379": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 0U, 69U>, Stage<Sampler1, 1, 5U, 5U>, Stage<Sampler2, 2, 5U, 5U>, Stage<Sampler3, 3, 1U, 9U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "b13f363ce5f95ca6c00b7d9ff56b110e96851795": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "b1b10fc24f293ece963f13e7010ef1409d0541b2": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "GhostShellPixel<GhostFadeNone>",
+   "AlphaTestOff"
+  ]
+ },
  "b30b401a51a47a1b97e751f35d47b3336f74aa54": {
   "root": "combiner_ps_main",
   "specialize": [
@@ -326,6 +3389,75 @@
    "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
    "Resolve<0U>",
    "AlphaTestOff"
+  ]
+ },
+ "b3a0c6ea029c36d3a21db702244f2eec865eea40": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler0, 3>, FlowMap<FlowSampler1, 4>, FlowMapNone, 7U>",
+   "StageChain<Head<0U, 0U>, Stage<DiffuseSampler0, 0, 65U, 65U>, Stage<DiffuseSampler1, 1, 1U, 1U>, Stage<DiffuseSampler2, 2, 5U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "b3b86b85cc0b91b82b69c7e2c4ede21aaa8c3da5": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 0U, 65U>, Stage<Sampler1, 1, 1U, 1025U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "b40bd1a18c6539759c729c656b4e270cdaca3e56": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "WindSway<true>",
+   "DepthPrepass"
+  ]
+ },
+ "b4c0a7067d467c919bf85cbe315c44ce51366468": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 0U, 8194U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "b6279b6cd20695503fdd1c7f92f43a7a40dfa7f1": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 0U, 1U>, Stage<Sampler2, 2, 0U, 1U>, Stage<Sampler3, 3, 1U, 0U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "b628dad529e5b42766c9e72798dd896db95539d7": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "GlowOverlayPixel",
+   "DiscardLE"
+  ]
+ },
+ "b6d980b832ba185ec75139b90ba5dc597c94962d": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 1, 1>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "b7826458a169c1811a39a5ef19d843089fd47e1e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 0U, 65U>, Stage<Sampler1, 1, 65U, 8197U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<64U>",
+   "DiscardLE"
   ]
  },
  "b8c16b1f64b9c71182a1678e7a06a79947a555b9": {
@@ -346,6 +3478,24 @@
    "AlphaTestOff"
   ]
  },
+ "bb244107f0ae23bba5ce9e765178daafcc55ef48": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapeVertexLit<FogInterpolant<false>>",
+   "LandscapeShadowCompare",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "bbe8ef052841f368610bfd5cbc5d5d3cb8a23323": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "BloomShrink<GatherBox4x4>",
+   "AlphaTestOff"
+  ]
+ },
  "bc77648830b4495e1ca65301c82b5032cc412aaa": {
   "root": "texgen_vs_main",
   "specialize": [
@@ -354,6 +3504,100 @@
    "RgbLit<true>",
    "AlphaVertex",
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "bcc0c6e1590d084b25a8539eacdb4156a762d084": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 0U, 65U>, Stage<Sampler1, 1, 65U, 9U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2112U>",
+   "DiscardLE"
+  ]
+ },
+ "bccc53b5ed2d0934c5a0664891be658d9b7677ab": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 320U>, Stage<Sampler0, 0, 1U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "bccc61c4c3c5f3867b5991b2f149684efca01954": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<128U>",
+   "AlphaTestOff"
+  ]
+ },
+ "bddb53f6659b196f4adadb7ce7d54dffb70e83d8": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "SsaoBilateralBlur",
+   "AlphaTestOff"
+  ]
+ },
+ "bde37ca120b5c4220fde6e65cc975251f1b4982f": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "be6878e7fa4f1a2de7ae5634a51bfd9d43becebe": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "BloomShrink<GatherSingle>",
+   "AlphaTestOff"
+  ]
+ },
+ "befa9fb93ec31d5ac4ba17bec7c0029e3631ff27": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "GaussianBlur13<AxisVertical>",
+   "AlphaTestOff"
+  ]
+ },
+ "bf41d78fca34c4f53c187ab3fb802d9c78236418": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenViewDepth>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "bfeda8f6fbb57daa90ff2ad507439b5ff01dfa87": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenViewDepth>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c171c8143a45e337af60ef45e64263dd616f0b68": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 8201U, 8194U>, Stage<Sampler2, 2, 0U, 8197U>, Stage<Sampler3, 3, 0U, 8197U>, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "c196aead6c5f0ce160ec45c2985f20eb4d0ad931": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefracted<WaterNormalScaled<WaterNormalLayered>, MurkAlpha, WaterReflectPlanar, FresnelBroad, WaterGlossCoverage, false>",
+   "AlphaTestOff"
   ]
  },
  "c198e4d7f9012f27fbadfcc7fc4579c7f76e04c8": {
@@ -366,6 +3610,95 @@
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
   ]
  },
+ "c25cc8f97abf13c104b94083c486a9384ba24fe8": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenEyeLinear<0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c36e19d198a4d0aa2979c9a577b2abaeb0bf1af1": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 5U>, Stage<Sampler1, 1, 5U, 1U>, Stage<Sampler2, 2, 0U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<1U>",
+   "DiscardLE"
+  ]
+ },
+ "c3aea7f04f9f21d93b9497fa6f3874b4f7405e8d": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowDepth, OcclusionBaked, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "c45ff3d8d41b601d9bcac3ff23e729660e967411": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowSoft, OcclusionBaked, AlphaOpaqueFrom<254>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "c4af49edc280f73a75f04b348d7e28ef0af0facf": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 0U, 9U>, Stage<Sampler1, 1, 0U, 1U>, Stage<Sampler2, 2, 0U, 1U>, Stage<Sampler3, 3, 1U, 5U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "c51a0e735faadc1bcbe0563720fe2abaa03256c4": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapePixelLit<FogInterpolant<false>, PixelFrameAt8, false>",
+   "LandscapeShadowPacked",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "c55ee52939840410cba6b95cdc1e47bb3bf614bf": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapePixelLit<FogInterpolant<false>, PixelFrameAt8, false>",
+   "LandscapeShadowDepthQuad",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "c58bb56a891dfb3fe2922c2bcea78394057043dd": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 321U>, Stage<Sampler1, 1, 65U, 0U>, Stage<Sampler3, 3, 5U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "c5d895ecc3aca58418b2cb7d564a9734933e4933": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "CutsceneYCbCr",
+   "AlphaTestOff"
+  ]
+ },
+ "c6a5d4e7d1648cbcfe54c38311a71a0407c3e66f": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 5U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
  "c7399b7f8d11610d9bfc1d999bbcea2771d1fb69": {
   "root": "texgen_vs_main",
   "specialize": [
@@ -374,6 +3707,22 @@
    "RgbVertex",
    "AlphaVertex",
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c770ae444571b248bb6ebfe9ea263ef9e1676f82": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 256U>, Stage<Sampler0, 0, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "c7a82121a58122ca1c3df4ebccffa86847c3f018": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "LumaToRed",
+   "AlphaTestOff"
   ]
  },
  "c892c22674c528efdc0598af6a4675ef6ad2cc72": {
@@ -385,6 +3734,58 @@
    "DiscardLE"
   ]
  },
+ "c90ce18ad6624c6056045010353a5f88cabdfdde": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaWeather<AlphaVertex>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenPassthrough<0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c95c011c1fb5a9dd574f3bfde55ff8a764a3dee4": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 5U>, Stage<Sampler2, 2, 0U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "c988bea75a357f424ef95639e322ce4bfa6924f6": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "c9f216de54fe24166a8f718e65442ef2d0ddf158": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 0U, 132353U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "ca23e109c8ab727d79ecf4c6d04c9e5264e5a449": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SphereGlossPixelComposite<LandscapeShadowCompare>",
+   "AlphaTestOff"
+  ]
+ },
+ "ca3457d2d03dd89635d8fe14a560a84ac675184b": {
+  "root": "legacy_aux_ps_main",
+  "specialize": [
+   "ProjectedLayerDebugTint",
+   "AlphaTestOff"
+  ]
+ },
  "caa7d6432147e222c26f26568bf5ba30b909603c": {
   "root": "combiner_ps_main",
   "specialize": [
@@ -392,6 +3793,275 @@
    "StageChain<Head<0U, 256U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 5U, 0U>, Stage<Sampler2, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
    "Resolve<0U>",
    "AlphaTestOff"
+  ]
+ },
+ "caca458783ab305cd7d109bac7591e460b30edad": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "GlowOverlay<false>",
+   "DiscardLE"
+  ]
+ },
+ "caf5dd2080324e2c44ebb42aa2e1e95ad5b0c9df": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<PixelLighting<NormalFromCoveredLayers, 6, false, false>, LandscapeShadowDepthQuad>",
+   "DiscardLE"
+  ]
+ },
+ "cb0d3d9afd93d56e3789497f8b5882d5130264c9": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<1024U>",
+   "AlphaTestOff"
+  ]
+ },
+ "cb462cc31ecc4421a3895ca235eddc303a24c8b7": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, Stage<Sampler1, 1, 0U, 8194U>, Stage<Sampler2, 2, 1U, 0U>, Stage<Sampler3, 3, 8194U, 0U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "AlphaTestOff"
+  ]
+ },
+ "cbca5ed8cad363c7cc6d7977f71e36f592a9b47c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 1U, 8193U>, Stage<Sampler1, 1, 5U, 8201U>, Stage<Sampler2, 2, 1U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "cc9ab4d406b5861bdf48128f43ac35ea983f7593": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 0U, 1U>, Stage<Sampler2, 2, 1U, 0U>, Stage<Sampler3, 3, 1U, 0U>, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "cdbd2c82efcd42af44ac6749f6bea1dab1264df2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 9U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "cee536ca3fc8bc8213be10353d95ad0c9e7b31d6": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 0U, 5U>, Stage<Sampler2, 2, 1U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "cf21697a97c691d15384637197db380f4207f3d9": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "PackedUv",
+   "RgbConstant0",
+   "AlphaConstant0",
+   "TexGenSet<TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "cf446070ab892871a3b088f6d7589741c07515c9": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "cf76cd7a977f59df37d87c489d158d5772dc3ceb": {
+  "root": "texfilter_vs_main",
+  "specialize": [
+   "QuadProjected",
+   "CoordsHomogeneous"
+  ]
+ },
+ "cf941becb68f7de0463a5bc2f84b231b6743fb3e": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceBumpPixel<ShadowSingleCompare, true, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "cfcf07fce88b530c25fef4818aca368f662608f2": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 9U, 1U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "cff466723aa90b4da18473247605824b73f75885": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 256U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 5U, 9U>, Stage<Sampler2, 2, 0U, 9U>, Stage<Sampler3, 3, 0U, 1U>, StageSkip, StageSkip>",
+   "Resolve<768U>",
+   "AlphaTestOff"
+  ]
+ },
+ "d07835b436f0240730b5e6c5f7d1da51f12e2344": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenCameraPlane<0>>, TexStage<1, TexGenCameraPlane<1>>, TexStage<2, TexGenMatrix<2, 1, 1>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "d0de8c503f4db87faff2debd16277af3295904bf": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SphereGlossPixelComposite<LandscapeShadowDepthQuad>",
+   "AlphaTestOff"
+  ]
+ },
+ "d184373caf4bd94d6cca2521bdf9096dae59a42d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 1089U>, Stage<Sampler2, 2, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "d1dfefbfff2dd4d951bd252cfb42e5a5d4d97950": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbLit<false>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenPassthrough<0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "d2eb2a43748af8702d1f73e3c6fad837adef23b6": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "PropComposite<LandscapeShadowSoft, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "d2f259eaa268f54390beffa4ba69d1955c959ebc": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler1, 1, 0U, 1025U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "d35d7c2641583d2d5044e46ae38f4ce8ac3bc30d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<TexDiffuse, 0, 1U, 1U>, Stage<TexGlow, 1, 2U, 0U>, Stage<TexAlphaMask, 2, 1U, 0U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "d424f78237351de5be14ec28350983c12819f43f": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenPassthrough<0, 0>>, TexStage<2, TexGenMatrix<2, 1, 1>>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "d43390e98426edd94fc203601649139d7c638e51": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbPlusVertex<RgbAmbientBlend<RgbLit<false>>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "d4afa8ed8b45a950b193cd4cba60a7cffecb4b5a": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SceneDebugView<DebugLightmap>",
+   "AlphaTestOff"
+  ]
+ },
+ "d52d6e9f35fb44714ccb05371ddc9c7c54fe7b00": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "d539e5c1b001ebc07ecca186ac83c267804fcd01": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "GhostIrradiancePixel<DiscardLE, GhostFadeMasked<GhostFadeDissipate<0>>>",
+   "AlphaTestOff"
+  ]
+ },
+ "d61ee27b74632eec454d836ddee7e8a7227be6d3": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowWarp<FlowMap<FlowSampler, 3>, FlowMapNone, FlowMapNone, 7U>",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 65U>, Stage<Sampler1, 1, 0U, 5U>, Stage<Sampler2, 2, 1U, 9U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "d621d04129ecdfd2c1dbe7f89cf2bb9aab64c14d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 1024U>, Stage<Sampler0, 0, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "d6a896cb10910973073fa5c30e5855c2c50ed06e": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapeVertexLit<FogInterpolant<false>>",
+   "LandscapeShadowDepth",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "d6e1b92254a7310efba02032b40ffc48f3ed54ad": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "d74baa358e81e88bd607a502013efde966d3f4dd": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMeshPoint",
+   "ReflectiveWaterFrames<true, false, WaterEnvironmentUv, false>"
   ]
  },
  "d7697ff7f9ce2cd7bfdf27d23cf3610abef2507b": {
@@ -402,6 +4072,32 @@
    "RgbLit<false>",
    "AlphaVertex",
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "d89674f7fa46364b46276714104bcf5f6972008a": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "d8c1b8587f5ab67331c0fa18c9011adb6fccba05": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "d92779c0b89b431af8ad42e20b44fddc2d0f6778": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "CrystalPixel",
+   "AlphaTestOff"
   ]
  },
  "d94f6304034f6b8ac285a0927674389a36bdf0f5": {
@@ -421,6 +4117,81 @@
    "TexcoordMatrix<3, 1, 3>"
   ]
  },
+ "d98adaaa11b6171392c385523186a0cb9052a9c7": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "PuddleSurface<VertexMaterialAlpha>"
+  ]
+ },
+ "da16aa8265cde834bc504299dbfe7916f4035492": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseRawNormal<PoseStatic>",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaOne",
+   "TexGenSet<TexStage<0, TexGenScreenReflection>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenFresnel>, TexStage<3, TexGenMatrix<3, 1, 1>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "da6e79372fdfa67bc0b92690447a9edfe34e49ad": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "SkinnedWindSway<false>",
+   "MeshSurface<VertexLit<false, false, false, MaterialAlpha>, PlanarProjection>"
+  ]
+ },
+ "dab4209987b7e75ab5fa60c3dcaa3c641af1b685": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "dabd2997a2e2cec56bca23a4b9b89f66e0b91d93": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapePixelLit<FogInterpolant<false>, PixelFrameAt8, false>",
+   "LandscapeShadowCompare",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "dcd4fa2a34bbbde96db5756af96c0ac5fb927aea": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "HighlightGlow<AxisVertical, SpaceViewport, 5>",
+   "AlphaTestOff"
+  ]
+ },
+ "ddfb57065156fae10131aabb22c9ad5c8f33f42b": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "FogPlaneLayered<true, MaterialAlpha>"
+  ]
+ },
+ "de4c67cbe48becd2bb5b267c71531038420af3e7": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceSplitVertex<LightDiffuseVertexTinted, SplitDiffuseAmbient, FacingAuthored, TexgenProjection<RestFromPosition>, AlphaFromVertex>"
+  ]
+ },
+ "de69899ff18a74d7f68266f0ec2e6386811c0c0d": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 320U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 8197U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
  "de6e634e1fdff03d54ed68e6b6df808f5d3cfbff": {
   "root": "combiner_ps_main",
   "specialize": [
@@ -428,6 +4199,161 @@
    "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 65U, 257U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
    "Resolve<2048U>",
    "DiscardGT"
+  ]
+ },
+ "df07ee3c459e08e0f2db33d88ec2ec546d5d10b9": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "TextOutline",
+   "AlphaTestOff"
+  ]
+ },
+ "df18cac5d07e759566a7748701f07a2dc4d82da2": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "HighlightGlow<AxisHorizontal, SpaceViewport, 5>",
+   "AlphaTestOff"
+  ]
+ },
+ "df6117f409c3939690ba44cbc52c116c17e0f61e": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 9U, 261U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "e05f89e0be2106a9174fd144289756015b9e8dd4": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "SphereGlossPixelComposite<LandscapeShadowSoft>",
+   "AlphaTestOff"
+  ]
+ },
+ "e08477a97cf7624a2618549ebcc42d31014c4615": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbTimesVertex<RgbLit<false>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "e110d2ba9c17adaa8356bf53df4137bf9529e16f": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 0U>, Stage<Sampler1, 1, 0U, 69U>, Stage<Sampler2, 2, 0U, 5U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<2048U>",
+   "DiscardLE"
+  ]
+ },
+ "e11334f0ce2ce97cdc5e3ea8a01dca03b1d57d02": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "e165eeab3f02ea59939c59edfb150b14c1a8f10c": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<256U, 256U>, Stage<Sampler0, 0, 1U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "e22ea116e4a944568babda5fdae8da62503d2716": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 0U>, Stage<Sampler0, 0, 0U, 1U>, Stage<Sampler1, 1, 0U, 1U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "e29263f77fcd3c9cae59bb092f99ada87afdff87": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMesh",
+   "MeshSurface<VertexLit<false, false, false, MaterialAlpha>, TwoTextureGlowUnmapped>"
+  ]
+ },
+ "e3401e2b5c83ebb316e55a56c9c51a280cd931cf": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 0U>, Stage<TexEnvMap, 1, 1U, 0U>, Stage<TexGloss, 2, 65U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<1024U>",
+   "DiscardLE"
+  ]
+ },
+ "e35d2055fbf7d9531eae9c2202d6b2c0e6ab5408": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbTimesVertex<RgbLit<false>>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "e39b8ca1efdc884268586da4f2ee7d8fd783fa81": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "VertexColorPull",
+   "DiscardLE"
+  ]
+ },
+ "e42b5a2a0e3bf7a3946e047b80bf1acc3fd6a124": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "CrackedGroundComposite<PixelLighting<NormalFromCoveredLayers, 6, false, false>, LandscapeShadowPacked>",
+   "DiscardLE"
+  ]
+ },
+ "e47ae6ae214dbc56e378902114e20986703342fb": {
+  "root": "texfilter_vs_main",
+  "specialize": [
+   "QuadClipSpace",
+   "CoordsHomogeneous"
+  ]
+ },
+ "e4998a1223a2b858f10f2f72b0e5b61593440b43": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowPacked, OcclusionBaked, AlphaOpaqueFrom<254>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "e50e69cbe045a1a7cf031af77c959c925adc82e0": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "TapAverage4",
+   "AlphaTestOff"
+  ]
+ },
+ "e7078f2eaa8504ffe12cacf778c362d5a161877d": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenPassthrough<1, 1>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenPassthrough<0, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "e78a6731361a4c0ae23570d3d1af8f7af4162744": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "GlowLayersComposite",
+   "AlphaTestOff"
   ]
  },
  "e7d7875808bd750cb2eb19979e741c1c423e0877": {
@@ -447,6 +4373,65 @@
    "IrradianceSplitVertex<LightVertexColor, SplitDiffuseAmbient, FacingAuthored, TexgenProjection<RestFromPosition>, AlphaFromVertex>"
   ]
  },
+ "e87dba602f4f590e257bbccf0c962b011ee80551": {
+  "root": "landscape_ps_main",
+  "specialize": [
+   "LayerSplat2",
+   "LandscapeVertexLit<FogInterpolant<false>>",
+   "LandscapeShadowPacked",
+   "OcclusionBaked",
+   "GlossNone",
+   "AlphaTestOff"
+  ]
+ },
+ "e9011ac0880bf5759e5ad970a6e8afe57dc5ac70": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowNone, OcclusionBaked, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "e94d29c0fd14ff33eb7935e36c3cecedd5017870": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LegacyTerrainLayers",
+   "AlphaTestOff"
+  ]
+ },
+ "e99c7279d893b67a171af419b97de70421a74217": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "BoxBlur7<AxisHorizontal>",
+   "AlphaTestOff"
+  ]
+ },
+ "e9b59d427430beb10869e95c6d059751b300d459": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "RigidMeshPoint",
+   "ViewSpaceRows"
+  ]
+ },
+ "ea21bddef11c931ab111795a21102ce6d03cce48": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 1, 1>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "eae74bccbd1ffdf1ee1f7fb2bc0ec2889e332c9b": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbAmbientBlend<RgbVertex>",
+   "AlphaEdge<false, true, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
  "ebf5f4ef8a4763dd7526218fbd12a56ff0ff8912": {
   "root": "combiner_ps_main",
   "specialize": [
@@ -456,12 +4441,143 @@
    "DiscardLE"
   ]
  },
+ "ec7f0005645cd1ccf4815d556e6c20284e5b0d74": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStream",
+   "PackedUv",
+   "RgbHalf",
+   "AlphaOne",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 0, 0>>, TexStage<4, TexGenMatrix<4, 0, 0>>, TexStageNone, TexStageNone>"
+  ]
+ },
+ "ed2163dbdb639fdcd4b227bc97cae8959f23ffce": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 1U, 1U>, Stage<Sampler2, 2, 1U, 1U>, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "ed6da741c2220c04c436929914786d860b3a2c90": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "edf1211277854aaef163bed86c263c4d527faaf5": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "BlurByFraction"
+  ]
+ },
+ "ef0105fec5c3be7f1f32e93a7ceb7a0633e04b9b": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "UnlitSplitVertex<TexgenSecondUv>"
+  ]
+ },
+ "ef06258642180d6c8ebfdc5a2ac1c1d5f16f041f": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "ToneMap<GradeCrossFade, false>"
+  ]
+ },
  "effd5ef2c18bd51e1406e0965fdf3d914be639a5": {
   "root": "combiner_ps_main",
   "specialize": [
    "FlowNone",
    "StageChain<Head<0U, 0U>, Stage<Sampler0, 0, 1U, 65U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
    "Resolve<0U>",
+   "DiscardLE"
+  ]
+ },
+ "f02085a7730f79d008a398c20d25293fdfc22d60": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "SoftFocus<ScreenUvViewport, ScreenUvConstantRect>"
+  ]
+ },
+ "f076b9a575c83ba97f3bae02ac3940d1e43dd9a5": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaEdge<true, false, true, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "f2e5db186bd63c122315b2297c9a700843bc2da2": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "f311c326df60bc14da22b42e4737b910fa452dc2": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowDepth, OcclusionBaked, AlphaOpaqueFrom<191>, false, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "f4ad91aae9d74d93b93d3986cd1d46c75fa83353": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenViewDepth>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "f56af4dfad51d26e0e4d8afe86ba3709255cf6da": {
+  "root": "texdepth_ps_main",
+  "specialize": [
+   "DepthMultisampled8",
+   "TargetDepth"
+  ]
+ },
+ "f572b074b25416f7e4769bfde3ebd5c5d97446ee": {
+  "root": "scene_ps_main",
+  "specialize": [
+   "LightmapComposite<VertexLighting, LandscapeShadowCompare, OcclusionBaked, AlphaOpaqueFrom<191>, true, true>",
+   "AlphaTestOff"
+  ]
+ },
+ "f583bf1c51d442c7a0f0f6e4655ac93d8f542d47": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbLit<false>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "f62a56e1bb533c19b8c6e01f6992d54114264b80": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<1088U, 1088U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "f6724f91f63e745ebad21b918e39bebcce14cd7c": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "TornadoPixel<true>",
    "DiscardLE"
   ]
  },
@@ -474,6 +4590,75 @@
    "DiscardLT"
   ]
  },
+ "f7697755a6af3564f6c4b6416303e2b90ac9be16": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<0U, 64U>, Stage<Sampler0, 0, 1U, 1U>, Stage<Sampler1, 1, 0U, 1U>, Stage<Sampler2, 2, 0U, 9U>, Stage<Sampler3, 3, 0U, 8194U>, StageSkip, StageSkip>",
+   "Resolve<8U>",
+   "DiscardLE"
+  ]
+ },
+ "f78aebfd6f61668bbd79fd1ae64dd6e31dddc436": {
+  "root": "water_ps_main",
+  "specialize": [
+   "WaterRefractiveVariant<WaterBumpRippleOnly, WaterFogIgnored, WaterReflectPlanarUnfogged, FresnelSchlick>",
+   "AlphaTestOff"
+  ]
+ },
+ "f807fcdf73943b02aadc7eb26418b36cc46425e7": {
+  "root": "postfx_ps_main",
+  "specialize": [
+   "MinimapExplored"
+  ]
+ },
+ "f855b19ea08b9fa25b90aab6d0e5c334c595bdd1": {
+  "root": "texfilter_ps_main",
+  "specialize": [
+   "HighlightGlow<AxisHorizontal, SpaceTarget, 2>",
+   "AlphaTestOff"
+  ]
+ },
+ "f8c8be482ca9a2d1dab633000db687e1c50e6376": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceCombinedVertex<LightDiffuse, MeshLightingIntensity, TexgenUvLayerPair<3, 4>, AlphaFromVertex>"
+  ]
+ },
+ "f9f1cd71dccb84543fda467ca95a9c6eaf210695": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseStatic",
+   "PackedUv",
+   "RgbAmbientBlend<RgbVertex>",
+   "AlphaVertex",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 1, 1>>, TexStage<2, TexGenMatrix<2, 1, 1>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "fb2c468cdfff3250fc49dbc10576637cdf097a39": {
+  "root": "combiner_ps_main",
+  "specialize": [
+   "FlowNone",
+   "StageChain<Head<64U, 64U>, Stage<Sampler0, 0, 8194U, 0U>, StageSkip, StageSkip, StageSkip, StageSkip, StageSkip>",
+   "Resolve<0U>",
+   "AlphaTestOff"
+  ]
+ },
+ "fb3161075d863c33d462ba9bb45a6dfef2c2a5d2": {
+  "root": "legacy_fixed_ps_main",
+  "specialize": [
+   "DepthComplexityStep",
+   "AlphaTestOff"
+  ]
+ },
+ "fb54ec704611e04a2de201764215527e33ef958c": {
+  "root": "surface_vs_main",
+  "specialize": [
+   "CurveSway",
+   "MeshSurface<VertexLitSwayProbe<MaterialAlpha>, PlanarProjection>"
+  ]
+ },
  "fc13ee93130d549581d097784a5ae79cfc1bc247": {
   "root": "texgen_vs_main",
   "specialize": [
@@ -482,6 +4667,37 @@
    "RgbVertex",
    "AlphaVertex",
    "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStageNone, TexStageNone, TexStageNone, TexStageNone>"
+  ]
+ },
+ "fcb3d364b891bf41943c2474e71ed65dd995d357": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "IrradianceBumpPixel<ShadowSoftPcf, true, false>",
+   "AlphaTestOff"
+  ]
+ },
+ "fd9cb7249c716936f23b8e06f58fc1b30dca1e38": {
+  "root": "actor_ps_main",
+  "specialize": [
+   "GhostShellPixel<GhostFadeMasked<GhostFadeNone>>",
+   "AlphaTestOff"
+  ]
+ },
+ "fe7e9f3ab27708e8e458626c9f3d412e12a293bd": {
+  "root": "actor_vs_main",
+  "specialize": [
+   "FrameBlend3",
+   "IrradianceSplitVertex<LightSpecular, SplitAmbientFloor, FacingAuthored, TexgenReviveGate<true>, AlphaFromVertex>"
+  ]
+ },
+ "ff6d52f8200af1f1f72aaee093a4718df75db26d": {
+  "root": "texgen_vs_main",
+  "specialize": [
+   "PoseThreeBones",
+   "PackedUv",
+   "RgbVertex",
+   "AlphaEdge<true, false, false, false>",
+   "TexGenSet<TexStage<0, TexGenMatrix<0, 0, 0>>, TexStage<1, TexGenMatrix<1, 0, 0>>, TexStage<2, TexGenMatrix<2, 0, 0>>, TexStage<3, TexGenMatrix<3, 1, 0>>, TexStageNone, TexStageNone, TexStageNone>"
   ]
  }
 }

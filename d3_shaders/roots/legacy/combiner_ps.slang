@@ -64,6 +64,11 @@ float d3SoftFade(D3Interpolants i)
 /// The fixed tails named by the bits of STEPS.
 public struct Resolve<let STEPS : uint> : ICombinerResolve
 {
+    // inlined on the engine target, so its SPIR-V / WGSL keeps no texture an
+    // absent tail reads (those backends bind every declared resource)
+#ifdef D3_TARGET_FLAKES
+    [ForceInline]
+#endif
     static bool has(uint step) { return (STEPS & step) != 0; }
 
     public static float4 resolve(float3 rgb, float alpha, D3Interpolants i)

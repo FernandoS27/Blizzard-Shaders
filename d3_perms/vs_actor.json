@@ -11526,7 +11526,174 @@
  },
  {
   "slot": 58,
-  "roots": [],
+  "roots": [
+   "actor_vs_main"
+  ],
+  "program": "2949d4d5fbf68a389db2269250467848aaa9ec45",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "148d597c",
+    "defines": {},
+    "shaders": [
+     "actor2_disintegrate_death"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     3,
+     "w",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     5,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 59,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "34596d4c461f3aa83dbfe2e883a1906fd3051d51",
   "retail": [
    {
@@ -11737,165 +11904,6 @@
   }
  },
  {
-  "slot": 59,
-  "roots": [],
-  "program": "9b33267a46cca168578c9c1021dcefd0bc4657ba",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "1899ace3",
-    "defines": {},
-    "shaders": [
-     "actor_champion_opaque"
-    ],
-    "residue": "disputed"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "1": [
-     135,
-     "dynamicIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "BLENDINDICES",
-     0,
-     6,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "BLENDWEIGHT",
-     0,
-     7,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
   "slot": 60,
   "roots": [
    "actor_vs_main"
@@ -11979,159 +11987,9 @@
  },
  {
   "slot": 61,
-  "roots": [],
-  "program": "036dea366951b559776f2ec58abe372a5107b6a1",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "25787ed4",
-    "defines": {},
-    "shaders": [
-     "actor_telegraphring_cm2x_am4x",
-     "actor_telegraphring_cm2x_am4x_bloom"
-    ],
-    "residue": "no_shd"
-   }
+  "roots": [
+   "actor_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 62,
-  "roots": [],
   "program": "37b0651af457e25fb374b7ab444055cbbfb1f243",
   "retail": [
    {
@@ -12313,8 +12171,201 @@
   }
  },
  {
+  "slot": 62,
+  "roots": [
+   "actor_vs_main"
+  ],
+  "program": "232f48e2150ac165b91f40741e0674b7177c55d6",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "35e7a068",
+    "defines": {},
+    "shaders": [
+     "tree_deform_spec",
+     "tree_deform_transparent_spec"
+    ],
+    "residue": "no_shd"
+   },
+   {
+    "subfamily": "Residue__vs",
+    "hash": "51eedff1",
+    "defines": {},
+    "shaders": [
+     "tree_deform_spec"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     5,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     6,
+     6,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     6,
+     "z",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     7,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     9,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
   "slot": 63,
-  "roots": [],
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "fe7e9f3ab27708e8e458626c9f3d412e12a293bd",
   "retail": [
    {
@@ -12522,7 +12573,174 @@
  },
  {
   "slot": 64,
-  "roots": [],
+  "roots": [
+   "actor_vs_main"
+  ],
+  "program": "8df449b9db8f5e4a11a64a30b4d14141d7f04c00",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "4318c0fd",
+    "defines": {},
+    "shaders": [
+     "actor2_pulverize_death"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     3,
+     "w",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     5,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 65,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "8b12d53a6a321c6decaa7592a4c8219cb6489997",
   "retail": [
    {
@@ -12729,8 +12947,10 @@
   }
  },
  {
-  "slot": 65,
-  "roots": [],
+  "slot": 66,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "282714cdd5547da18485926f3610c935aced59e6",
   "retail": [
    {
@@ -12928,8 +13148,10 @@
   }
  },
  {
-  "slot": 66,
-  "roots": [],
+  "slot": 67,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "91ff3c6ceb8aa33ac36fb419587fdc6ad3497b9a",
   "retail": [
    {
@@ -13083,8 +13305,175 @@
   }
  },
  {
-  "slot": 67,
-  "roots": [],
+  "slot": 68,
+  "roots": [
+   "actor_vs_main"
+  ],
+  "program": "3ccc80330f1530cdff3eb5349350d0a5cbdd3dca",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "7b0ae462",
+    "defines": {},
+    "shaders": [
+     "actor2_elemental_wipe_death"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     3,
+     "w",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     5,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 69,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "9d318e36cc0e3dcedf69a2d3f8b26e7f2a07bf30",
   "retail": [
    {
@@ -13267,8 +13656,10 @@
   }
  },
  {
-  "slot": 68,
-  "roots": [],
+  "slot": 70,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "6516ffeddce6004fb9b4f04c1a72c6ead9b6421c",
   "retail": [
    {
@@ -13440,7 +13831,7 @@
   }
  },
  {
-  "slot": 69,
+  "slot": 71,
   "roots": [
    "actor_vs_main"
   ],
@@ -13542,8 +13933,10 @@
   }
  },
  {
-  "slot": 70,
-  "roots": [],
+  "slot": 72,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "ef0105fec5c3be7f1f32e93a7ceb7a0633e04b9b",
   "retail": [
    {
@@ -13737,8 +14130,10 @@
   }
  },
  {
-  "slot": 71,
-  "roots": [],
+  "slot": 73,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "80e2bbc70b711a8725e869bdfe7c4538b16f71a0",
   "retail": [
    {
@@ -13921,7 +14316,7 @@
   }
  },
  {
-  "slot": 72,
+  "slot": 74,
   "roots": [
    "actor_vs_main"
   ],
@@ -14070,8 +14465,10 @@
   }
  },
  {
-  "slot": 73,
-  "roots": [],
+  "slot": 75,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "de4c67cbe48becd2bb5b267c71531038420af3e7",
   "retail": [
    {
@@ -14261,8 +14658,10 @@
   }
  },
  {
-  "slot": 74,
-  "roots": [],
+  "slot": 76,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "17a0006cfbe158cb06047584c1c243585f7a3288",
   "retail": [
    {
@@ -14425,8 +14824,159 @@
   }
  },
  {
-  "slot": 75,
-  "roots": [],
+  "slot": 77,
+  "roots": [
+   "actor_vs_main"
+  ],
+  "program": "52ffca772e6a8d146bc5676c6d01fc2c49a490aa",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "d426ad72",
+    "defines": {},
+    "shaders": [
+     "actor2_cloak"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     3,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     4,
+     "xyz",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 78,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "5c9e38006024c852c83ecd01d85781cb52953c52",
   "retail": [
    {
@@ -14580,8 +15130,175 @@
   }
  },
  {
-  "slot": 76,
-  "roots": [],
+  "slot": 79,
+  "roots": [
+   "actor_vs_main"
+  ],
+  "program": "283c86e34aa8d8aca4e93a1a0e0a87cc0ca0dcfa",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "dfa7104c",
+    "defines": {},
+    "shaders": [
+     "actor_tornado"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     2,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     2,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     3,
+     "xy",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     3,
+     "zw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     4,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "FOG",
+     0,
+     5,
+     "x",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 80,
+  "roots": [
+   "actor_vs_main"
+  ],
   "program": "f8c8be482ca9a2d1dab633000db687e1c50e6376",
   "retail": [
    {

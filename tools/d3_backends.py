@@ -11,6 +11,7 @@ D3D gate while four of six backends were broken):
 * webgpu  ``.wgsl`` -> ``naga``
 * d3d12   ``.dxil`` -- validated and signed by dxc during the compile
 * metal   ``.metal`` -- no validator on this host; compile-only
+* flakes-vulkan / flakes-webgpu -- the engine target, the same validators
 
     python compile_all_d3.py --all --target d3d12,vulkan,opengl,metal,webgpu --sample 12
     python tools/d3_backends.py
@@ -35,6 +36,9 @@ VALIDATORS = {
     'opengl': ('glsl', lambda p, stage: ['glslangValidator', '-V', '-S', 'frag' if stage == 'ps' else 'vert',
                                          '-o', os.devnull, str(p)]),
     'webgpu': ('wgsl', lambda p, stage: ['naga', str(p)]),
+    # the engine target (tools/d3_flakes.py)
+    'flakes-vulkan': ('spv', lambda p, stage: ['spirv-val', str(p)]),
+    'flakes-webgpu': ('wgsl', lambda p, stage: ['naga', str(p)]),
 }
 
 

@@ -16,6 +16,7 @@ matching the metallib path in ``compile_all_slang.py``.
 
 Usage (run from the repo root so the default slang_out path resolves):
   python tools/metal_compile_libs.py [--slang-out slang_out] [--macos-min 11] [-j N]
+  python tools/metal_compile_libs.py --slang-out d3_slang_out --subdir flakes-metal --pattern 'slot_*.metal'
 """
 
 import argparse
@@ -65,10 +66,14 @@ def main():
                          '(controls metallib container version). Default: %(default)s')
     ap.add_argument('--jobs', '-j', type=int, default=os.cpu_count() or 1,
                     help='parallel xcrun processes (default: %(default)s)')
+    ap.add_argument('--subdir', default='metal',
+                    help='target folder under --slang-out (Diablo III: flakes-metal). Default: %(default)s')
+    ap.add_argument('--pattern', default='perm_*.metal',
+                    help='source file glob (Diablo III: slot_*.metal). Default: %(default)s')
     args = ap.parse_args()
 
-    root = Path(args.slang_out) / 'metal'
-    metals = sorted(root.rglob('perm_*.metal'))
+    root = Path(args.slang_out) / args.subdir
+    metals = sorted(root.rglob(args.pattern))
     if not metals:
         print(f'no .metal files under {root}', file=sys.stderr)
         return 1

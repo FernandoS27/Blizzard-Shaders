@@ -12,6 +12,14 @@
 
 implementing d3_shaders;
 
+// The engine target declares the cube as a cube array (types/textures.slang):
+// its coordinate gains slice 0.
+#ifdef D3_TARGET_FLAKES
+#define D3_CUBE_COORD(direction) float4(direction, 0.0)
+#else
+#define D3_CUBE_COORD(direction) direction
+#endif
+
 // ---------------------------------------------------------------------------
 // Shared pieces
 // ---------------------------------------------------------------------------
@@ -159,7 +167,7 @@ public struct IrradianceSplitPixel<TAlbedo : IActorAlbedo, TFactor : IMaterialFa
         float4 overlay = diffuseOverlayMap.Sample(diffuseOverlayMap_s, i.texcoord1().xy);
         float3 albedo = TAlbedo.albedo(uv, diffuse, overlay) * TFactor.tint(diffuse);
 
-        float3 irradiance = irradianceMap.Sample(irradianceMap_s, i.texcoord3().xyz).xyz;
+        float3 irradiance = irradianceMap.Sample(irradianceMap_s, D3_CUBE_COORD(i.texcoord3().xyz)).xyz;
         float3 light = (i.color1().xyz * 2.0) * irradiance * 2.0 + i.color0().xyz * 2.0;
         if (GLOW)
             light += glowMap.Sample(glowMap_s, uv).xyz * appearanceFX.x;
@@ -222,7 +230,7 @@ public float3 d3VertexTintedFog(float3 color, D3Interpolants i)
 /// The irradiance-lit diffuse at the engine's 2x scale.
 public float3 d3IrradianceDiffuse(float4 diffuse, D3Interpolants i)
 {
-    return diffuse.xyz * irradianceMap.Sample(irradianceMap_s, i.texcoord3().xyz).xyz * 2.0;
+    return diffuse.xyz * irradianceMap.Sample(irradianceMap_s, D3_CUBE_COORD(i.texcoord3().xyz)).xyz * 2.0;
 }
 
 /// ActorIrrad `pv`: the irradiance-lit diffuse tinted by the vertex colour.
@@ -371,7 +379,7 @@ public struct BloodGolemPixel<let FOG : bool> : IActorPixelModel
         float3 specular = lerp(gloss.xyz, color * appearanceFX.x, (2.0 * layerWeight) * appearanceFX.y)
                         * environmentMap.Sample(environmentMap_s, i.texcoord6().xy).xyz;
 
-        float3 irradiance = irradianceMap.Sample(irradianceMap_s, i.texcoord3().xyz).xyz;
+        float3 irradiance = irradianceMap.Sample(irradianceMap_s, D3_CUBE_COORD(i.texcoord3().xyz)).xyz;
         float3 light = (i.color1().xyz * 2.0) * irradiance * 2.0 + i.color0().xyz * 2.0;
         color = color * light;
         color = color * hitFlashColorMul.xyz + d3HitFlashRim(i.texcoord4().z) * hitFlashColorAdd.xyz;
@@ -519,7 +527,7 @@ public struct IrradianceBumpPixel<TShadow : IProjectedShadow, let GLOSS : bool, 
         float3 albedo = d3OverlayAlbedo(diffuse, overlay) * Factor.xyz;
 
         float3 normal = d3TangentToWorld(i, d3DecodeNormalTexel(normalMap.Sample(normalMap_s, uv)));
-        float3 irradiance = irradianceMap.Sample(irradianceMap_s, normal).xyz;
+        float3 irradiance = irradianceMap.Sample(irradianceMap_s, D3_CUBE_COORD(normal)).xyz;
         float3 color = albedo * irradiance * hitFlashColorMul.xyz * 2.0 + hitFlashColorAdd.xyz;
         if (GLOSS)
         {
@@ -575,7 +583,7 @@ public struct EdgeGlowIrradiance : IEdgeGlowSurface
         float2 uv = i.texcoord0().xy;
         float4 diffuse = diffuseMap.Sample(diffuseMap_s, uv);
         float4 overlay = diffuseOverlayMap.Sample(diffuseOverlayMap_s, i.texcoord1().xy);
-        float3 irradiance = irradianceMap.Sample(irradianceMap_s, normal).xyz;
+        float3 irradiance = irradianceMap.Sample(irradianceMap_s, D3_CUBE_COORD(normal)).xyz;
         float3 lit = d3OverlayAlbedo(diffuse, overlay) * Factor.xyz * irradiance * 2.0;
         return reflection + lit;
     }

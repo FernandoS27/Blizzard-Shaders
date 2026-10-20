@@ -1,0 +1,163 @@
+name: Build D3 Metal BLS
+
+# The Diablo III engine target (D3_TARGET_FLAKES, README-Diablo3.md) on Metal,
+# in two stages like build-metal-bls.yml:
+#
+#   1. compile  (windows) — slangc writes every built slot's .metal source and
+#                           the static check reads its interface against the
+#                           engine's Metal bindings. Windows, not Linux: a
+#                           vertex slot's inputs come from the read masks of its
+#                           retail D3D11 build, and only fxc builds that.
+#   2. pack     (macos)   — links the .metal sources to .metallib with
+#                           `xcrun metal`/`metallib` and packs them into the
+#                           v1.8 Metal BLS bundles the engine reads. No slangc.
+#
+# Manual only: Actions → "Build D3 Metal BLS" → Run workflow. Two artifacts:
+#   d3-flakes-metal-prebuilt  prebuilt/shaders/metal/{ps,vs}/d3/*.bls — unzip
+#                             into the WhiteoutFlakes checkout
+#   d3-flakes-metal-bls-out   shaders/{pixel,vertex}/metal/*.bls +
+#                             d3_flakes_slots.metal.json — unzip into
+#                             bls_out_d3_flakes/; the next
+#                             `build_d3_bls.py --all --target flakes` lists
+#                             Metal per slot in d3_flakes_slots.json
+
+on:
+  workflow_dispatch:
+    inputs:
+      macos_min:
+        description: "Metal deployment target (macOS min version → metallib container)"
+        default: "11"
+
+permissions:
+  contents: read
+
+env:
+  # The compiler every D3 engine-target bundle is built and gated with: the
+  # Vulkan SDK's slangc (2026.1). The Warcraft III pin (slang 2026.9.2) cannot
+  # build this module's retail D3D11 target (E30701 on its float4
+  # SV_ClipDistance interpolants), which is where the vertex reads come from.
+  VULKAN_SDK_VERSION: 1.4.341.1
+  MACOS_MIN: "11"
+
+jobs:
+  compile:
+    name: Compile .metal (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache Vulkan SDK
+        id: cache-vulkan
+        uses: actions/cache@v4
+        with:
+          path: C:\VulkanSDK\${{ env.VULKAN_SDK_VERSION }}
+          key: vulkan-sdk-windows-${{ env.VULKAN_SDK_VERSION }}
+
+      # The default silent install is the core SDK, slangc included.
+      - name: Install Vulkan SDK
+        if: steps.cache-vulkan.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ver = $env:VULKAN_SDK_VERSION
+          $url = "https://sdk.lunarg.com/sdk/download/$ver/windows/vulkansdk-windows-X64-$ver.exe"
+          $exe = Join-Path $env:RUNNER_TEMP 'VulkanSDK-Installer.exe'
+          curl.exe -L --fail -o $exe $url
+          $p = Start-Process -FilePath $exe -Wait -PassThru -ArgumentList `
+            '--accept-licenses','--default-answer','--confirm-command','install'
+          if ($p.ExitCode -ne 0) { throw "Vulkan SDK installer exited $($p.ExitCode)" }
+
+      - name: Export slangc
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $slangc = "C:\VulkanSDK\$env:VULKAN_SDK_VERSION\Bin\slangc.exe"
+          if (-not (Test-Path $slangc)) { throw "slangc.exe not found at $slangc (cache may be corrupt)" }
+          "SLANGC=$slangc" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          & $slangc -v 2>&1 | Select-Object -First 1
+
+      # Fails on any slot that does not compile. Vertex reads are probe-built
+      # (fxc) into d3_slang_out/_flakes_probe, which the pack stage reuses.
+      - name: Compile Metal source
+        run: python compile_all_d3.py --all --target flakes-metal --jobs 8
+
+      - name: Static check (Metal bindings, CB layouts)
+        run: python tools/d3_flakes_metal_check.py --all
+
+      - name: Upload .metal sources + vertex reads
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-metal-sources
+          path: |
+            d3_slang_out/flakes-metal/
+            d3_slang_out/_flakes_probe/
+          if-no-files-found: error
+
+  pack:
+    name: Link .metallib + pack BLS (macOS)
+    needs: compile
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # After the checkout, so every blob is newer than the module source.
+      - name: Download .metal sources + vertex reads
+        uses: actions/download-artifact@v4
+        with:
+          name: d3-metal-sources
+          path: d3_slang_out
+
+      - name: Ensure Metal toolchain
+        run: |
+          set -euo pipefail
+          if ! xcrun -f metal >/dev/null 2>&1; then
+            echo "Metal toolchain missing — downloading"
+            xcodebuild -downloadComponent MetalToolchain || true
+          fi
+          xcrun metal --version
+          xcrun metallib --version
+
+      # Fails on any .metal that does not link.
+      - name: Link .metal -> .metallib
+        run: |
+          min="${{ github.event.inputs.macos_min || env.MACOS_MIN }}"
+          python3 tools/metal_compile_libs.py --slang-out d3_slang_out --subdir flakes-metal \
+            --pattern 'slot_*.metal' --macos-min "$min"
+
+      - name: Pack Metal BLS
+        run: python3 build_d3_bls.py --all --target flakes-metal --verify
+
+      - name: Stage the WhiteoutFlakes layout
+        run: |
+          set -euo pipefail
+          mkdir -p stage/prebuilt/shaders/metal/ps/d3 stage/prebuilt/shaders/metal/vs/d3
+          cp bls_out_d3_flakes/shaders/pixel/metal/*.bls stage/prebuilt/shaders/metal/ps/d3/
+          cp bls_out_d3_flakes/shaders/vertex/metal/*.bls stage/prebuilt/shaders/metal/vs/d3/
+          ls -l stage/prebuilt/shaders/metal/*/d3
+
+      - name: Upload prebuilt bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-flakes-metal-prebuilt
+          path: stage/
+          if-no-files-found: error
+
+      # This run's d3_flakes_slots.json lists Metal alone, so only the Metal
+      # record travels: it joins the full manifest on the host that packs the rest.
+      - name: Upload bundles + Metal record
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-flakes-metal-bls-out
+          path: |
+            bls_out_d3_flakes/shaders/pixel/metal/
+            bls_out_d3_flakes/shaders/vertex/metal/
+            bls_out_d3_flakes/d3_flakes_slots.metal.json
+          if-no-files-found: error

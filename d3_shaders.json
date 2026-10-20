@@ -3,7 +3,7 @@
   "legacy": {
     "ps": {
       "bls_name": "legacy.bls",
-      "slots": 736,
+      "slots": 751,
       "roots": {
         "combiner_ps_main": [
           "Legacy.fx__ps_legacy", "Billboard.fx__ps_legacy", "SoftBillboard.fx__ps_legacy",
@@ -16,26 +16,29 @@
           "Legacy.fx__highlight_ps", "Legacy.fx__ps_erase_highlight", "Legacy.fx__ps_highlight_text",
           "Legacy.fx__ps_prepass", "Legacy.fx__ps_projected_layer_pma",
           "Distortion.fx__ps_distortion2tex", "Scene.fx__ps_scene_opaque_glow"
-        ]
+        ],
+        "legacy_fixed_ps_main": [],
+        "depth_clear_ps_main": []
       }
     },
     "vs": {
       "bls_name": "legacy.bls",
-      "slots": 529,
+      "slots": 517,
       "roots": {
         "texgen_vs_main": [
           "Legacy.fx__vs_legacy", "Distortion.fx__vs_legacy", "Scene.fx__vs_legacy",
           "PostFX.fx__vs_legacy", "Legacy.fx__vs_legacy_weather", "Legacy.fx__vs_prepass",
           "Legacy.fx__vs_projected_layer_pma"
         ],
-        "particle_vs_main": ["Billboard.fx__vs_legacy", "SoftBillboard.fx__vs_legacy"]
+        "particle_vs_main": ["Billboard.fx__vs_legacy", "SoftBillboard.fx__vs_legacy"],
+        "restore_vs_main": []
       }
     }
   },
   "surface": {
     "ps": {
       "bls_name": "surface.bls",
-      "slots": 551,
+      "slots": 549,
       "roots": {
         "scene_ps_main": [
           "Scene.fx__ps_scene", "Scene.fx__ps_scene_act4_floor", "Scene.fx__ps_scene_aux",
@@ -56,7 +59,7 @@
     },
     "vs": {
       "bls_name": "surface.bls",
-      "slots": 93,
+      "slots": 96,
       "roots": {
         "surface_vs_main": [
           "Scene.fx__vs_scene", "Scene.fx__vs_scene_act4_floor", "Scene.fx__vs_scene_aux",
@@ -74,7 +77,7 @@
   "actor": {
     "ps": {
       "bls_name": "actor.bls",
-      "slots": 107,
+      "slots": 91,
       "roots": {
         "actor_ps_main": [
           "Actor.fx__main_ps_alphacomp", "ActorIrrad.fx__ps_animated_pv",
@@ -91,7 +94,7 @@
     },
     "vs": {
       "bls_name": "actor.bls",
-      "slots": 75,
+      "slots": 81,
       "roots": {
         "actor_vs_main": [
           "Actor.fx__main_vs", "ActorIrrad.fx__vs_animated_pv", "ActorIrrad.fx__vs_bump2_pp",
@@ -108,21 +111,27 @@
   "utility": {
     "ps": {
       "bls_name": "utility.bls",
-      "slots": 57,
+      "slots": 60,
       "roots": {
         "cookie_ps_main": ["Shadows.fx__ps_write_cookie", "Shadows.fx__ps_write_cookie_banner"],
-        "blur_ps_main": ["TextureFilter.fx__main_ps_highlight_blur_con_ppc"]
+        "blur_ps_main": ["TextureFilter.fx__main_ps_highlight_blur_con_ppc"],
+        "texfilter_ps_main": [],
+        "texdepth_ps_main": [],
+        "postfx_ps_main": []
       }
     },
     "vs": {
       "bls_name": "utility.bls",
-      "slots": 8,
+      "slots": 11,
       "roots": {
         "cookie_vs_main": ["Shadows.fx__vs_write_cookie"],
         "filter_vs_main": [
           "TextureFilter.fx__main_vs", "TextureFilter.fx__main_vs_highlight",
           "TextureFilter.fx__main_vs_ssao"
-        ]
+        ],
+        "texfilter_vs_main": [],
+        "cookie_tint_vs_main": [],
+        "postfx_vs_main": []
       }
     }
   }

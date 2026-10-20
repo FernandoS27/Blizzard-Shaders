@@ -26,6 +26,13 @@
 // semantic accessors below, which widen to float4 on read and narrow on write;
 // an accessor for a semantic the slot does not declare reads zero and writes
 // nothing. `SV_ClipDistance` members exist only on the D3D targets.
+//
+// The engine target (D3_TARGET_FLAKES) pairs any vertex slot with any pixel
+// slot. D3D links them by semantic and register, as retail does, so its D3D
+// builds keep this layout. Vulkan and WebGPU link by location: there the mapper
+// declares one float4 per retail register at `location = register`
+// (`D3_IO_<n>_LOC`), each semantic a swizzle of its register, which is exactly
+// D3D's linkage, and drops the clip distances.
 
 implementing d3_shaders;
 
@@ -107,52 +114,84 @@ public void d3_store(D3Absent dst, float4 v)   {}
 
 public struct D3Interpolants
 {
-#ifdef D3_IO_0
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_0_LOC)
+    [[vk::location(D3_IO_0_LOC)]] D3_IO_0_TYPE io0 : D3_IO_0_SEM;
+#elif defined(D3_IO_0)
     D3_IO_0_TYPE io0 : D3_IO_0_SEM;
 #endif
-#ifdef D3_IO_1
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_1_LOC)
+    [[vk::location(D3_IO_1_LOC)]] D3_IO_1_TYPE io1 : D3_IO_1_SEM;
+#elif defined(D3_IO_1)
     D3_IO_1_TYPE io1 : D3_IO_1_SEM;
 #endif
-#ifdef D3_IO_2
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_2_LOC)
+    [[vk::location(D3_IO_2_LOC)]] D3_IO_2_TYPE io2 : D3_IO_2_SEM;
+#elif defined(D3_IO_2)
     D3_IO_2_TYPE io2 : D3_IO_2_SEM;
 #endif
-#ifdef D3_IO_3
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_3_LOC)
+    [[vk::location(D3_IO_3_LOC)]] D3_IO_3_TYPE io3 : D3_IO_3_SEM;
+#elif defined(D3_IO_3)
     D3_IO_3_TYPE io3 : D3_IO_3_SEM;
 #endif
-#ifdef D3_IO_4
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_4_LOC)
+    [[vk::location(D3_IO_4_LOC)]] D3_IO_4_TYPE io4 : D3_IO_4_SEM;
+#elif defined(D3_IO_4)
     D3_IO_4_TYPE io4 : D3_IO_4_SEM;
 #endif
-#ifdef D3_IO_5
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_5_LOC)
+    [[vk::location(D3_IO_5_LOC)]] D3_IO_5_TYPE io5 : D3_IO_5_SEM;
+#elif defined(D3_IO_5)
     D3_IO_5_TYPE io5 : D3_IO_5_SEM;
 #endif
-#ifdef D3_IO_6
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_6_LOC)
+    [[vk::location(D3_IO_6_LOC)]] D3_IO_6_TYPE io6 : D3_IO_6_SEM;
+#elif defined(D3_IO_6)
     D3_IO_6_TYPE io6 : D3_IO_6_SEM;
 #endif
-#ifdef D3_IO_7
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_7_LOC)
+    [[vk::location(D3_IO_7_LOC)]] D3_IO_7_TYPE io7 : D3_IO_7_SEM;
+#elif defined(D3_IO_7)
     D3_IO_7_TYPE io7 : D3_IO_7_SEM;
 #endif
-#ifdef D3_IO_8
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_8_LOC)
+    [[vk::location(D3_IO_8_LOC)]] D3_IO_8_TYPE io8 : D3_IO_8_SEM;
+#elif defined(D3_IO_8)
     D3_IO_8_TYPE io8 : D3_IO_8_SEM;
 #endif
-#ifdef D3_IO_9
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_9_LOC)
+    [[vk::location(D3_IO_9_LOC)]] D3_IO_9_TYPE io9 : D3_IO_9_SEM;
+#elif defined(D3_IO_9)
     D3_IO_9_TYPE io9 : D3_IO_9_SEM;
 #endif
-#ifdef D3_IO_10
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_10_LOC)
+    [[vk::location(D3_IO_10_LOC)]] D3_IO_10_TYPE io10 : D3_IO_10_SEM;
+#elif defined(D3_IO_10)
     D3_IO_10_TYPE io10 : D3_IO_10_SEM;
 #endif
-#ifdef D3_IO_11
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_11_LOC)
+    [[vk::location(D3_IO_11_LOC)]] D3_IO_11_TYPE io11 : D3_IO_11_SEM;
+#elif defined(D3_IO_11)
     D3_IO_11_TYPE io11 : D3_IO_11_SEM;
 #endif
-#ifdef D3_IO_12
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_12_LOC)
+    [[vk::location(D3_IO_12_LOC)]] D3_IO_12_TYPE io12 : D3_IO_12_SEM;
+#elif defined(D3_IO_12)
     D3_IO_12_TYPE io12 : D3_IO_12_SEM;
 #endif
-#ifdef D3_IO_13
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_13_LOC)
+    [[vk::location(D3_IO_13_LOC)]] D3_IO_13_TYPE io13 : D3_IO_13_SEM;
+#elif defined(D3_IO_13)
     D3_IO_13_TYPE io13 : D3_IO_13_SEM;
 #endif
-#ifdef D3_IO_14
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_14_LOC)
+    [[vk::location(D3_IO_14_LOC)]] D3_IO_14_TYPE io14 : D3_IO_14_SEM;
+#elif defined(D3_IO_14)
     D3_IO_14_TYPE io14 : D3_IO_14_SEM;
 #endif
-#ifdef D3_IO_15
+#if defined(D3_TARGET_FLAKES) && defined(D3_IO_15_LOC)
+    [[vk::location(D3_IO_15_LOC)]] D3_IO_15_TYPE io15 : D3_IO_15_SEM;
+#elif defined(D3_IO_15)
     D3_IO_15_TYPE io15 : D3_IO_15_SEM;
 #endif
 

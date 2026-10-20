@@ -316,3 +316,93 @@ public struct LayerSum<TBase : IStageChain, TExtra : IStageChain,
             rgb += xrgb;
     }
 };
+
+// Op words only StageBlended reads (d3StageRgbBlended):
+//
+//   BLEND     replaces the combine with lerp(v, src, weight): the weight is the
+//             texture alpha (D3DTOP_BLENDTEXTUREALPHA) or, with BLEND_VCOLOR_A,
+//             the vertex alpha (D3DTOP_BLENDDIFFUSEALPHA), scaled by
+//             diffuseOverlay.x with OVERLAY
+//   SIGNED    biases an add by -0.5 (D3DTOP_ADDSIGNED)
+//   POST_HITFLASH  v * hitFlashColorMul + hitFlashColorAdd after the stage
+
+public static const uint BLEND = 262144;
+public static const uint BLEND_VCOLOR_A = 524288;
+public static const uint OVERLAY = 1048576;
+public static const uint SIGNED = 2097152;
+public static const uint POST_HITFLASH = 4194304;
+
+/// A blend stage: the running colour moved towards the stage source by the
+/// texture (or vertex) alpha, optionally scaled by the overlay strength.
+float3 d3BlendRgb(float3 v, float4 tex, uint op, float4 color0)
+{
+    float3 src = d3OpHas(op, FROM_ALPHA) ? tex.aaa : tex.rgb;
+    float weight = d3OpHas(op, BLEND_VCOLOR_A) ? color0.a : tex.a;
+    if (d3OpHas(op, OVERLAY)) weight *= diffuseOverlay.x;
+    return lerp(v, src, weight);
+}
+
+/// One stage's combine on the colour channel, with the BLEND, SIGNED and
+/// POST_HITFLASH words d3StageRgb does not spell.
+float3 d3StageRgbBlended(float3 v, float4 tex, uint op, float4 color0)
+{
+    uint kind = op & OP_MASK;
+    if (kind == OP_SKIP)
+        return v;
+    if (kind == OP_MOD_INVALPHA_ADD)
+    {
+        float inv = tex.a;
+        if (d3OpHas(op, APPFX)) inv *= appearanceFX.x;
+        v = tex.rgb + v * (1.0 - inv);
+    }
+    else if (d3OpHas(op, BLEND))
+    {
+        v = d3BlendRgb(v, tex, op, color0);
+    }
+    else if (d3OpHas(op, SIGNED))
+    {
+        float3 src = d3OpHas(op, FROM_ALPHA) ? tex.aaa : tex.rgb;
+        v = d3Gain(d3ModifyRgb((v + src) - 0.5, op, color0), op);
+    }
+    else
+    {
+        float3 src = d3OpHas(op, FROM_ALPHA) ? tex.aaa : tex.rgb;
+        v = d3Gain(d3ModifyRgb(kind == OP_ADD ? v + src : v * src, op, color0), op);
+        if (d3OpHas(op, ADD_VCOLOR)) v += color0.rgb;
+        if (d3OpHas(op, ADD_FACTOR)) v += Factor.rgb;
+    }
+    if (d3OpHas(op, SAT))           v = saturate(v);
+    if (d3OpHas(op, POST_FACTOR))   v *= Factor.rgb;
+    if (d3OpHas(op, POST_FACTOR_A)) v *= Factor.w;
+    if (d3OpHas(op, POST_APPFX))    v *= appearanceFX.x;
+    if (d3OpHas(op, POST_HITFLASH)) v = v * hitFlashColorMul.rgb + hitFlashColorAdd.rgb;
+    return v;
+}
+
+/// A Stage whose colour op word may use BLEND, SIGNED or POST_HITFLASH. Kept
+/// apart from Stage so the engine target's SPIR-V / WGSL of every other stage
+/// carries none of those words' (constant-false) branches.
+public struct StageBlended<TTex : ITextureRole, let UNIT : int, let RGB : uint, let ALPHA : uint> : ICombinerStage
+{
+    public static void apply(inout float3 rgb, inout float alpha, D3StageArgs a)
+    {
+        float4 tex = TTex.sample(a.uv(UNIT));
+        rgb = d3StageRgbBlended(rgb, tex, RGB, a.color0);
+        alpha = d3StageAlpha(alpha, tex, ALPHA, a.color0);
+    }
+};
+
+/// Two premultiplied layers summed, spelled extra layer first (Legacy.fx's
+/// blend-add test pass): fxc folds the extra layer's premultiply, not the
+/// base layer's, into the add -- a different float32 order from LayerSum's.
+public struct LayerSumExtraFirst<TBase : IStageChain, TExtra : IStageChain> : IStageChain
+{
+    public static void run(out float3 rgb, out float alpha, D3StageArgs a)
+    {
+        TBase.run(rgb, alpha, a);
+        float3 xrgb;
+        float xalpha;
+        TExtra.run(xrgb, xalpha, a);
+        rgb = xrgb * xalpha + rgb * alpha;
+    }
+};

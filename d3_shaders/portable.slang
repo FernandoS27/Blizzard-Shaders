@@ -25,6 +25,32 @@ public float d3SaturateExact(float x)
         precise float clamped = saturate(x);
         return clamped;
     default:
+#ifdef D3_TARGET_FLAKES
+        // the engine runs these: D3D maps NaN to 0, SPIR-V's FClamp leaves it
+        // undefined (and a driver may spell it min(., 1) as fxc does)
+        return isnan(x) ? 0.0 : saturate(x);
+#else
         return saturate(x);
+#endif
+    }
+}
+
+/// `int3(x)` with D3D's ftoi on every backend: NaN reads 0 and a value past the
+/// int range its limit. WGSL / SPIR-V leave both undefined (naga clamps to
+/// 2^31 - 128 first, so a NaN reads -2^31).
+public int3 d3FtoiExact(float3 x)
+{
+    __target_switch
+    {
+    case hlsl:
+        return int3(x);
+    default:
+#ifdef D3_TARGET_FLAKES
+        float3 finite = select(isnan(x), float3(0.0, 0.0, 0.0), x);
+        int3 r = int3(clamp(finite, -2147483648.0, 2147483520.0));
+        return select(finite >= 2147483648.0, int3(2147483647, 2147483647, 2147483647), r);
+#else
+        return int3(x);
+#endif
     }
 }

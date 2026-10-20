@@ -255,6 +255,11 @@ public interface ILandscapeLight
 /// component, and the gloss colour in COLOR1.rgb at half scale.
 public struct LandscapeVertexLit<TFog : ILandscapeFog> : ILandscapeLight
 {
+    // inlined on the engine target, so its SPIR-V / WGSL samples no normal map
+    // for the unused normal (those backends bind every declared resource)
+#ifdef D3_TARGET_FLAKES
+    [ForceInline]
+#endif
     public static LandscapeLit evaluate(D3Interpolants i, float3 tangentNormal)
     {
         LandscapeLit l;

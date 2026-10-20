@@ -817,7 +817,8 @@ def _operand_as_dest(opd):
     return (opd[1], opd[2], opd[3], opd[4])
 
 
-_AOFFIMMI = re.compile(r'_aoffimmi\((-?\d+),(-?\d+),(-?\d+)\)')
+# SM4 spells the offset `sample_aoffimmi(u,v,w)`, SM5 `sample_aoffimmi_indexable(u,v,w)(texture2d)...`
+_AOFFIMMI = re.compile(r'_aoffimmi(?:_indexable)?\((-?\d+),(-?\d+),(-?\d+)\)')
 
 
 def _texel_offset(op):

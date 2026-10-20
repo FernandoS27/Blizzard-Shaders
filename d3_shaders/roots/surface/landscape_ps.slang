@@ -184,3 +184,26 @@ public float4 landscape_ps_main<TLayers : ILandscapeLayers, TLight : ILandscapeL
     float3 rgb = dbgReg0.x * d3ApplyFog(color, fog) + light.debug * dbgReg0.y;
     return float4(TGloss.debug(rgb, gloss), TLight.fogAlpha(light.alpha, fog));
 }
+
+/// Two layers splatted by one lerp: layer0 (TEXCOORD1.xy) is the base and
+/// texAlpha.x (TEXCOORD3.zw) lays layer1 (TEXCOORD1.zw) over it; the two normal
+/// maps blend the same way.
+public struct LayerSplat2 : ILandscapeLayers
+{
+    public static LandscapeAlbedo sample(D3Interpolants i)
+    {
+        LandscapeAlbedo a;
+        a.weights = texAlpha.Sample(texAlpha_s, i.texcoord3().zw);
+        float4 c = texLayer0.Sample(texLayer0_s, i.texcoord1().xy);
+        a.color = lerp(c, texLayer1.Sample(texLayer1_s, i.texcoord1().zw), a.weights.x);
+        a.coverage = 1.0;
+        a.overlay = 0.0;
+        return a;
+    }
+    public static float3 tangentNormal(D3Interpolants i, LandscapeAlbedo a)
+    {
+        float3 n = landscapeDecodeNormal(texNormal0.Sample(texNormal0_s, i.texcoord1().xy));
+        return lerp(n, landscapeDecodeNormal(texNormal1.Sample(texNormal1_s, i.texcoord1().zw)), a.weights.x);
+    }
+    public static float3 shade(LandscapeAlbedo a, float3 lighting) { return lighting * a.color.rgb; }
+};

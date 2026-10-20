@@ -12,7 +12,7 @@ All of these games run on a shared lineage of Blizzard engine tech — the same 
 | --- | --- | --- |
 | **Warcraft III: Reforged** | ✅ Complete & verified | [README-Warcraft3.md](README-Warcraft3.md) |
 | **StarCraft II** / **Heroes of the Storm** | ✅ All 18 families reimplemented, validated & packed | [README-Starcraft2.md](README-Starcraft2.md) |
-| **Diablo III** | ✅ All 1,594 retail programs reimplemented, validated against retail & packed | [README-Diablo3.md](README-Diablo3.md) |
+| **Diablo III** | ✅ All 2,156 retail programs reimplemented, validated against retail & packed | [README-Diablo3.md](README-Diablo3.md) |
 | **World of Warcraft** | 🔮 Planned | — |
 
 ### Warcraft III: Reforged
@@ -47,9 +47,9 @@ python compile_all_sc2.py --all --target d3d12,vulkan,webgpu,metal,opengl --samp
 
 ### Diablo III
 
-A recreation of Diablo III's `.fx` über-shaders under [d3_shaders/](d3_shaders/). The game's 2,848 retail permutation keys compile to **1,594 distinct programs**; the module reproduces exactly that set in **8 bundles** (pixel | vertex × legacy / surface / actor / utility), with the 105 retail shader families as subfamilies of 14 generic roots.
+A recreation of Diablo III's `.fx` über-shaders under [d3_shaders/](d3_shaders/). The game's 4,117 retail permutation keys (2,848 in multi-permutation families, 1,269 residue keys) compile to **2,156 distinct programs**; the module reproduces exactly that set in **8 bundles** (pixel | vertex × legacy / surface / actor / utility), with the 105 retail shader families as subfamilies of 23 generic roots that also hold the residue.
 
-Like Warcraft III, the reference is the **shipped retail DXBC**: every slot's declarations (signatures, registers, constant buffers) match its retail program row for row, and its behaviour is checked through the DXBC interpreter on a per-slot schedule that includes exact alpha-test ties and NaN references — **1,360 slots bit-exact, 234 identical up to float32 evaluation order, 0 failing**, with 196 deliberate mutations all caught.
+Like Warcraft III, the reference is the **shipped retail DXBC**: every slot's declarations (signatures, registers, constant buffers) match its retail program row for row, and its behaviour is checked through the DXBC interpreter on a per-slot schedule that includes exact alpha-test ties and NaN references — **1,895 slots bit-exact, 261 identical up to float32 evaluation order, 0 failing**, with 363 deliberate mutations all caught.
 
 **→ Bundles, build and validation commands live in [README-Diablo3.md](README-Diablo3.md).**
 

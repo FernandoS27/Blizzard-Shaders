@@ -127,3 +127,26 @@ public struct CurveSway : ISurfacePlacement
         return s;
     }
 };
+
+/// The WindSway displacement of a vertex, for a placement that adds it to
+/// another one.
+float3 d3WindSwayOffset<let WEATHER : bool>(D3VertexIn i)
+{
+    float4 sway = i.color1();
+    float3 offset = sin((sway.w + randFloat.w) + randFloat.y) * sway.xyz * deformationScale.x;
+    if (WEATHER)
+        offset = offset * weatherIntensity.x;
+    return offset;
+}
+
+/// Wind sway on a skinned mesh: the three-bone skinned point (w = 1) swings
+/// along COLOR1 as in WindSway. The normal is skinned, not swayed.
+public struct SkinnedWindSway<let WEATHER : bool> : ISurfacePlacement
+{
+    public static D3SurfaceObject place(D3VertexIn i)
+    {
+        D3SurfaceObject s = SkinnedMesh.place(i);
+        s.position = float4(d3WindSwayOffset<WEATHER>(i) + s.position.xyz, 1.0);
+        return s;
+    }
+};

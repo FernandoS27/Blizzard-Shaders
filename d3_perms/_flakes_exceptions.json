@@ -1,0 +1,6 @@
+{
+ "_comment": "Engine-target slots a backend leaves null although they compile: {retail program sha1: {target: reason}}. Read by tools/d3_flakes.py unsupported(); each entry is a slot the backend cross-check (tools/d3_flakes_xcheck.py) cannot prove exact.",
+ "ada4891e010531edc2feb44fa58814fa56d1b26c": {
+  "flakes-webgpu": "clear_depth writes SV_Depth straight from TEXCOORD0.x; WGSL clamps frag_depth to the viewport depth range inside the shader, so outside [0, 1] its output differs from retail's (D3D clamps only at the output merger)"
+ }
+}

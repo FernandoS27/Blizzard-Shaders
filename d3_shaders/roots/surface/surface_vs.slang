@@ -465,3 +465,149 @@ public struct FogPlane<let LIT : bool, TAlpha : IVertexAlpha> : ISurfaceVertexMo
         o.setFog(float4(d3SurfaceFog(v), 0.0, 0.0, 0.0));
     }
 };
+
+/// Two-texture glow floors without a fog interpolant: the detail UV with fog
+/// beside it, the diffuse UV untransformed, the diffuse UV through matTex2, and
+/// the world through matTex3.
+public struct TwoTextureGlowUnmapped : IMeshTexgen
+{
+    public static void texgen(D3VertexIn i, D3SurfaceVertex v, inout D3Interpolants o)
+    {
+        float2 uv = d3MeshUv(i);
+        o.setTexcoord2(float4(d3DecodeUv1(i.texcoord1Bits()), 0.0, d3SurfaceFog(v)));
+        o.setTexcoord3(float4(uv, 0.0, 1.0));
+        o.setTexcoord4(d3TexProject(matTex2[0], matTex2[1], matTex2[2], matTex2[3], uv));
+        o.setTexcoord5(mul(matTex3, v.world));
+    }
+};
+
+/// A depth prepass: the given opacity and the diffuse UV through matTex1 in
+/// TEXCOORD<UV>.
+public struct DepthPrepassAt<let UV : int, TAlpha : IVertexAlpha> : ISurfaceVertexModel
+{
+    public static void shade(D3VertexIn i, D3SurfaceVertex v, inout D3Interpolants o)
+    {
+        o.setColor0(float4(0.0, 0.0, 0.0, TAlpha.alpha(i, v)));
+        d3SetTexcoord(o, UV, d3TexProject(matTex1[0], matTex1[1], matTex1[2], matTex1[3], d3MeshUv(i)));
+    }
+};
+
+/// An unlit pass that hands its pixel stage the view transform of the vertex:
+/// the raw vertex colour, the diffuse UV through matTex0, the unnormalised view
+/// normal and the view position as the z and w of TEXCOORD1-3 (one view axis
+/// each), and the world through matTex5.
+public struct ViewSpaceRows : ISurfaceVertexModel
+{
+    public static void shade(D3VertexIn i, D3SurfaceVertex v, inout D3Interpolants o)
+    {
+        float3 normal = mul((float3x3)matWorldView, d3UnpackDirection(i.normalBits()));
+        o.setColor0(i.color0());
+        o.setTexcoord0(d3TexProject(matTex0[0], matTex0[1], matTex0[2], matTex0[3], d3MeshUv(i)));
+        o.setTexcoord1(float4(0.0, 0.0, normal.x, v.view.x));
+        o.setTexcoord2(float4(0.0, 0.0, normal.y, v.view.y));
+        o.setTexcoord3(float4(0.0, 0.0, normal.z, v.view.z));
+        o.setTexcoord5(mul(matTex5, v.world));
+    }
+};
+
+/// Where the environment reflection of a water surface looks up (TEXCOORD1).
+public interface IWaterEnvironmentCoord
+{
+    static float4 coord(D3SurfaceVertex v, float2 uv);
+}
+
+/// The mesh UV through all four rows of matTex0.
+public struct WaterEnvironmentUv : IWaterEnvironmentCoord
+{
+    public static float4 coord(D3SurfaceVertex v, float2 uv)
+    {
+        return d3TexProject(matTex0[0], matTex0[1], matTex0[2], matTex0[3], uv);
+    }
+};
+
+/// A fixed environment behind the screen: the screen reflection shifted by
+/// matTex0, with clip z and w for the projective divide.
+public struct WaterEnvironmentScreen : IWaterEnvironmentCoord
+{
+    public static float4 coord(D3SurfaceVertex v, float2 uv)
+    {
+        return float4(d3ScreenReflection(v.viewNormal, v.clip, matTex0[0], matTex0[1]), v.clip.zw);
+    }
+};
+
+/// Large water and rivers: lit or flat white, with the frames the pixel stage
+/// reflects and refracts through -- the base UV beside the view position
+/// through matTex7, the environment lookup, the UV through matTex5 and
+/// matTex3 (rows swapped) for the two scrolling normal maps (zero without
+/// NORMAL_MAPS), the projected screen position, the eye direction with fog,
+/// the UV through matTex6, the detail UV (after a matTex10 flow UV on rivers)
+/// and the view position.
+public struct ReflectiveWaterFrames<let LIT : bool, let FLOW : bool, TEnvironment : IWaterEnvironmentCoord,
+                                    let NORMAL_MAPS : bool> : ISurfaceVertexModel
+{
+    public static void shade(D3VertexIn i, D3SurfaceVertex v, inout D3Interpolants o)
+    {
+        float alpha = i.color0().w;
+        if (LIT)
+        {
+            D3SurfaceLighting light = SurfaceLightRig<false, false>.evaluate(v.view.xyz, v.viewNormal);
+            o.setColor0(float4(light.ambient + light.diffuse, alpha));
+            o.setColor1(float4(light.ambient, 0.0));
+        }
+        else
+        {
+            o.setColor0(float4(1.0, 1.0, 1.0, alpha));
+        }
+        float2 uv = d3MeshUv(i);
+        float2 flow = float2(0.0, 0.0);
+        if (FLOW)
+            flow = d3TexTransform(matTex10[0], matTex10[1], uv);
+        o.setTexcoord0(float4(uv, dot(matTex7[0], v.view), dot(matTex7[1], v.view)));
+        o.setTexcoord1(TEnvironment.coord(v, uv));
+        if (NORMAL_MAPS)
+            o.setTexcoord2(float4(d3TexTransform(matTex5[0], matTex5[1], uv), d3TexTransform(matTex3[1], matTex3[0], uv)));
+        o.setTexcoord3(float4((v.clip.xy + v.clip.w) * 0.5, v.clip.zw));
+        o.setTexcoord4(float4(normalize(wpViewPos.rgb - v.world.xyz), d3SurfaceFog(v)));
+        o.setTexcoord5(d3TexProject(matTex6[0], matTex6[1], matTex6[2], matTex6[3], uv));
+        o.setTexcoord6(float4(flow, d3DecodeUv1(i.texcoord1Bits())));
+        o.setTexcoord7(float4(v.view.xyz, 0.0));
+    }
+};
+
+// ===========================================================================
+// Puddles
+// ===========================================================================
+
+/// Glossy puddles, lit here: COLOR0 as VertexLit, the full specular in
+/// TEXCOORD0, fog alone in COLOR1, twice the colour plus ambient in TEXCOORD1
+/// and the sun's diffuse in TEXCOORD2; then the diffuse UV through matTex1,
+/// the detail UV, the screen reflection shifted by matTex3, the world through
+/// matTex4 and the view position through matTex6.
+public struct PuddleSurface<TAlpha : IVertexAlpha> : ISurfaceVertexModel
+{
+    public static void shade(D3VertexIn i, D3SurfaceVertex v, inout D3Interpolants o)
+    {
+        D3SurfaceLighting light = SurfaceLightRig<false, true>.evaluate(v.view.xyz, v.viewNormal);
+        float3 color = i.color0().xyz;
+        o.setColor0(float4((color * 2.0 + (light.ambient + light.diffuse)) * 0.5, TAlpha.alpha(i, v)));
+        o.setColor1(float4(d3SurfaceFog(v), 0.0, 0.0, 0.0));
+        o.setTexcoord0(float4(light.specular, 0.0));
+        o.setTexcoord1(float4(color * 2.0 + light.ambient, 0.0));
+        o.setTexcoord2(float4(light.sunDiffuse, 0.0));
+        o.setTexcoord3(d3TexProject(matTex1[0], matTex1[1], matTex1[2], matTex1[3], d3MeshUv(i)));
+        o.setTexcoord4(d3DetailUv(i));
+        o.setTexcoord5(float4(d3ScreenReflection(v.viewNormal, v.clip, matTex3[0], matTex3[1]), v.clip.zw));
+        o.setTexcoord6(mul(matTex4, v.world));
+        o.setTexcoord7(mul(matTex6, v.view));
+    }
+};
+
+/// Fog planes with a fourth layer: the plane UV through matTex4 in TEXCOORD5.
+public struct FogPlaneLayered<let LIT : bool, TAlpha : IVertexAlpha> : ISurfaceVertexModel
+{
+    public static void shade(D3VertexIn i, D3SurfaceVertex v, inout D3Interpolants o)
+    {
+        FogPlane<LIT, TAlpha>.shade(i, v, o);
+        o.setTexcoord5(d3TexProject(matTex4[0], matTex4[1], matTex4[2], matTex4[3], d3MeshUv(i)));
+    }
+};

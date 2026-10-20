@@ -71889,7 +71889,9 @@
  },
  {
   "slot": 394,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "6b8cccd74ad7d22a68542d75e8fe62fc0c987c67",
   "retail": [
    {
@@ -72065,7 +72067,9 @@
  },
  {
   "slot": 395,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "9195bf8cfcd6e868eb94bb56282ddc05cad04161",
   "retail": [
    {
@@ -72236,7 +72240,9 @@
  },
  {
   "slot": 396,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "e35d2055fbf7d9531eae9c2202d6b2c0e6ab5408",
   "retail": [
    {
@@ -72383,7 +72389,9 @@
  },
  {
   "slot": 397,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "cf446070ab892871a3b088f6d7589741c07515c9",
   "retail": [
    {
@@ -72474,7 +72482,9 @@
  },
  {
   "slot": 398,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "4c4e51ffe887710d440299e4c0dd3f15fe9c44f9",
   "retail": [
    {
@@ -72650,7 +72660,9 @@
  },
  {
   "slot": 399,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "ec7f0005645cd1ccf4815d556e6c20284e5b0d74",
   "retail": [
    {
@@ -72802,7 +72814,9 @@
  },
  {
   "slot": 400,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "652303136ffb56ea316e88c73705966fac95f3f6",
   "retail": [
    {
@@ -72945,170 +72959,9 @@
  },
  {
   "slot": 401,
-  "roots": [],
-  "program": "2949d4d5fbf68a389db2269250467848aaa9ec45",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "148d597c",
-    "defines": {},
-    "shaders": [
-     "actor2_disintegrate_death"
-    ],
-    "residue": "no_shd"
-   }
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     3,
-     "w",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     5,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 402,
-  "roots": [],
   "program": "58e1bfe3146a2aea206aa05b5215dc1759d4f351",
   "retail": [
    {
@@ -73290,8 +73143,10 @@
   }
  },
  {
-  "slot": 403,
-  "roots": [],
+  "slot": 402,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "47d3d83adca22d57c8eee813c04dbcf1bdb4e4f4",
   "retail": [
    {
@@ -73461,8 +73316,10 @@
   }
  },
  {
-  "slot": 404,
-  "roots": [],
+  "slot": 403,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "3a301e69378f235db917c1a42b43a4871be9777b",
   "retail": [
    {
@@ -73612,8 +73469,171 @@
   }
  },
  {
+  "slot": 404,
+  "roots": [
+   "texgen_vs_main"
+  ],
+  "program": "9b33267a46cca168578c9c1021dcefd0bc4657ba",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "1899ace3",
+    "defines": {},
+    "shaders": [
+     "actor_champion_opaque"
+    ],
+    "residue": "disputed"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     5,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     6,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ],
+    "1": [
+     135,
+     "dynamicIndexed"
+    ],
+    "2": [
+     386,
+     "dynamicIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": true,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "BLENDINDICES",
+     0,
+     6,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "BLENDWEIGHT",
+     0,
+     7,
+     "xyzw",
+     "NONE",
+     "float"
+    ]
+   ]
+  }
+ },
+ {
   "slot": 405,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "68d6cfbd5a65bc88cb681e2e6addaa0416afe36f",
   "retail": [
    {
@@ -73768,7 +73788,9 @@
  },
  {
   "slot": 406,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "45b076fff23c9e4511caf2ce6b2da64c2d1f1d50",
   "retail": [
    {
@@ -73952,7 +73974,9 @@
  },
  {
   "slot": 407,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "22a564613fd570630abf63c3c91d70e6cdb5c516",
   "retail": [
    {
@@ -74135,7 +74159,9 @@
  },
  {
   "slot": 408,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "d89674f7fa46364b46276714104bcf5f6972008a",
   "retail": [
    {
@@ -74278,7 +74304,9 @@
  },
  {
   "slot": 409,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "bde37ca120b5c4220fde6e65cc975251f1b4982f",
   "retail": [
    {
@@ -74429,7 +74457,9 @@
  },
  {
   "slot": 410,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "5aa3243a28c93077f1895f1fd41abcc578500132",
   "retail": [
    {
@@ -74737,7 +74767,163 @@
  },
  {
   "slot": 412,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
+  "program": "036dea366951b559776f2ec58abe372a5107b6a1",
+  "retail": [
+   {
+    "subfamily": "Residue__vs",
+    "hash": "25787ed4",
+    "defines": {},
+    "shaders": [
+     "actor_telegraphring_cm2x_am4x",
+     "actor_telegraphring_cm2x_am4x_bloom"
+    ],
+    "residue": "no_shd"
+   }
+  ],
+  "measured": {
+   "transport": [
+    [
+     "SV_POSITION",
+     0,
+     0,
+     "xyzw",
+     "POS",
+     "float"
+    ],
+    [
+     "COLOR",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     4,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     2,
+     5,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     3,
+     6,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     0,
+     7,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ],
+    [
+     "SV_CLIPDISTANCE",
+     1,
+     8,
+     "xyzw",
+     "CLIPDST",
+     "float"
+    ]
+   ],
+   "resources": [],
+   "banks": {
+    "0": [
+     131,
+     "immediateIndexed"
+    ]
+   },
+   "alphaCompare": [],
+   "lights": false,
+   "streams": [
+    [
+     "POSITION",
+     0,
+     0,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "NORMAL",
+     0,
+     1,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "COLOR",
+     0,
+     2,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "COLOR",
+     1,
+     3,
+     "xyzw",
+     "NONE",
+     "float"
+    ],
+    [
+     "TEXCOORD",
+     0,
+     4,
+     "xyzw",
+     "NONE",
+     "uint"
+    ],
+    [
+     "TEXCOORD",
+     1,
+     5,
+     "xyzw",
+     "NONE",
+     "uint"
+    ]
+   ]
+  }
+ },
+ {
+  "slot": 413,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "ff6d52f8200af1f1f72aaee093a4718df75db26d",
   "retail": [
    {
@@ -74916,8 +75102,10 @@
   }
  },
  {
-  "slot": 413,
-  "roots": [],
+  "slot": 414,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "70119a80608ac7f26b61866472f2a5a6c6087431",
   "retail": [
    {
@@ -75099,8 +75287,10 @@
   }
  },
  {
-  "slot": 414,
-  "roots": [],
+  "slot": 415,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "8ab4f0117a0e3052d585e41ce33b2466f1acc87f",
   "retail": [
    {
@@ -75251,8 +75441,10 @@
   }
  },
  {
-  "slot": 415,
-  "roots": [],
+  "slot": 416,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "49f74ea32cf25926dda717bebb903847499d0987",
   "retail": [
    {
@@ -75415,8 +75607,10 @@
   }
  },
  {
-  "slot": 416,
-  "roots": [],
+  "slot": 417,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "722acba432999e98022bdbebd1c520f788acb2ab",
   "retail": [
    {
@@ -75578,7 +75772,7 @@
   }
  },
  {
-  "slot": 417,
+  "slot": 418,
   "roots": [
    "texgen_vs_main"
   ],
@@ -75723,7 +75917,7 @@
   }
  },
  {
-  "slot": 418,
+  "slot": 419,
   "roots": [
    "texgen_vs_main"
   ],
@@ -75888,8 +76082,10 @@
   }
  },
  {
-  "slot": 419,
-  "roots": [],
+  "slot": 420,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "655a4cabd0dc6973b69fde42493deed907db640a",
   "retail": [
    {
@@ -76076,8 +76272,10 @@
   }
  },
  {
-  "slot": 420,
-  "roots": [],
+  "slot": 421,
+  "roots": [
+   "restore_vs_main"
+  ],
   "program": "41062b683ac59a7f338f38a2ea202c4d450ca940",
   "retail": [
    {
@@ -76181,8 +76379,10 @@
   }
  },
  {
-  "slot": 421,
-  "roots": [],
+  "slot": 422,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "725abe731ff31061d077c7f0c54fa0dabe2b0b82",
   "retail": [
    {
@@ -76317,8 +76517,10 @@
   }
  },
  {
-  "slot": 422,
-  "roots": [],
+  "slot": 423,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "d07835b436f0240730b5e6c5f7d1da51f12e2344",
   "retail": [
    {
@@ -76496,8 +76698,10 @@
   }
  },
  {
-  "slot": 423,
-  "roots": [],
+  "slot": 424,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "2f50ef2848f9e1b75ed4d9742fc0814d2692f3b4",
   "retail": [
    {
@@ -76663,197 +76867,10 @@
   }
  },
  {
-  "slot": 424,
-  "roots": [],
-  "program": "232f48e2150ac165b91f40741e0674b7177c55d6",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "35e7a068",
-    "defines": {},
-    "shaders": [
-     "tree_deform_spec",
-     "tree_deform_transparent_spec"
-    ],
-    "residue": "no_shd"
-   },
-   {
-    "subfamily": "Residue__vs",
-    "hash": "51eedff1",
-    "defines": {},
-    "shaders": [
-     "tree_deform_spec"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     5,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     6,
-     6,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     6,
-     "z",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     7,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
   "slot": 425,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "732f90e0e64f5b9a88a7650991ef017b0e6ec2c7",
   "retail": [
    {
@@ -77000,7 +77017,9 @@
  },
  {
   "slot": 426,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "8cc745c83a25f8f34cd2882bdb0afbfe02698417",
   "retail": [
    {
@@ -77135,7 +77154,9 @@
  },
  {
   "slot": 427,
-  "roots": [],
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "3976b041ff8b1804b1a082c15ed67c401f4947c6",
   "retail": [
    {
@@ -77278,100 +77299,9 @@
  },
  {
   "slot": 428,
-  "roots": [],
-  "program": "cf76cd7a977f59df37d87c489d158d5772dc3ceb",
-  "retail": [
-   {
-    "subfamily": "TextureFilter.fx__main_vs_resolve_eqaa",
-    "hash": "3bfb1ba8",
-    "defines": {},
-    "shaders": [
-     "postfx resolve eqaa"
-    ],
-    "residue": "singleton"
-   },
-   {
-    "subfamily": "TextureFilter.fx__main_vs_copy_depth",
-    "hash": "b7e113cc",
-    "defines": {},
-    "shaders": [
-     "postfx copy depth",
-     "postfx copy depth ms",
-     "postfx copy depth ms2",
-     "postfx copy depth ms4",
-     "postfx copy depth ms8"
-    ],
-    "residue": "singleton"
-   },
-   {
-    "subfamily": "TextureFilter.fx__main_vs_copy_MS",
-    "hash": "e10f848e",
-    "defines": {},
-    "shaders": [
-     "postfx copy ms"
-    ],
-    "residue": "singleton"
-   }
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     18,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 429,
-  "roots": [],
   "program": "a090f107dea91c5ac55fe99598357d1daa0adca2",
   "retail": [
    {
@@ -77526,8 +77456,10 @@
   }
  },
  {
-  "slot": 430,
-  "roots": [],
+  "slot": 429,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "3f2aeee07326d24a8f2db78bcd2cb7bcd164aa8d",
   "retail": [
    {
@@ -77701,8 +77633,10 @@
   }
  },
  {
-  "slot": 431,
-  "roots": [],
+  "slot": 430,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "5f44b7176529d77a03ae3d80f6653ced5e004582",
   "retail": [
    {
@@ -77877,171 +77811,10 @@
   }
  },
  {
-  "slot": 432,
-  "roots": [],
-  "program": "8df449b9db8f5e4a11a64a30b4d14141d7f04c00",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "4318c0fd",
-    "defines": {},
-    "shaders": [
-     "actor2_pulverize_death"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 431,
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     3,
-     "w",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     5,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 433,
-  "roots": [],
   "program": "128ac5839e4b8939754a276eac4ad169e7048611",
   "retail": [
    {
@@ -78176,7 +77949,7 @@
   }
  },
  {
-  "slot": 434,
+  "slot": 432,
   "roots": [
    "particle_vs_main"
   ],
@@ -78345,8 +78118,10 @@
   }
  },
  {
-  "slot": 435,
-  "roots": [],
+  "slot": 433,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "2d02c9083e163aa3ee70a0edf120e892fdef89f5",
   "retail": [
    {
@@ -78521,8 +78296,10 @@
   }
  },
  {
-  "slot": 436,
-  "roots": [],
+  "slot": 434,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "6d2f14e23d10dc7882ca39355d1b25d05e2d9576",
   "retail": [
    {
@@ -78676,8 +78453,10 @@
   }
  },
  {
-  "slot": 437,
-  "roots": [],
+  "slot": 435,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "f9f1cd71dccb84543fda467ca95a9c6eaf210695",
   "retail": [
    {
@@ -78831,8 +78610,10 @@
   }
  },
  {
-  "slot": 438,
-  "roots": [],
+  "slot": 436,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "c25cc8f97abf13c104b94083c486a9384ba24fe8",
   "retail": [
    {
@@ -78959,8 +78740,10 @@
   }
  },
  {
-  "slot": 439,
-  "roots": [],
+  "slot": 437,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "8b4e97f3a0964531d5981c67869af8fc45cd1902",
   "retail": [
    {
@@ -79138,7 +78921,7 @@
   }
  },
  {
-  "slot": 440,
+  "slot": 438,
   "roots": [
    "texgen_vs_main"
   ],
@@ -79300,8 +79083,10 @@
   }
  },
  {
-  "slot": 441,
-  "roots": [],
+  "slot": 439,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "9a00095a9b0f329e1963ee81316a4b62cb4217a1",
   "retail": [
    {
@@ -79479,7 +79264,7 @@
   }
  },
  {
-  "slot": 442,
+  "slot": 440,
   "roots": [
    "texgen_vs_main"
   ],
@@ -79647,8 +79432,10 @@
   }
  },
  {
-  "slot": 443,
-  "roots": [],
+  "slot": 441,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "f583bf1c51d442c7a0f0f6e4655ac93d8f542d47",
   "retail": [
    {
@@ -79824,8 +79611,10 @@
   }
  },
  {
-  "slot": 444,
-  "roots": [],
+  "slot": 442,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "9cc886f97eb37fa3916c52f9d22e39a2b173433e",
   "retail": [
    {
@@ -79999,7 +79788,7 @@
   }
  },
  {
-  "slot": 445,
+  "slot": 443,
   "roots": [
    "texgen_vs_main"
   ],
@@ -80156,8 +79945,10 @@
   }
  },
  {
-  "slot": 446,
-  "roots": [],
+  "slot": 444,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "7324b57dd0d68fb6de75da76ed7d92af32894bcd",
   "retail": [
    {
@@ -80304,8 +80095,10 @@
   }
  },
  {
-  "slot": 447,
-  "roots": [],
+  "slot": 445,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "3d07650aedc27dc69b5ac65cb9097044a336bad6",
   "retail": [
    {
@@ -80479,8 +80272,10 @@
   }
  },
  {
-  "slot": 448,
-  "roots": [],
+  "slot": 446,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "1396b1dbf05011fa62cd0586a69b5b21792d5eba",
   "retail": [
    {
@@ -80619,8 +80414,10 @@
   }
  },
  {
-  "slot": 449,
-  "roots": [],
+  "slot": 447,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "242b5b99bf75f755f740ea805a019fdf47049a4b",
   "retail": [
    {
@@ -80790,7 +80587,7 @@
   }
  },
  {
-  "slot": 450,
+  "slot": 448,
   "roots": [
    "particle_vs_main"
   ],
@@ -80955,8 +80752,10 @@
   }
  },
  {
-  "slot": 451,
-  "roots": [],
+  "slot": 449,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "539744b74ad030f906cdc082b29c0362b4424726",
   "retail": [
    {
@@ -81102,8 +80901,10 @@
   }
  },
  {
-  "slot": 452,
-  "roots": [],
+  "slot": 450,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "4cbef8e2c289df797890fbb5bf21175b9158bbb5",
   "retail": [
    {
@@ -81198,8 +80999,10 @@
   }
  },
  {
-  "slot": 453,
-  "roots": [],
+  "slot": 451,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "623518e1a365b38887f7e28ce162e20607e3ea22",
   "retail": [
    {
@@ -81353,8 +81156,10 @@
   }
  },
  {
-  "slot": 454,
-  "roots": [],
+  "slot": 452,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "a862ad76616f95e5f5d80f32bc2dcf7b84df7115",
   "retail": [
    {
@@ -81516,8 +81321,10 @@
   }
  },
  {
-  "slot": 455,
-  "roots": [],
+  "slot": 453,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "5e59c7fffddcbe58b9ae14d4a73f1fd79916ec66",
   "retail": [
    {
@@ -81679,8 +81486,10 @@
   }
  },
  {
-  "slot": 456,
-  "roots": [],
+  "slot": 454,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "dab4209987b7e75ab5fa60c3dcaa3c641af1b685",
   "retail": [
    {
@@ -81838,7 +81647,7 @@
   }
  },
  {
-  "slot": 457,
+  "slot": 455,
   "roots": [
    "texgen_vs_main"
   ],
@@ -82008,8 +81817,10 @@
   }
  },
  {
-  "slot": 458,
-  "roots": [],
+  "slot": 456,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "c90ce18ad6624c6056045010353a5f88cabdfdde",
   "retail": [
    {
@@ -82159,8 +81970,10 @@
   }
  },
  {
-  "slot": 459,
-  "roots": [],
+  "slot": 457,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "5c90cfc567f218db09f9f9e3188103dc66bb1a19",
   "retail": [
    {
@@ -82318,8 +82131,10 @@
   }
  },
  {
-  "slot": 460,
-  "roots": [],
+  "slot": 458,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "d424f78237351de5be14ec28350983c12819f43f",
   "retail": [
    {
@@ -82501,8 +82316,10 @@
   }
  },
  {
-  "slot": 461,
-  "roots": [],
+  "slot": 459,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "bfeda8f6fbb57daa90ff2ad507439b5ff01dfa87",
   "retail": [
    {
@@ -82672,8 +82489,10 @@
   }
  },
  {
-  "slot": 462,
-  "roots": [],
+  "slot": 460,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "e7078f2eaa8504ffe12cacf778c362d5a161877d",
   "retail": [
    {
@@ -82831,8 +82650,10 @@
   }
  },
  {
-  "slot": 463,
-  "roots": [],
+  "slot": 461,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "e08477a97cf7624a2618549ebcc42d31014c4615",
   "retail": [
    {
@@ -82998,8 +82819,10 @@
   }
  },
  {
-  "slot": 464,
-  "roots": [],
+  "slot": 462,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "41cc3eb66480595f628a4b6aa57f8843092f4028",
   "retail": [
    {
@@ -83165,8 +82988,10 @@
   }
  },
  {
-  "slot": 465,
-  "roots": [],
+  "slot": 463,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "d43390e98426edd94fc203601649139d7c638e51",
   "retail": [
    {
@@ -83321,8 +83146,10 @@
   }
  },
  {
-  "slot": 466,
-  "roots": [],
+  "slot": 464,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "83c519dbb7c4cec6855e71ff61c9ac15fd90f948",
   "retail": [
    {
@@ -83468,8 +83295,10 @@
   }
  },
  {
-  "slot": 467,
-  "roots": [],
+  "slot": 465,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "f076b9a575c83ba97f3bae02ac3940d1e43dd9a5",
   "retail": [
    {
@@ -83635,170 +83464,7 @@
   }
  },
  {
-  "slot": 468,
-  "roots": [],
-  "program": "3ccc80330f1530cdff3eb5349350d0a5cbdd3dca",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "7b0ae462",
-    "defines": {},
-    "shaders": [
-     "actor2_elemental_wipe_death"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     3,
-     "w",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     5,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 469,
+  "slot": 466,
   "roots": [
    "texgen_vs_main"
   ],
@@ -83964,8 +83630,10 @@
   }
  },
  {
-  "slot": 470,
-  "roots": [],
+  "slot": 467,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "0c6da3254565e40856550d440d7e75b294812a10",
   "retail": [
    {
@@ -84115,188 +83783,10 @@
   }
  },
  {
-  "slot": 471,
-  "roots": [],
-  "program": "fb54ec704611e04a2de201764215527e33ef958c",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "7ccf5358",
-    "defines": {},
-    "shaders": [
-     "scene_foliage_transparent_noisy_deform_vertextest"
-    ],
-    "residue": "no_shd"
-   },
-   {
-    "subfamily": "Residue__vs",
-    "hash": "89842747",
-    "defines": {},
-    "shaders": [
-     "scene_foliage_transparent_noisy_deform_vertextest"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 468,
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     2,
-     "w",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     7,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     8,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 472,
-  "roots": [],
   "program": "b6d980b832ba185ec75139b90ba5dc597c94962d",
   "retail": [
    {
@@ -84474,8 +83964,10 @@
   }
  },
  {
-  "slot": 473,
-  "roots": [],
+  "slot": 469,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "158f3e9e8d98daa6a999be106972b057bbc1cc92",
   "retail": [
    {
@@ -84621,8 +84113,10 @@
   }
  },
  {
-  "slot": 474,
-  "roots": [],
+  "slot": 470,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "a1e9eb720b6a982db5bae134e9b5196080884190",
   "retail": [
    {
@@ -84776,8 +84270,10 @@
   }
  },
  {
-  "slot": 475,
-  "roots": [],
+  "slot": 471,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "6124ab7195649dcbf3a6fcf08fb0b1a8c12564cf",
   "retail": [
    {
@@ -84939,8 +84435,10 @@
   }
  },
  {
-  "slot": 476,
-  "roots": [],
+  "slot": 472,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "05b339be1bd1dc122a8dc2a232ca041a8022dd1f",
   "retail": [
    {
@@ -85086,144 +84584,10 @@
   }
  },
  {
-  "slot": 477,
-  "roots": [],
-  "program": "25768ccdc4974991f90ca8ed034fe8f7eadfb8bd",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "87ecfdd0",
-    "defines": {},
-    "shaders": [
-     "minimap_debug"
-    ],
-    "residue": "no_shd"
-   },
-   {
-    "subfamily": "Minimap.fx__vs_minimap",
-    "hash": "dd22546a",
-    "defines": {},
-    "shaders": [
-     "minimap"
-    ],
-    "residue": "singleton"
-   }
+  "slot": 473,
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     5,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 478,
-  "roots": [],
   "program": "208b6f9bfc9ff06740d2acce919f54d513c5df72",
   "retail": [
    {
@@ -85402,7 +84766,7 @@
   }
  },
  {
-  "slot": 479,
+  "slot": 474,
   "roots": [
    "texgen_vs_main"
   ],
@@ -85579,8 +84943,10 @@
   }
  },
  {
-  "slot": 480,
-  "roots": [],
+  "slot": 475,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "578dcbb6d79a7e8e4053a57eab2c8d2a79f9c2a2",
   "retail": [
    {
@@ -85730,8 +85096,10 @@
   }
  },
  {
-  "slot": 481,
-  "roots": [],
+  "slot": 476,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "316085313519e3fadbe422f9f906633cfd70e2a9",
   "retail": [
    {
@@ -85889,8 +85257,10 @@
   }
  },
  {
-  "slot": 482,
-  "roots": [],
+  "slot": 477,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "9fdec1d7a3763db867ff58cabc0666036f85a354",
   "retail": [
    {
@@ -86056,8 +85426,10 @@
   }
  },
  {
-  "slot": 483,
-  "roots": [],
+  "slot": 478,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "0df466db05ea76ba65f1412346ddf58cc5e14841",
   "retail": [
    {
@@ -86216,121 +85588,10 @@
   }
  },
  {
-  "slot": 484,
-  "roots": [],
-  "program": "2e3b8cef51359c73948f416471753eae447a7a1a",
-  "retail": [
-   {
-    "subfamily": "FSAA_AMD.fx__main_vs",
-    "hash": "999406e2",
-    "defines": {},
-    "shaders": [
-     "postfx fsaa amd fxaa"
-    ],
-    "residue": "singleton"
-   },
-   {
-    "subfamily": "FSAA.fx__main_vs",
-    "hash": "9d3da9a7",
-    "defines": {},
-    "shaders": [
-     "postfx fsaa fxaa",
-     "postfx fsaa rgbl"
-    ],
-    "residue": "singleton"
-   }
+  "slot": 479,
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     3,
-     "zw",
-     "NONE",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     21,
-     "immediateIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 485,
-  "roots": [],
   "program": "370876e95932bab60dea1dd80ea9bca8eb54c95b",
   "retail": [
    {
@@ -86464,7 +85725,7 @@
   }
  },
  {
-  "slot": 486,
+  "slot": 480,
   "roots": [
    "texgen_vs_main"
   ],
@@ -86645,8 +85906,10 @@
   }
  },
  {
-  "slot": 487,
-  "roots": [],
+  "slot": 481,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "7f049aeec8917971157efd1c6596e3d8d986343a",
   "retail": [
    {
@@ -86756,8 +86019,10 @@
   }
  },
  {
-  "slot": 488,
-  "roots": [],
+  "slot": 482,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "d1dfefbfff2dd4d951bd252cfb42e5a5d4d97950",
   "retail": [
    {
@@ -86920,8 +86185,10 @@
   }
  },
  {
-  "slot": 489,
-  "roots": [],
+  "slot": 483,
+  "roots": [
+   "particle_vs_main"
+  ],
   "program": "0b2fe18f32bdc255382fe46dc77879b67e2974ee",
   "retail": [
    {
@@ -87095,8 +86362,10 @@
   }
  },
  {
-  "slot": 490,
-  "roots": [],
+  "slot": 484,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "456045d1acb9711320b7a2aedfa232c64d4685f5",
   "retail": [
    {
@@ -87238,8 +86507,10 @@
   }
  },
  {
-  "slot": 491,
-  "roots": [],
+  "slot": 485,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "001fbe26c843ebc962bffb437e5b36ffab5e123b",
   "retail": [
    {
@@ -87325,8 +86596,10 @@
   }
  },
  {
-  "slot": 492,
-  "roots": [],
+  "slot": 486,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "118e406c093fc741ad06414eaa74794da4b0eaa9",
   "retail": [
    {
@@ -87492,8 +86765,10 @@
   }
  },
  {
-  "slot": 493,
-  "roots": [],
+  "slot": 487,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "2f4eb4d27469a9637f767f81aba189912a40f42b",
   "retail": [
    {
@@ -87651,8 +86926,10 @@
   }
  },
  {
-  "slot": 494,
-  "roots": [],
+  "slot": 488,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "c988bea75a357f424ef95639e322ce4bfa6924f6",
   "retail": [
    {
@@ -87802,8 +87079,10 @@
   }
  },
  {
-  "slot": 495,
-  "roots": [],
+  "slot": 489,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "da16aa8265cde834bc504299dbfe7916f4035492",
   "retail": [
    {
@@ -87949,8 +87228,10 @@
   }
  },
  {
-  "slot": 496,
-  "roots": [],
+  "slot": 490,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "ea21bddef11c931ab111795a21102ce6d03cce48",
   "retail": [
    {
@@ -88120,8 +87401,10 @@
   }
  },
  {
-  "slot": 497,
-  "roots": [],
+  "slot": 491,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "e11334f0ce2ce97cdc5e3ea8a01dca03b1d57d02",
   "retail": [
    {
@@ -88280,7 +87563,7 @@
   }
  },
  {
-  "slot": 498,
+  "slot": 492,
   "roots": [
    "texgen_vs_main"
   ],
@@ -88417,8 +87700,10 @@
   }
  },
  {
-  "slot": 499,
-  "roots": [],
+  "slot": 493,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "7ad9da7f8487fe9059711173dda5189f56e6731c",
   "retail": [
    {
@@ -88552,8 +87837,10 @@
   }
  },
  {
-  "slot": 500,
-  "roots": [],
+  "slot": 494,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "732684880eb4f89a1b3ab912eced613d9021764a",
   "retail": [
    {
@@ -88707,204 +87994,10 @@
   }
  },
  {
-  "slot": 501,
-  "roots": [],
-  "program": "b0a4ce7c06a6bfe15309013d962f44136cadc09e",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "b668b2e5",
-    "defines": {},
-    "shaders": [
-     "prop_gloss_unlit_mult",
-     "prop_gloss_unlit_mult_ground"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 495,
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     2,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     2,
-     "w",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     3,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     4,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     6,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     7,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     5,
-     8,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     9,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     10,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "1": [
-     135,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": false,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "BLENDINDICES",
-     0,
-     6,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "BLENDWEIGHT",
-     0,
-     7,
-     "xyzw",
-     "NONE",
-     "float"
-    ]
-   ]
-  }
- },
- {
-  "slot": 502,
-  "roots": [],
   "program": "ed6da741c2220c04c436929914786d860b3a2c90",
   "retail": [
    {
@@ -89066,8 +88159,10 @@
   }
  },
  {
-  "slot": 503,
-  "roots": [],
+  "slot": 496,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "876ade08d5b7f348e3387334f71c83b015a4f30d",
   "retail": [
    {
@@ -89237,8 +88332,10 @@
   }
  },
  {
-  "slot": 504,
-  "roots": [],
+  "slot": 497,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "6f80bad1e75a113b186f65d2f80de67cdb988cd7",
   "retail": [
    {
@@ -89380,8 +88477,10 @@
   }
  },
  {
-  "slot": 505,
-  "roots": [],
+  "slot": 498,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "f2e5db186bd63c122315b2297c9a700843bc2da2",
   "retail": [
    {
@@ -89544,8 +88643,10 @@
   }
  },
  {
-  "slot": 506,
-  "roots": [],
+  "slot": 499,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "89e89e3a8825fb3a8b0548d900cef75037dad122",
   "retail": [
    {
@@ -89695,8 +88796,10 @@
   }
  },
  {
-  "slot": 507,
-  "roots": [],
+  "slot": 500,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "2d26c2c64330b737d3ef38dd1d77354709b5ca2d",
   "retail": [
    {
@@ -89862,8 +88965,10 @@
   }
  },
  {
-  "slot": 508,
-  "roots": [],
+  "slot": 501,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "bf41d78fca34c4f53c187ab3fb802d9c78236418",
   "retail": [
    {
@@ -90037,8 +89142,10 @@
   }
  },
  {
-  "slot": 509,
-  "roots": [],
+  "slot": 502,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "ab1f5ac8d42e6e56546ac3b4ba0f900237993e99",
   "retail": [
    {
@@ -90164,8 +89271,10 @@
   }
  },
  {
-  "slot": 510,
-  "roots": [],
+  "slot": 503,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "23c823a6d98f6f9c882b15ee27bcdff57fd299b7",
   "retail": [
    {
@@ -90291,8 +89400,10 @@
   }
  },
  {
-  "slot": 511,
-  "roots": [],
+  "slot": 504,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "eae74bccbd1ffdf1ee1f7fb2bc0ec2889e332c9b",
   "retail": [
    {
@@ -90442,7 +89553,7 @@
   }
  },
  {
-  "slot": 512,
+  "slot": 505,
   "roots": [
    "texgen_vs_main"
   ],
@@ -90611,154 +89722,7 @@
   }
  },
  {
-  "slot": 513,
-  "roots": [],
-  "program": "52ffca772e6a8d146bc5676c6d01fc2c49a490aa",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "d426ad72",
-    "defines": {},
-    "shaders": [
-     "actor2_cloak"
-    ],
-    "residue": "no_shd"
-   }
-  ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     3,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     4,
-     "xyz",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     5,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 514,
+  "slot": 506,
   "roots": [
    "texgen_vs_main"
   ],
@@ -90911,8 +89875,10 @@
   }
  },
  {
-  "slot": 515,
-  "roots": [],
+  "slot": 507,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "671561325704a658a55790edf50be466dc935f32",
   "retail": [
    {
@@ -91050,8 +90016,10 @@
   }
  },
  {
-  "slot": 516,
-  "roots": [],
+  "slot": 508,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "6cc3c8f1833abfc9631c7af536f8fb96ce525004",
   "retail": [
    {
@@ -91217,8 +90185,10 @@
   }
  },
  {
-  "slot": 517,
-  "roots": [],
+  "slot": 509,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "2aac2d785c35cd6badaa678b6592abd35cbcd43a",
   "retail": [
    {
@@ -91336,8 +90306,10 @@
   }
  },
  {
-  "slot": 518,
-  "roots": [],
+  "slot": 510,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "9ada328b5541dd2503a2105930d8fa1a55b9f8f9",
   "retail": [
    {
@@ -91476,8 +90448,10 @@
   }
  },
  {
-  "slot": 519,
-  "roots": [],
+  "slot": 511,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "f4ad91aae9d74d93b93d3986cd1d46c75fa83353",
   "retail": [
    {
@@ -91631,171 +90605,10 @@
   }
  },
  {
-  "slot": 520,
-  "roots": [],
-  "program": "283c86e34aa8d8aca4e93a1a0e0a87cc0ca0dcfa",
-  "retail": [
-   {
-    "subfamily": "Residue__vs",
-    "hash": "dfa7104c",
-    "defines": {},
-    "shaders": [
-     "actor_tornado"
-    ],
-    "residue": "no_shd"
-   }
+  "slot": 512,
+  "roots": [
+   "texgen_vs_main"
   ],
-  "measured": {
-   "transport": [
-    [
-     "SV_POSITION",
-     0,
-     0,
-     "xyzw",
-     "POS",
-     "float"
-    ],
-    [
-     "COLOR",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     2,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     2,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     2,
-     3,
-     "xy",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     3,
-     3,
-     "zw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     4,
-     4,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "FOG",
-     0,
-     5,
-     "x",
-     "NONE",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     0,
-     6,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ],
-    [
-     "SV_CLIPDISTANCE",
-     1,
-     7,
-     "xyzw",
-     "CLIPDST",
-     "float"
-    ]
-   ],
-   "resources": [],
-   "banks": {
-    "0": [
-     131,
-     "immediateIndexed"
-    ],
-    "2": [
-     386,
-     "dynamicIndexed"
-    ]
-   },
-   "alphaCompare": [],
-   "lights": true,
-   "streams": [
-    [
-     "POSITION",
-     0,
-     0,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "NORMAL",
-     0,
-     1,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "COLOR",
-     0,
-     2,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "COLOR",
-     1,
-     3,
-     "xyzw",
-     "NONE",
-     "float"
-    ],
-    [
-     "TEXCOORD",
-     0,
-     4,
-     "xyzw",
-     "NONE",
-     "uint"
-    ],
-    [
-     "TEXCOORD",
-     1,
-     5,
-     "xyzw",
-     "NONE",
-     "uint"
-    ]
-   ]
-  }
- },
- {
-  "slot": 521,
-  "roots": [],
   "program": "576081b8378c6a78145c933df3882cb911ac2145",
   "retail": [
    {
@@ -91925,7 +90738,7 @@
   }
  },
  {
-  "slot": 522,
+  "slot": 513,
   "roots": [
    "texgen_vs_main"
   ],
@@ -92062,8 +90875,10 @@
   }
  },
  {
-  "slot": 523,
-  "roots": [],
+  "slot": 514,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "08ff98a1593103bafd940e0b9f10c7f114ff53cc",
   "retail": [
    {
@@ -92133,7 +90948,7 @@
   }
  },
  {
-  "slot": 524,
+  "slot": 515,
   "roots": [
    "texgen_vs_main"
   ],
@@ -92267,8 +91082,10 @@
   }
  },
  {
-  "slot": 525,
-  "roots": [],
+  "slot": 516,
+  "roots": [
+   "texgen_vs_main"
+  ],
   "program": "cf21697a97c691d15384637197db380f4207f3d9",
   "retail": [
    {
